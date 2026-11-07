@@ -1,14 +1,12 @@
-const VERSION = 7;
+const VERSION = 8;
 const FORMAT = 'game-library';
 export const STORAGE_KEY = `game-library:${new URL('.', import.meta.url).pathname}`;
 const EPOCH = '1970-01-01T00:00:00.000Z';
 
 export const STATUSES = Object.freeze({
-  planned: 'Планирую',
   playing: 'Играю',
   completed: 'Пройдено',
-  dropped: 'Брошено',
-  perfect: '100%'
+  dropped: 'Дроп'
 });
 
 export const PLATFORMS = Object.freeze([
@@ -236,8 +234,8 @@ function normalizeBossProgress(value) {
 
 function normalizeGame(value, fallbackId, fallbackTimestamp) {
   const game = object(value, 'Запись игры');
-  const status = game.status || 'planned';
-  if (!Object.hasOwn(STATUSES, status)) throw new Error('Выберите известный статус игры.');
+  const status = game.status === 'perfect' ? 'completed' : game.status || 'planned';
+  if (status !== 'planned' && !Object.hasOwn(STATUSES, status)) throw new Error('Выберите известный статус игры.');
 
   const startedAt = day(game.startedAt);
   const finishedAt = day(game.finishedAt);
@@ -246,7 +244,7 @@ function normalizeGame(value, fallbackId, fallbackTimestamp) {
   }
 
   const createdAt = stamp(game.createdAt, fallbackTimestamp);
-  const progress = number(game.progress, 'Прогресс', 0, 100, status === 'completed' || status === 'perfect' ? 100 : 0);
+  const progress = number(game.progress, 'Прогресс', 0, 100, status === 'completed' ? 100 : 0);
   return {
     id: identifier(game.id ?? fallbackId, 'Идентификатор игры'),
     title: requiredText(game.title, 'Название игры', 160),
@@ -263,7 +261,7 @@ function normalizeGame(value, fallbackId, fallbackTimestamp) {
     collectionIds: strings(game.collectionIds, 'Коллекции игры', 500, 96)
       .map(id => identifier(id, 'Идентификатор коллекции')),
     wishlist: bool(game.wishlist, 'Отметка «Вишлист»'),
-    progress: status === 'perfect' ? 100 : progress,
+    progress: game.status === 'perfect' ? 100 : progress,
     genre: text(game.genre, 'Жанр', 80),
     year: number(game.year, 'Год выпуска', 1900, 2100, null, true),
     cover: coverPath(game.cover),
@@ -427,7 +425,7 @@ function normalizeState(value) {
     throw new Error('Выберите резервную копию игровой библиотеки в формате JSON.');
   }
   if (state.version === 1) state = migrateV1(state);
-  if ([2, 3, 4, 5, 6].includes(state.version)) state = { ...state, version: VERSION };
+  if ([2, 3, 4, 5, 6, 7].includes(state.version)) state = { ...state, version: VERSION };
   if (state.version !== VERSION) {
     throw new Error('Эта версия формата библиотеки не поддерживается.');
   }

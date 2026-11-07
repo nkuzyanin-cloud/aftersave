@@ -7,13 +7,15 @@ import { icon } from './icons.js';
 import { createCloudSync } from './cloud.js';
 import { bossRegions, bossById } from './elden-ring.js';
 import { mergeSteam, fetchLibrary, connect, disconnect, connected, steamCover, steamHeader, steamHero, fetchSteamArtwork,
-  fetchAchievements, cachedAchievements, achievementSummaries } from './steam.js';
+  fetchAchievements, cachedAchievements, achievementSummaries, achievementIconAlternatives } from './steam.js';
 
 const app = document.querySelector('#app');
 const dialog = document.querySelector('#dialog');
+const mapDialog = document.querySelector('#boss-map-dialog');
 const toast = document.querySelector('#toast');
 const labels = { library: 'Библиотека', collections: 'Коллекции', stats: 'Статистика', settings: 'Настройки', game: 'Игра' };
-const filter = { query: '', status: '', platform: '', tag: '', collection: '', sort: 'recent', view: 'grid' };
+const filter = { query: '', status: '', platform: '', tag: '', collection: '', sort: 'recent' };
+const cups = { platinum: 'Платина', silver: 'Серебро', sapphire: 'Сапфир' };
 const number = new Intl.NumberFormat('ru', { maximumFractionDigits: 2 });
 const dateFormat = new Intl.DateTimeFormat('ru', { day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -25,8 +27,7 @@ let statsOrder = 'time';
 let achievementQuery = '';
 let achievementSort = 'rare';
 let revealHidden = false;
-const gameTabs = [['overview', 'Обзор', 'game'], ['achievements', 'Достижения', 'trophy'],
-  ['sessions', 'Сессии', 'clock'], ['notes', 'Заметки', 'edit']];
+const gameTabs = [['overview', 'Обзор'], ['achievements', 'Достижения'], ['notes', 'Заметки']];
 let toastTimer;
 let route = getRoute();
 let storagePending = false;
@@ -69,7 +70,8 @@ function getRoute() {
   const [original, id, tab, note] = location.hash.slice(1).split('/');
   const page = original === 'profile' ? 'settings' : original;
   return { page: Object.hasOwn(labels, page) ? page : 'library', id,
-    tab: ['achievements', 'sessions', 'notes'].includes(tab) ? tab : 'overview',
+    tab: ['achievements', 'notes'].includes(tab) ? tab : 'overview',
+    trophy: page === 'library' && id === 'cup' && Object.hasOwn(cups, tab) ? tab : '',
     ngPlus: tab === 'notes' && note === 'ng-plus' };
 }
 
@@ -135,8 +137,37 @@ function shell(content) {
   </main>`;
 }
 
+const statusIcon = { playing: 'game', completed: 'check', dropped: 'x' };
+const gameStatus = game => game.shelf && Object.hasOwn(STATUSES, game.status) ? game.status : '';
+
 function statusBadge(status) {
-  return `<span class="status status-${esc(status)}">${icon(status === 'playing' ? 'game' : ['completed','perfect'].includes(status) ? 'check' : 'clock',18)}${esc(STATUSES[status])}</span>`;
+  return `<span class="status status-${status}">${icon(statusIcon[status],18)}${STATUSES[status]}</span>`;
+}
+
+function statusMenu(game) {
+  const status = gameStatus(game);
+  return `<details class="status-picker"><summary id="game-status" aria-label="Статус игры: ${STATUSES[status] || 'не выбран'}">
+    <span>${status ? icon(statusIcon[status],19) : ''}${STATUSES[status] || 'Выбрать статус'}</span>${icon('down',18)}</summary>
+    <div class="status-options" role="group" aria-label="Выбрать статус игры">
+      ${Object.entries(STATUSES).map(([key,label]) => `<button type="button" data-action="game-status" data-value="${key}" aria-pressed="${key === status}">
+        ${icon(statusIcon[key],19)}<span>${label}</span>${key === status ? icon('check',16) : ''}</button>`).join('')}
+    </div></details>`;
+}
+
+function trophyFor(record) {
+  if (!record?.total || !record.unlocked) return '';
+  if (record.unlocked === record.total) return 'platinum';
+  return record.unlocked * 5 <= record.total * 3 ? 'sapphire' : 'silver';
+}
+
+function achievementPercent(record) {
+  if (!record.unlocked) return 0;
+  const rate = record.unlocked / record.total * 100;
+  return rate === 100 ? 100 : Math.min(99.9, Math.max(0.1, Math.round(rate * 10) / 10));
+}
+
+function trophyBadge(trophy) {
+  return trophy ? `<span class="cup-label cup-${trophy}">${icon('trophy',23)}<span>${cups[trophy]}</span></span>` : '';
 }
 
 function cover(game, className = '') {
@@ -166,7 +197,7 @@ function filtered(source) {
   const result = source.filter(game => {
     const haystack = [game.title, displayName(game), game.genre, game.platform, game.steam?.appid, ...game.tags].join(' ').toLocaleLowerCase('ru');
     return (!query || query.split(/\s+/).every(term => haystack.includes(term))) &&
-      (!filter.status || (game.shelf && game.status === filter.status)) &&
+      (!filter.status || gameStatus(game) === filter.status) &&
       (!filter.platform || game.platform === filter.platform) &&
       (!filter.tag || game.tags.includes(filter.tag)) &&
       (!filter.collection || game.collectionIds.includes(filter.collection));
@@ -196,16 +227,18 @@ function gameMenu(game, edit = false) {
 
 function gameCard(game) {
   const total = summaryFor(game);
-  const achieved = total?.total ? Math.round(total.unlocked / total.total * 100) : null;
-  return `<article class="game-card">
+  const achieved = total?.total ? achievementPercent(total) : null;
+  const trophy = trophyFor(total);
+  const status = gameStatus(game);
+  return `<article class="game-card ${trophy ? 'cup-' + trophy : ''}">
     <a href="#game/${encodeURIComponent(game.id)}" class="card-link" aria-label="Открыть ${esc(displayName(game))}">
       <div class="card-art">${cover(game)}</div>
-      <div class="card-body"><h3>${esc(displayName(game))}</h3>
-        <div class="card-status">${game.shelf ? statusBadge(game.status) : ''}</div>
+      <div class="card-body"><div class="card-title"><h3>${esc(displayName(game))}</h3>${trophyBadge(trophy)}</div>
+        ${status ? `<div class="card-status">${statusBadge(status)}</div>` : ''}
         <div class="card-meta"><span>${icon('clock',21)} ${numeric(Math.round(gameHours(game)))} ч</span>
           <span>${icon('trophy',21)} ${total?.total ? total.unlocked + ' из ' + total.total : '—'}</span></div>
         <div class="card-progress">${achieved === null ? '<div class="progress-track"></div>' : progressBar(achieved)}
-          <span>${achieved === null ? '—' : achieved + '%'}</span></div>
+          <span>${achieved === null ? '—' : numeric(achieved) + '%'}</span></div>
       </div>
     </a>
     <div class="card-tools">${iconButton('favorite', game.favorite ? 'Убрать из избранного' : 'В избранное', 'bookmark',
@@ -216,7 +249,7 @@ function gameCard(game) {
 function gameList(source) {
   const result = filtered(source);
   if (!result.length) {
-    const isFiltered = Boolean(filter.query || filter.status || filter.platform || filter.tag || filter.collection);
+    const isFiltered = Boolean(filter.query || filter.status || filter.platform || filter.tag || filter.collection || route.trophy);
     return `<div class="empty"><span class="empty-icon">${icon(isFiltered ? 'search' : 'game', 29)}</span>
       <h2>${isFiltered ? 'Игры не найдены' : 'Здесь пока пусто'}</h2>
       <p>${isFiltered ? 'Попробуйте другой запрос или сбросьте фильтры.' :
@@ -227,7 +260,7 @@ function gameList(source) {
         route.page === 'library' && shelfMode === 'hidden' ? button('shelf', 'Все игры', 'library', 'secondary', 'data-value="all"') :
         route.page === 'collections' ? button('pick-collection','Выбрать игру','plus','primary') : '<a class="btn btn-primary" href="#settings">Настройки Steam</a>'}</div>`;
   }
-  return `<div class="game-grid ${filter.view === 'list' ? 'list-view' : ''}">${result.slice(0, displayLimit).map(gameCard).join('')}</div>
+  return `<div class="game-grid list-view">${result.slice(0, displayLimit).map(gameCard).join('')}</div>
     ${result.length > displayLimit ? `<div class="load-more">${button('more-games', 'Показать ещё игры', 'down')}</div>` : ''}`;
 }
 
@@ -245,12 +278,11 @@ function viewControls() {
     <select id="status-filter" aria-label="Статус игры">${[['','Статус'],...Object.entries(STATUSES)].map(([id,label])=>option(id,label,filter.status)).join('')}</select>
     <select id="sort" aria-label="Сортировка">${[['recent','По активности'],['lastPlayed','Последний запуск'],['title','По названию'],['hours','По времени'],['rating','По оценке']]
       .map(([id,label])=>option(id,label,filter.sort)).join('')}</select>
-    <div class="view-switch" aria-label="Вид библиотеки">${iconButton('grid','Карточки','library',`aria-pressed="${filter.view === 'grid'}"`)}
-      ${iconButton('list','Список','list',`aria-pressed="${filter.view === 'list'}"`)}</div>
   </div>`;
 }
 
 function sourceForPage() {
+  if (route.trophy) return games().filter(game => trophyFor(summaryFor(game)) === route.trophy);
   if (route.page === 'library') return games().filter(game => shelfMode === 'hidden' ? game.hidden :
     !game.hidden && (shelfMode !== 'favorite' || game.favorite));
   const collection = route.page === 'collections' && findByRoute(collections());
@@ -265,8 +297,9 @@ function gameResults(source) {
 function library() {
   return `<section class="library-section">
     <div class="library-heading"><h1>Библиотека</h1><a class="quiet-link" href="#collections">${icon('layers',20)} Коллекции</a></div>
-    <div class="shelf-switch" aria-label="Раздел библиотеки">${[['all','Все игры'],['hidden','Скрытые'],['favorite','Избранное']].map(([id,label]) =>
-      `<button type="button" data-action="shelf" data-value="${id}" aria-pressed="${shelfMode === id}">${label}</button>`).join('')}</div>
+    ${route.trophy ? `<div class="cup-filter">${trophyBadge(route.trophy)} <a class="quiet-link" href="#library">${icon('x',16)} Сбросить кубок</a></div>` :
+      `<div class="shelf-switch" aria-label="Раздел библиотеки">${[['all','Все игры'],['hidden','Скрытые'],['favorite','Избранное']].map(([id,label]) =>
+        `<button type="button" data-action="shelf" data-value="${id}" aria-pressed="${shelfMode === id}">${label}</button>`).join('')}</div>`}
     ${viewControls()}${gameResults(sourceForPage())}
   </section>`;
 }
@@ -287,8 +320,8 @@ function collectionsPage() {
     ${list.length ? `<div class="collection-grid">${list.map(item => {
       const grouped = games().filter(game => game.collectionIds.includes(item.id));
       return `<a href="#collections/${encodeURIComponent(item.id)}" class="collection-card panel">
-        <div class="collection-covers">${grouped.length ? grouped.slice(0, 3).map(game => cover(game)).join('') : icon('layers', 40)}</div>
-        <div><h2>${esc(item.name)}</h2><p>${grouped.length} игр</p></div><span class="collection-arrow">${icon('upRight', 22)}</span></a>`;
+        <div class="collection-covers">${grouped.length ? cover(grouped[0]) : icon('layers', 40)}</div>
+        <div><h2>${esc(item.name)}</h2><p>${grouped.length} игр</p></div><span class="collection-arrow">${icon('right', 22)}</span></a>`;
     }).join('')}</div>` : `<div class="empty"><span class="empty-icon">${icon('layers', 28)}</span><h2>Собери первую подборку</h2>
       <p>Создай коллекцию, затем выбери игры из своей библиотеки.</p>${button('new-collection', 'Новая коллекция', 'plus', 'primary')}</div>`}`;
 }
@@ -305,14 +338,23 @@ function gamePage() { return gameDashboard(); }
 function statsPage() {
   const linked = games().filter(game => game.steam);
   const achievements = totalsFor(linked);
-  const completed = games().filter(game => game.shelf && ['completed','perfect'].includes(game.status)).length;
-  const perfect = achievements.included.filter(({record}) => record.total && record.total === record.unlocked).length;
+  const completed = games().filter(game => gameStatus(game) === 'completed').length;
+  const cupTotals = { platinum: 0, silver: 0, sapphire: 0 };
+  for (const { record } of achievements.included) {
+    const tier = trophyFor(record);
+    if (tier) cupTotals[tier]++;
+  }
   const hours = linked.reduce((sum,game) => sum + game.steam.minutes,0) / 60;
   const score = game => statsOrder === 'time' ? game.steam.minutes : summaryFor(game)?.unlocked || 0;
-  const top = [...linked].filter(game => score(game) > 0).sort((a,b) => score(b)-score(a)).slice(0,4);
+  const top = [...linked].filter(game => score(game) > 0).sort((a,b) => score(b)-score(a)).slice(0,10);
   const rates = [['Лучшие','S'],['Худшие','F']];
   return `<div class="stats-dashboard"><h1>Статистика</h1>
-    <div class="stats-metrics panel">${[[numeric(Math.round(hours))+' ч','Время в Steam'],[completed,'Пройдено игр'],[perfect,'Игр со всеми достижениями']].map(([value,label])=>
+    <section class="stats-cups stats-metrics panel" aria-labelledby="stats-cup-heading">
+      <h2 id="stats-cup-heading">Кубки</h2>
+      ${Object.entries(cups).map(([tier,label]) => `<a href="#library/cup/${tier}" class="cup-${tier}" aria-label="${label}, игр: ${cupTotals[tier]}">
+        ${icon('trophy',32)}<div><strong>${numeric(cupTotals[tier])}</strong><span>${label}</span></div>${icon('right',18)}</a>`).join('')}
+    </section>
+    <div class="stats-metrics panel">${[[numeric(Math.round(hours))+' ч','Время в Steam'],[completed,'Пройдено игр'],[cupTotals.platinum,'Игр со всеми достижениями']].map(([value,label])=>
       `<div><strong>${value}</strong><span>${label}</span></div>`).join('')}</div>
     <div class="stats-layout">
       <section class="panel stats-ranking">
@@ -373,7 +415,6 @@ function render(focusMain = false) {
   app.innerHTML = shell(views[route.page]());
 
   imageFallbacks(app);
-  bindBossMap();
   if (route.page === 'game') showAchievements();
   document.title = route.page === 'library' ? 'AFTERSAVE — игровая библиотека' : `${labels[route.page]} · AFTERSAVE`;
   if (focusMain) app.querySelector('#main').focus({ preventScroll: true });
@@ -422,8 +463,8 @@ function openGameForm(game = {}, editing = false) {
     ${inputField('Название', 'title', game.title, 'required maxlength="160" autofocus')}
     <label class="field"><span>Платформа</span><select name="platform">${platforms.map(value => option(value, value, knownPlatform)).join('')}</select></label>
     <label class="field"><span>Статус</span><select name="status">
-      ${editing && !game.shelf ? option('', 'Без статуса', '') : ''}
-      ${Object.entries(STATUSES).map(([value, label]) => option(value, label, editing && !game.shelf ? '' : game.status || 'planned')).join('')}</select></label>
+      ${!gameStatus(game) ? option('', 'Без статуса', '') : ''}
+      ${Object.entries(STATUSES).map(([value, label]) => option(value, label, gameStatus(game))).join('')}</select></label>
     ${inputField('Время, ч', 'hours', game.hours ?? 0, 'min="0" max="100000" step="any" required', 'number')}
     ${inputField('Оценка / 10', 'rating', game.rating, 'min="0" max="10" step="any" placeholder="Без оценки"', 'number')}
     ${inputField('Дата начала', 'startedAt', game.startedAt, '', 'date')}
@@ -527,18 +568,23 @@ const actions = {
   'boss-map': control => {
     bossMap = bossById.get(control.dataset.id);
     bossMapIndex = 0;
-    refreshBossTracker(control);
-    app.querySelector('[data-action="boss-close-map"]')?.focus();
+    drawBossMap();
+    if (!mapDialog.open) mapDialog.showModal();
+    mapDialog.querySelector('[data-action="boss-close-map"]').focus({ preventScroll: true });
   },
   'boss-map-place': control => {
     bossMapIndex = Number(control.dataset.place);
-    refreshBossTracker(control);
+    drawBossMap();
+    mapDialog.querySelector(`[data-place="${bossMapIndex}"]`)?.focus({ preventScroll: true });
   },
-  'boss-close-map': () => {
-    const id = bossMap?.id;
-    bossMap = null;
-    refreshBossTracker();
-    app.querySelector(`[data-action="boss-map"][data-id="${CSS.escape(id ?? '')}"]`)?.focus({ preventScroll: true });
+  'boss-close-map': () => mapDialog.close(),
+  'game-status': control => {
+    const game = findByRoute(games());
+    const status = control.dataset.value;
+    if (game && Object.hasOwn(STATUSES, status) && updateGame(game, { status, shelf: true }, 'Статус сохранён')) {
+      render();
+      app.querySelector('#game-status')?.focus({ preventScroll: true });
+    }
   },
   'more-games': () => { displayLimit += 24; renderResults(true); },
   'steam-sync': () => steamSync(),
@@ -568,11 +614,9 @@ const actions = {
     const game = state.games.find(item => item.id === control.dataset.id) ?? findByRoute(state.games);
     if (game && updateGame(game, { hidden: !game.hidden }, game.hidden ? 'Игра возвращена' : 'Игра скрыта')) render();
   },
-  'new-session': () => openJournal('sessions'),
-  'edit-session': control => openJournal('sessions', control.dataset.id),
-  'new-note': () => openJournal('journal'),
-  'edit-note': control => openJournal('journal', control.dataset.id),
-  'delete-journal': control => deleteJournal(control.dataset.kind, control.dataset.id),
+  'new-note': () => openJournal(),
+  'edit-note': control => openJournal(control.dataset.id),
+  'delete-journal': control => deleteJournal(control.dataset.id),
   'steam-disconnect': () => { disconnect(); stopAchievementScan = true; render(); },
   'achievement-reload': () => showAchievements(true),
   'achievement-scan': scanAchievements,
@@ -601,9 +645,7 @@ const actions = {
   },
 
 
-  'grid': () => { filter.view = 'grid'; render(); app.querySelector('[data-action="grid"]')?.focus(); },
-  'list': () => { filter.view = 'list'; render(); app.querySelector('[data-action="list"]')?.focus(); },
-  'clear-filters': () => { clearFilters(); render(); },
+  'clear-filters': () => { clearFilters(); if (route.trophy) go('library'); else render(); },
   'new-collection': () => openCollectionForm(),
   'edit-collection': control => {
     const item = state.collections.find(item => item.id === control.dataset.id);
@@ -630,13 +672,29 @@ const actions = {
 };
 
 document.addEventListener('click', event => {
+  const status = app.querySelector('.status-picker[open]');
+  if (status && !status.contains(event.target)) status.open = false;
+  if (event.target === mapDialog) mapDialog.close();
   const control = event.target.closest('[data-action]');
   const action = control?.dataset.action;
   if (Object.hasOwn(actions, action)) actions[action](control);
 });
 
 document.addEventListener('keydown', event => {
-  if (event.key === 'Escape' && bossMap && route.ngPlus && !dialog.open) actions['boss-close-map']();
+  if (event.key !== 'Escape') return;
+  const status = app.querySelector('.status-picker[open]');
+  if (status) {
+    status.open = false;
+    status.querySelector('summary').focus({ preventScroll: true });
+  }
+});
+
+mapDialog.addEventListener('close', () => {
+  if (!bossMap || mapDialog.open) return;
+  const id = bossMap.id;
+  bossMap = null;
+  mapDialog.replaceChildren();
+  app.querySelector(`[data-action="boss-map"][data-id="${CSS.escape(id)}"]`)?.focus({ preventScroll: true });
 });
 
 document.addEventListener('input', event => {
@@ -668,11 +726,6 @@ app.addEventListener('change', async event => {
   if (field.id === 'achievement-reveal') {
     revealHidden = field.checked;
     updateAchievementRows();
-  }
-  if (field.id === 'game-status') {
-    const game = findByRoute(state.games);
-    if (game && updateGame(game, { status: field.value, shelf: true }, 'Статус сохранён')) render();
-    else if (game) field.value = game.shelf ? game.status : '';
   }
   const fields = { sort: 'sort', 'status-filter': 'status' };
   if (Object.hasOwn(fields, field.id)) {
@@ -736,7 +789,10 @@ window.addEventListener('hashchange', () => {
   }
   const previousGameId = route.id;
   route = next;
+  if (mapDialog.open) mapDialog.close();
   bossMap = null;
+  mapDialog.replaceChildren();
+  if (route.trophy) shelfMode = 'all';
   if (next.id !== previousGameId) {
     bossRegion = 0;
     bossArea = '';
@@ -790,7 +846,7 @@ dialog.addEventListener('close', () => {
 });
 
 document.addEventListener('keydown', event => {
-  if (event.key !== '/' || event.altKey || event.ctrlKey || event.metaKey || dialog.open ||
+  if (event.key !== '/' || event.altKey || event.ctrlKey || event.metaKey || dialog.open || mapDialog.open ||
     event.target.closest('input,textarea,select,[contenteditable]')) return;
   event.preventDefault();
   actions['top-search']();
@@ -813,7 +869,9 @@ function imageFallbacks(root) {
       // Try the current catalogue after the main capsule fails. The remaining images are local to Steam's CDN.
       if (id && artwork === undefined && (!isCover || staticCover !== steamCover(id))) artwork = await fetchSteamArtwork(id);
       if (!image.isConnected) return;
-      const alternatives = isCover && id ? [artwork?.cover, artwork?.header, ...coverAlternatives(), artwork?.hero] : [artwork?.hero];
+      const alternatives = image.hasAttribute('data-achievement-icon') ?
+        [image.dataset.fallbackIcon, ...achievementIconAlternatives(image.src), ...achievementIconAlternatives(image.dataset.fallbackIcon)] :
+        isCover && id ? [artwork?.cover, artwork?.header, ...coverAlternatives(), artwork?.hero] : [artwork?.hero];
       const next = alternatives.find(url => url && !tried.has(url));
       pending = false;
       if (next) {
@@ -1055,13 +1113,13 @@ function gameDashboard() {
     ${panelHeading('trophy','Достижения')}<p class="dash-empty">${game.steam ? 'Загружаем достижения…' : 'Для этой игры нет данных Steam.'}</p></section>`;
   const compact = route.tab === 'overview';
   const tracking = route.ngPlus && isEldenRing(game);
-  const sessions = journalPanel(game, 'sessions', compact);
-  const notes = journalPanel(game, 'journal', compact);
+  const notes = notesPanel(game, compact);
+  const trophy = trophyFor(summary);
   const content = {
-    overview: `<div class="game-overview">${achievementBox}<div>${sessions}${notes}</div></div>`,
+    overview: `<div class="game-overview">${achievementBox}<div>${notes}</div></div>`,
     achievements: achievementBox,
-    sessions: sessions + (game.runs.length ? `<details class="panel saved-runs"><summary>Прохождения · ${game.runs.length}</summary>${runsPanel(game)}</details>` : ''),
-    notes: tracking ? bossTracker(game) : notes
+    notes: tracking ? bossTracker(game) : notes + (game.runs.length ?
+      `<details class="panel saved-runs"><summary>Прохождения · ${game.runs.length}</summary>${runsPanel(game)}</details>` : '')
   };
   const hero = isEldenRing(game) ? './assets/elden-ring-hero.jpg' : steamHero(game.steam?.appid);
   return `<div class="game-dashboard">
@@ -1074,13 +1132,13 @@ function gameDashboard() {
         <p>${game.steam ? icon('steam',24) + ' Steam' : esc(game.platform)}</p>
         <div class="detail-actions">
           ${game.steam ? `<a href="https://store.steampowered.com/app/${game.steam.appid}/" target="_blank" rel="noopener noreferrer" class="btn btn-primary">Открыть в Steam ${icon('upRight',21)}</a>` : ''}
-          <select id="game-status" aria-label="Статус игры">${!game.shelf ? option('','Выбрать статус','') : ''}
-            ${Object.entries(STATUSES).map(([value,label]) => option(value,label,game.shelf ? game.status : '')).join('')}</select>
+          ${statusMenu(game)}
           ${iconButton('favorite',game.favorite ? 'Убрать из избранного' : 'В избранное','bookmark', `aria-pressed="${game.favorite}"`)}
           ${gameMenu(game,true)}
         </div>
         <div class="game-totals"><span>${icon('clock',23)} ${numeric(Math.round(game.steam ? game.steam.minutes / 60 : game.hours))} ч${game.steam ? ' в Steam' : ''}</span>
-          <span>${icon('trophy',23)} <span id="game-achievement-count">${summary?.total ? summary.unlocked + ' из ' + summary.total + ' достижений' : 'Достижения'}</span></span></div>
+          <span>${icon('trophy',23)} <span id="game-achievement-count">${summary?.total ? summary.unlocked + ' из ' + summary.total + ' достижений' : 'Достижения'}</span></span>
+          <span id="game-trophy" ${trophy ? '' : 'hidden'}>${trophyBadge(trophy)}</span></div>
         <div class="game-grade"><span>Моя оценка</span><div role="group" aria-label="Оценка игры">${[...'SABCDEF'].map(letter =>
           `<button type="button" class="grade grade-${letter}" data-action="grade" data-value="${letter}" aria-label="Оценка ${letter}" aria-pressed="${grade === letter}">${letter}</button>`).join('')}</div></div>`}
       </div>
@@ -1088,24 +1146,6 @@ function gameDashboard() {
     <nav class="game-tabs" aria-label="Разделы игры">${gameTabs.map(([id,label]) => `<a href="${url}${id === 'overview' ? '' : '/' + id}" ${route.tab === id ? 'aria-current="page"' : ''}>${label}</a>`).join('')}</nav>
     <div class="game-tab-content">${content[route.tab]}</div>
   </div>`;
-}
-
-function duration(minutes) {
-  const hours = Math.floor(minutes / 60);
-  const rest = minutes % 60;
-  return hours ? hours + ' ч' + (rest ? ' ' + rest + ' мин' : '') : rest + ' мин';
-}
-
-function dailySteamSessions(game) {
-  if (!game.steam) return [];
-  const days = new Map();
-  for (const item of state.steam?.activity?.windows ?? []) {
-    if (item.appid !== game.steam.appid) continue;
-    const time = new Date(item.observedTo);
-    const date = dateStamp(time);
-    days.set(date, (days.get(date) || 0) + item.minutes);
-  }
-  return [...days].map(([date,minutes])=>({date,minutes,automatic:true}));
 }
 
 function bossSummary(game, bosses = bossById.values()) {
@@ -1142,7 +1182,7 @@ function bossRow(game, boss) {
     </div>
     <div class="boss-row-actions">
       ${button('boss-death', '+1 смерть', '', 'secondary', `${id} aria-label="Добавить смерть: ${esc(boss.name)}"`)}
-      ${button('boss-map', 'На карте', 'pin', 'secondary', `${id} aria-pressed="${bossMap?.id === boss.id}"`)}
+      ${button('boss-map', 'На карте', 'pin', 'secondary', `${id} aria-haspopup="dialog"`)}
       ${deaths ? `<small class="boss-row-deaths">Смертей: ${numeric(deaths)}</small>` : ''}
     </div></li>`;
 }
@@ -1163,19 +1203,26 @@ function bossRegionPanel(game, region) {
   </section>`;
 }
 
-function bossMapPanel() {
-  if (!bossMap) return '';
+function drawBossMap() {
   const place = bossMap.maps[bossMapIndex];
   const path = './assets/elden-ring/maps/' + place.file;
-  return `<aside class="boss-map-panel" aria-label="Карта босса">
-    <header><div><small>НА КАРТЕ</small><h3>${esc(bossMap.name)}</h3></div>${iconButton('boss-close-map', 'Закрыть карту', 'x')}</header>
+  mapDialog.innerHTML = `<section class="boss-map-panel">
+    <header><h2 id="boss-map-title">${esc(bossMap.name)}</h2>${iconButton('boss-close-map', 'Закрыть карту', 'x')}</header>
     ${bossMap.maps.length > 1 ? `<div class="boss-area-tabs" role="group" aria-label="Места встречи">${bossMap.maps.map((item,i) =>
       `<button type="button" data-action="boss-map-place" data-place="${i}" aria-pressed="${bossMapIndex === i}">${esc(item.label)}</button>`).join('')}</div>` : ''}
     <a class="boss-map-image" href="${esc(path)}" target="_blank" rel="noopener" aria-label="Открыть карту в полном размере">
       <img src="${esc(path)}" alt="Метка на карте: ${esc(bossMap.name)}" decoding="async" width="1280" height="720"></a>
     <p class="boss-map-error" role="status" hidden>Карта недоступна. Если вы офлайн, откройте её после подключения к сети.</p>
     <footer><p>${esc(place.location || bossMap.location)}</p><a href="https://game-checklists.com/elden-ring/all-bosses/#${esc(place.source)}" target="_blank" rel="noopener noreferrer">Game Checklists ${icon('upRight',15)}</a></footer>
-  </aside>`;
+  </section>`;
+  const image = mapDialog.querySelector('.boss-map-image img');
+  const unavailable = () => {
+    if (!image.isConnected) return;
+    image.closest('a').hidden = true;
+    mapDialog.querySelector('.boss-map-error').hidden = false;
+  };
+  image.addEventListener('error', unavailable, { once: true });
+  if (image.complete && !image.naturalWidth) unavailable();
 }
 
 function bossTracker(game) {
@@ -1188,7 +1235,7 @@ function bossTracker(game) {
     const { won, total } = bossSummary(game, region.bosses);
     (won === total ? cleared : pending).push(bossRegionPanel(game, region));
   }
-  return `<div id="boss-tracker" class="${bossMap ? 'has-boss-map' : ''}">
+  return `<div id="boss-tracker">
     <div class="boss-tracker-main">
       <a class="back-link" href="#game/${encodeURIComponent(game.id)}/notes">${icon('back',22)} К заметкам</a>
       <h2>NG+</h2><p class="boss-subtitle">Боссы по регионам</p>
@@ -1199,19 +1246,7 @@ function bossTracker(game) {
       <div class="boss-regions">${active ? bossRegionPanel(game, active) : ''}${pending.join('')}
         ${cleared.length ? `<details class="boss-region boss-cleared"><summary>Зачищенные · ${cleared.length}</summary><div>${cleared.join('')}</div></details>` : ''}</div>
     </div>
-    ${bossMapPanel()}
   </div>`;
-}
-
-function bindBossMap() {
-  const image = app.querySelector('.boss-map-image img');
-  if (!image) return;
-  const unavailable = () => {
-    image.closest('a').hidden = true;
-    app.querySelector('.boss-map-error').hidden = false;
-  };
-  image.addEventListener('error', unavailable, { once: true });
-  if (image.complete && !image.naturalWidth) unavailable();
 }
 
 function refreshBossTracker(control) {
@@ -1219,7 +1254,6 @@ function refreshBossTracker(control) {
   const current = app.querySelector('#boss-tracker');
   if (!current || !isEldenRing(game)) return;
   current.outerHTML = bossTracker(game);
-  bindBossMap();
   if (!control) return;
   const selector = [...control.attributes].filter(attribute => attribute.name.startsWith('data-'))
     .map(attribute => `[${attribute.name}="${CSS.escape(attribute.value)}"]`).join('');
@@ -1246,22 +1280,18 @@ function updateBossProgress(control, death) {
   if (updateGame(game, { bossProgress: { ...game.bossProgress, [id]: next } })) refreshBossTracker(control);
 }
 
-function journalPanel(game, key, compact) {
-  const sessions = key === 'sessions';
-  const title = sessions ? 'Журнал сессий' : 'Заметки';
-  const rows = journalOrder(sessions ? [...dailySteamSessions(game),...game.sessions] : game.journal).slice(0,compact ? 3 : undefined);
-  const tab = sessions ? 'sessions' : 'notes';
-  const action = button(sessions ? 'new-session' : 'new-note', sessions ? 'Добавить сессию' : 'Новая заметка','plus');
-  const all = compact && rows.length ? `<a class="quiet-link" href="#game/${encodeURIComponent(game.id)}/${tab}">Все записи ${icon('right',15)}</a>` : '';
-  const tracker = !sessions && isEldenRing(game) ? bossNote(game) : '';
-  return `<section class="panel dash-panel journal-panel">${panelHeading(sessions ? 'clock' : 'edit', title, `<div class="journal-actions">${all}${action}</div>`)}
+function notesPanel(game, compact) {
+  const rows = journalOrder(game.journal).slice(0,compact ? 3 : undefined);
+  const action = button('new-note', 'Новая заметка','plus');
+  const all = compact && rows.length ? `<a class="quiet-link" href="#game/${encodeURIComponent(game.id)}/notes">Все записи ${icon('right',15)}</a>` : '';
+  const tracker = isEldenRing(game) ? bossNote(game) : '';
+  return `<section class="panel dash-panel journal-panel">${panelHeading('edit', 'Заметки', `<div class="journal-actions">${all}${action}</div>`)}
     ${tracker}
-    ${rows.length ? `<ul class="journal-list">${rows.map(item=>`<li class="${item.automatic ? 'auto-session' : ''}">
-      <div><strong>${item.date ? sessions ? item.date.split('-').reverse().join('.') : dateLabel(item.date) : 'Без даты'}</strong>
-      ${sessions ? `<span>${duration(item.minutes)}</span>` : ''}</div>
+    ${rows.length ? `<ul class="journal-list">${rows.map(item=>`<li>
+      <div><strong>${item.date ? dateLabel(item.date) : 'Без даты'}</strong></div>
       ${item.text ? `<p class="notes ${compact ? 'note-preview' : ''}">${esc(item.text)}</p>` : ''}
-      ${compact || item.automatic ? '' : iconButton(sessions ? 'edit-session' : 'edit-note', sessions ? 'Редактировать сессию' : 'Редактировать заметку','edit', `data-id="${esc(item.id)}"`)}
-    </li>`).join('')}</ul>` : tracker ? '' : `<p class="dash-empty">${sessions ? 'Сессий пока нет.' : 'Заметок пока нет.'}</p>`}
+      ${compact ? '' : iconButton('edit-note', 'Редактировать заметку','edit', `data-id="${esc(item.id)}"`)}
+    </li>`).join('')}</ul>` : tracker ? '' : '<p class="dash-empty">Заметок пока нет.</p>'}
   </section>`;
 }
 
@@ -1299,47 +1329,44 @@ function saveCollectionChoices(form) {
   if (commit({...state,games:next},'Коллекция сохранена')) { dialog.close(); render(); }
 }
 
-function openJournal(kind, id) {
+function openJournal(id) {
   const game = findByRoute(state.games);
   if (!game) return;
-  const item = game[kind].find(row => row.id === id);
+  const item = game.journal.find(row => row.id === id);
   if (id && !item) return;
-  const session = kind === 'sessions';
-  showDialog(session ? (id ? 'Редактировать сессию' : 'Новая сессия') : (id ? 'Редактировать заметку' : 'Новая заметка'), 'ЛИЧНЫЙ ЖУРНАЛ',
-    `<form id="journal-form" data-kind="${kind}" data-id="${esc(id)}"><div class="dialog-body single-form">
-      ${session ? inputField('Дата','date',item?.date || dateStamp(),'required','date') +
-        inputField('Длительность, минуты','minutes',item?.minutes,'min="1" max="1440" step="1" required','number') : ''}
-      <label class="field"><span>${session ? 'Комментарий' : 'Текст заметки'}</span><textarea name="text" rows="5" maxlength="5000" ${session ? '' : 'required autofocus'}>${esc(item?.text)}</textarea></label>
-      ${id ? button('delete-journal','Удалить запись','trash','danger',`data-kind="${kind}" data-id="${esc(id)}"`) : ''}
+  showDialog(id ? 'Редактировать заметку' : 'Новая заметка', 'ЛИЧНЫЙ ЖУРНАЛ',
+    `<form id="journal-form" data-id="${esc(id)}"><div class="dialog-body single-form">
+      <label class="field"><span>Текст заметки</span><textarea name="text" rows="5" maxlength="5000" required autofocus>${esc(item?.text)}</textarea></label>
+      ${id ? button('delete-journal','Удалить запись','trash','danger',`data-id="${esc(id)}"`) : ''}
       ${errorLine()}</div>${formFooter('Сохранить')}</form>`);
 }
 
 function saveJournal(form) {
   const game = findByRoute(state.games);
-  const { kind, id } = form.dataset;
-  if (!game || !['sessions','journal'].includes(kind)) return;
+  const { id } = form.dataset;
+  if (!game) return;
   const fields = new FormData(form);
   const text = fields.get('text').trim();
-  if (kind === 'journal' && !text) return formError(form,'Введите текст заметки.');
-  const existing = game[kind].find(item => item.id === id);
+  if (!text) return formError(form,'Введите текст заметки.');
+  const existing = game.journal.find(item => item.id === id);
   if (id && !existing) return formError(form,'Запись больше недоступна.');
   const item = { id: id || crypto.randomUUID(), date: existing?.date ?? dateStamp(), text };
-  if (kind === 'sessions') Object.assign(item, { date: fields.get('date'), minutes: Number(fields.get('minutes')) });
-  const entries = existing ? game[kind].map(row => row.id === id ? item : row) : [...game[kind], item];
-  if (updateGame(game, { [kind]: entries }, 'Запись сохранена')) { dialog.close(); render(); }
+  const entries = existing ? game.journal.map(row => row.id === id ? item : row) : [...game.journal, item];
+  if (updateGame(game, { journal: entries }, 'Запись сохранена')) { dialog.close(); render(); }
 }
 
-function deleteJournal(kind, id) {
+function deleteJournal(id) {
   const game = findByRoute(state.games);
-  if (!game || !['sessions','journal'].includes(kind)) return;
+  if (!game) return;
   confirmAction('Удалить запись?', 'Запись будет удалена из журнала игры.', 'Удалить', () => {
-    if (!updateGame(game, { [kind]: game[kind].filter(row => row.id !== id) }, 'Запись удалена')) return false;
+    if (!updateGame(game, { journal: game.journal.filter(row => row.id !== id) }, 'Запись удалена')) return false;
     render();
     return true;
   }, true);
 }
 
 let displayedAchievements;
+const iconRefreshes = new Set();
 async function showAchievements(force = false) {
   const game = findByRoute(games());
   if (!game?.steam) return;
@@ -1350,13 +1377,16 @@ async function showAchievements(force = false) {
   const cached = await cachedAchievements(account, id);
   if (view !== achievementView || route.page !== 'game' || findByRoute(games())?.steam?.appid !== id) return;
   const active = connected();
+  const repairKey = account + ':' + id;
+  const needsIcons = cached?.items.some(item => item.unlocked && !item.icon) && !iconRefreshes.has(repairKey);
   const fresh = cached && Date.now() - cached.fetchedAt < 24 * 60 * 60 * 1000;
   drawAchievements(box, cached, !active && !cached ? 'Подключи Steam в профиле, чтобы загрузить достижения.' : '');
   if (force && !active) return steamEntry();
-  if (!active || (!force && fresh) || !box) return;
+  if (!active || (!force && fresh && !needsIcons) || !box) return;
+  if (needsIcons) iconRefreshes.add(repairKey);
   drawAchievements(box, cached, 'Загружаем достижения…');
   try {
-    const record = await fetchAchievements(account,id,false);
+    const record = await fetchAchievements(account,id,false,force || needsIcons);
     if (view === achievementView) drawAchievements(box, record);
     await refreshSteamSummaries(false);
   } catch (error) {
@@ -1368,17 +1398,23 @@ function drawAchievements(box, record, message = '') {
   const count = document.querySelector('#game-achievement-count');
   if (count && record?.total) {
     count.textContent = record.unlocked + ' из ' + record.total + ' достижений';
+    const badge = document.querySelector('#game-trophy');
+    const tier = trophyFor(record);
+    if (badge) {
+      badge.innerHTML = trophyBadge(tier);
+      badge.hidden = !tier;
+    }
   }
   if (!box?.isConnected) return;
   displayedAchievements = record;
   const overview = route.tab === 'overview';
   const game = findByRoute(games());
-  const action = overview && !record?.total ? `<a href="#game/${encodeURIComponent(game.id)}/achievements" class="btn btn-secondary">Смотреть все ${icon('right',14)}</a>` :
-    overview ? '' : button('achievement-reload', 'Обновить','download','secondary',message === 'Загружаем достижения…' ? 'disabled' : '');
+  const action = overview ? `<a href="#game/${encodeURIComponent(game.id)}/achievements" class="quiet-link">Все достижения ${icon('right',14)}</a>` :
+    button('achievement-reload', 'Обновить','download','secondary',message === 'Загружаем достижения…' ? 'disabled' : '');
   const hasRarity = record?.items.some(item => Number.isFinite(item.percent));
   box.innerHTML = panelHeading('trophy','Достижения',action) +
-    (record?.total ? `<div class="achievement-overview"><strong>${record.unlocked} / ${record.total}</strong>
-      <div><span>${Math.round(record.unlocked / record.total * 100)}%</span>${progressBar(record.unlocked / record.total * 100)}</div></div>` : '') +
+    (record?.total ? `<div class="achievement-overview ${trophyFor(record) === 'platinum' ? 'cup-platinum' : ''}"><strong>${record.unlocked} / ${record.total}</strong>
+      <div><span>${numeric(achievementPercent(record))}%</span>${progressBar(achievementPercent(record))}</div></div>` : '') +
     (message ? `<p class="dash-empty" role="status">${esc(message)}</p>` : '') +
     (!record?.total && !message ? `<p class="dash-empty">${record ? 'Steam сообщает, что у игры нет достижений.' : 'Данные пока недоступны.'}</p>` : '') +
     (record?.total && !overview ? `<div class="achievement-filters">
@@ -1400,7 +1436,7 @@ function updateAchievementRows() {
   const overview = route.tab === 'overview';
   const query = achievementQuery.trim().toLocaleLowerCase('ru');
   let items = displayedAchievements.items;
-  if (overview) items = [...items].filter(item=>item.unlocked).sort((a,b) => Number(isRare(b)) - Number(isRare(a)) || b.time-a.time).slice(0,2);
+  if (overview) items = items.filter(item=>item.unlocked).sort((a,b) => Number(isRare(b)) - Number(isRare(a)) || b.time-a.time).slice(0,16);
   else {
     items = items.filter(item => (!achievementFilter || item.unlocked === (achievementFilter === 'yes')) &&
       (!query || (item.name + ' ' + (item.hidden && !item.unlocked && !revealHidden ? '' : item.description)).toLocaleLowerCase('ru').includes(query)));
@@ -1409,14 +1445,25 @@ function updateAchievementRows() {
   target.innerHTML = items.length ? `<ul class="achievement-list redesign-achievements">${items.map(item => {
     const concealed = item.hidden && !item.unlocked && !revealHidden;
     return `<li class="${item.unlocked ? (isRare(item) ? 'unlocked rare' : 'unlocked') : ''}">
-    <span class="achievement-icon">${icon(item.unlocked ? 'trophy' : 'shield',22)}${item.icon && !concealed ? `<img src="${esc(item.icon)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ''}</span>
+    <span class="achievement-icon">${icon(item.unlocked ? 'trophy' : 'shield',22)}${item.icon && !concealed ? `<img src="${esc(item.icon)}" data-achievement-icon data-fallback-icon="${esc(item.fallbackIcon)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ''}</span>
     <div><strong>${esc(item.name)}</strong>${concealed ? '<p>Скрытое условие</p>' : item.description ? `<p>${esc(item.description)}</p>` : ''}</div>
     <small>${overview ? (item.unlocked && isRare(item) ? 'Редкое' : '') : Number.isFinite(item.percent) ? `<b>${numeric(item.percent)}%</b>` : ''}${overview ? '' : item.unlocked ? item.time ? steamDate(item.time) : 'Получено' : 'Не получено'}</small>
   </li>`;
   }).join('')}</ul>` : '<p class="dash-empty">Достижения по этим фильтрам не найдены.</p>';
   imageFallbacks(target);
+  fitAchievementPreview();
 }
 
+function fitAchievementPreview() {
+  if (route.page !== 'game' || route.tab !== 'overview') return;
+  const rows = [...app.querySelectorAll('.game-overview .achievement-list li')];
+  for (const row of rows) row.hidden = false;
+  const bottom = document.documentElement.clientHeight - 20;
+  const fit = rows.filter(row => row.getBoundingClientRect().bottom + window.scrollY <= bottom).length;
+  for (const row of rows.slice(Math.max(2, fit))) row.hidden = true;
+}
+
+window.addEventListener('resize', fitAchievementPreview);
 const cloud = createCloudSync({
   state: () => state,
   commit: next => {

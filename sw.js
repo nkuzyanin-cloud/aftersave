@@ -1,8 +1,10 @@
 // Bump this version whenever a file in the precache changes.
-const CACHE_VERSION = 7;
+const CACHE_VERSION = 8;
 const scope = new URL(self.registration.scope);
 const cachePrefix = `aftersave::${scope.href}::v`;
 const cacheName = `${cachePrefix}${CACHE_VERSION}`;
+const mapCacheName = `aftersave::${scope.href}::boss-maps`;
+const mapPath = new URL('./assets/elden-ring/maps/', scope).href;
 const indexURL = new URL('./index.html', scope).href;
 const coverIds = [
   'elden-ring', 'days-gone', 'deadpool', 'ets2', 'cyberpunk-2077', 'hollow-knight',
@@ -11,7 +13,7 @@ const coverIds = [
 const precache = new Set([
   './index.html', './styles.css', './app.js', './data.js', './icons.js', './steam.js', './cloud.js', './elden-ring.js', './manifest.webmanifest',
   './assets/icon.svg', './assets/icon-192.png', './assets/icon-512.png',
-  './assets/apple-touch-icon.png', './assets/elden-ring-hero.jpg', './assets/witcher-3-achievements.json',
+  './assets/apple-touch-icon.png', './assets/elden-ring-hero.jpg', './assets/witcher-3-achievements.json', './assets/elden-ring-achievements.json',
   './assets/fonts/manrope-latin.woff2', './assets/fonts/manrope-cyrillic.woff2',
   ...coverIds.map(id => `./assets/covers/${id}.jpg`),
 ].map(path => new URL(path, scope).href));
@@ -27,6 +29,15 @@ self.addEventListener('activate', event => {
     const oldNames = (await caches.keys()).filter(name =>
       name.startsWith(cachePrefix) && name !== cacheName
     );
+    const previousName = cachePrefix + '7';
+    if (oldNames.includes(previousName)) {
+      const previous = await caches.open(previousName);
+      const maps = await caches.open(mapCacheName);
+      await Promise.all((await previous.keys()).filter(request => request.url.startsWith(mapPath)).map(async request => {
+        const image = await previous.match(request);
+        if (image) await maps.put(request, image).catch(() => {});
+      }));
+    }
     await Promise.all(oldNames.map(name => caches.delete(name)));
     await self.clients.claim();
   })());
@@ -44,10 +55,9 @@ self.addEventListener('fetch', event => {
   const path = request.mode === 'navigate' && url.href === scope.href
     ? indexURL
     : url.href;
-  const bossMap = request.destination === 'image' &&
-    path.startsWith(new URL('./assets/elden-ring/maps/', scope).href) && url.pathname.endsWith('.webp');
+  const bossMap = ['image', 'document'].includes(request.destination) && path.startsWith(mapPath) && url.pathname.endsWith('.webp');
   if (!precache.has(path) && !bossMap) return;
-  event.respondWith(caches.open(cacheName).then(async cache => {
+  event.respondWith(caches.open(bossMap ? mapCacheName : cacheName).then(async cache => {
     const cached = await cache.match(path);
     if (cached) return cached;
     const response = await fetch(request);

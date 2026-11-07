@@ -991,7 +991,6 @@ input[type=checkbox]{accent-color:#b29afe}
 .boss-note small{font-size:clamp(12px,1.1vw,18px);color:#d5cbe9;white-space:nowrap}
 .boss-note>.progress-track{min-width:0}
 #boss-tracker{display:grid;grid-template-columns:minmax(0,1fr);align-items:start;gap:clamp(12px,1.4vw,24px);padding-bottom:28px}
-#boss-tracker.has-boss-map{grid-template-columns:minmax(0,1.66fr) minmax(0,1fr)}
 .boss-tracker-main{min-width:0}
 .boss-tracker-main>.back-link{display:inline-flex;align-items:center;gap:9px;font-size:clamp(16px,1.35vw,23px);color:#e7dfff;margin:0 0 10px}
 .boss-tracker-main>h2{font-size:clamp(36px,3vw,52px);line-height:1.1;margin:0}
@@ -1027,22 +1026,6 @@ input[type=checkbox]{accent-color:#b29afe}
 .boss-row-actions .btn{font-size:clamp(12px,1.05vw,18px);padding:0 clamp(7px,.75vw,14px);min-height:37px;background:#232035;border:1px solid #a296ba;white-space:nowrap}
 .boss-row-actions .btn:hover,.boss-row-actions .btn[aria-pressed=true]{background:#403258;border-color:#d6c0ff;box-shadow:0 0 10px #c6a5ff73}
 .boss-row-deaths{flex:0 0 100%;text-align:right}
-.boss-map-panel{position:sticky;top:15px;overflow:hidden;border:1px solid #6a5c81;border-radius:15px;background:#1c1b2c;box-shadow:0 12px 30px #09081355;z-index:2}
-.boss-map-panel>header,.boss-map-panel>footer{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 13px}
-.boss-map-panel>header small{font-size:10px;letter-spacing:.15em;color:#c9b3fa}
-.boss-map-panel h3{font-size:clamp(17px,1.4vw,24px);margin:1px 0 0;line-height:1.23}
-.boss-map-panel>footer{flex-wrap:wrap;color:#e0d3f1;font-size:14px}
-.boss-map-panel>footer p{margin:0}
-.boss-map-panel>footer a{display:inline-flex;align-items:center;gap:4px;color:#d0b9ff}
-.boss-map-image{display:block;background:#151422}
-.boss-map-image img{width:100%;height:auto;display:block}
-.boss-map-error{margin:12px 14px;color:#dfc8f9}
-.boss-map-panel [hidden]{display:none}
-@media(max-width:950px){
-  #boss-tracker.has-boss-map{grid-template-columns:minmax(0,1fr)}
-  .boss-map-panel{position:fixed;z-index:12;inset:auto 10px max(10px,env(safe-area-inset-bottom));max-width:690px;max-height:calc(100dvh - 20px);margin-inline:auto;overflow:auto;box-shadow:0 0 0 100vmax #080711b8}
-  .boss-map-image img{max-height:63dvh;object-fit:contain}
-}
 @media(max-width:550px){
   .boss-note{grid-template-columns:auto minmax(max-content,1fr) minmax(26px,1.1fr) auto}
   .boss-row{grid-template-columns:auto minmax(0,1fr)}
@@ -1054,3 +1037,132 @@ input[type=checkbox]{accent-color:#b29afe}
 
 .boss-cleared>summary{cursor:pointer;padding:12px clamp(13px,1.55vw,26px);font-size:clamp(16px,1.6vw,26px);font-weight:700;color:#e4d9f4}
 .boss-cleared>div{display:grid;gap:8px;padding:0 9px 9px}
+
+/* Library rows and achievement cups */
+.shelf-switch button[aria-pressed=true],.game-tabs a[aria-current=page]{box-shadow:none}
+.library-controls{grid-template-columns:minmax(0,1.58fr) minmax(120px,.96fr) minmax(135px,1.04fr)}
+.cup-platinum{--cup-color:#d7ecff}
+.cup-silver{--cup-color:#bfc3d1}
+.cup-sapphire{--cup-color:#6a9bff}
+.cup-label{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;font-size:clamp(13px,1.05vw,18px);font-weight:700}
+.cup-label>svg,.stats-cups>a>svg:first-child{color:var(--cup-color);flex:none}
+.cup-filter{display:flex;align-items:center;gap:18px;border-bottom:1px solid #343145;padding:9px 0 14px;margin-bottom:18px}
+.card-title{display:flex;align-items:baseline;justify-content:space-between;gap:6px 14px;flex-wrap:wrap}
+.card-title h3{min-width:0}
+.card-title .cup-label{align-self:center}
+.card-status{min-height:0}
+.list-view .card-art .cover img{object-position:center}
+.list-view .card-body{display:grid;align-content:center;gap:4px}
+.list-view .card-status,.list-view .card-progress{margin:0}
+.list-view .card-progress{margin-top:4px}
+.list-view .card-body{padding-right:105px}
+.list-view .card-link{grid-template-columns:clamp(76px,6.45vw,110px) minmax(0,1fr)}
+.game-card.cup-platinum{border-color:#a6bdcf;background:linear-gradient(118deg,#2b2a40,#1f2333)}
+.game-card.cup-platinum:hover{border-color:#d7ecff;box-shadow:0 0 14px #b7dbff35}
+.cup-platinum .progress-track>span{background:linear-gradient(100deg,#dce9ff,#a9d7fa);box-shadow:0 0 12px #accaff58}
+.cup-sapphire .card-progress .progress-track>span{background:linear-gradient(100deg,#9bbdff,#6c91ee);box-shadow:0 0 10px #779dff52}
+.collection-grid{grid-template-columns:repeat(auto-fit,minmax(min(100%,325px),1fr))}
+.collection-card{grid-template-columns:auto minmax(0,1fr) auto;align-items:center;max-width:580px;width:100%;gap:clamp(12px,1.4vw,23px);border-color:#453b56}
+.collection-card:hover{border-color:#8b75be}
+.collection-card .collection-covers{height:auto;width:clamp(64px,7vw,118px);aspect-ratio:2/3}
+.collection-covers .cover img{object-fit:contain}
+.collection-arrow{position:static;color:#cab8fb}
+.stats-metrics{padding-block:15px;margin-bottom:16px}
+.stats-metrics>div strong{font-size:clamp(22px,3.25vw,55px)}
+.stats-cups{padding:11px clamp(14px,2.6vw,44px);row-gap:5px}
+.stats-cups h2{grid-column:1/-1;margin:0;font-size:clamp(16px,1.3vw,22px)}
+.stats-cups>a{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:clamp(6px,1.15vw,18px);padding:4px clamp(8px,2.25vw,39px);border-left:1px solid #7b659b77;color:inherit;text-decoration:none}
+.stats-cups>a:first-of-type{border-left:0;padding-left:0}
+.stats-cups>a:hover span,.stats-cups>a:hover>svg:last-child{color:#fff}
+.stats-cups>a>div{display:grid;gap:4px}
+.stats-cups>a strong{font-size:clamp(22px,2.7vw,45px)}
+.stats-cups>a span{font-size:clamp(13px,1.2vw,20px)}
+.stats-rows>a{grid-template-columns:minmax(76px,22%) minmax(0,1fr);padding:6px 0}
+.stats-rows>a>div:last-child strong{font-size:clamp(13px,1.12vw,19px)}
+.stats-rows>a>div:last-child>div{margin-top:5px}
+.stats-rows>a span{font-size:clamp(12px,1.1vw,18px)}
+.stats-rows .wide-cover{max-height:47px}
+
+/* Game page */
+.game-banner:not(.game-banner-compact){min-height:0;padding-block:15px 16px;overflow:visible;z-index:1}
+.game-identity .back-link{margin-bottom:10px}
+.game-identity h1{font-size:clamp(32px,2.75vw,46px);margin-bottom:6px}
+.game-identity .detail-actions{margin-top:12px}
+.game-identity .detail-actions .btn,.status-picker>summary{height:44px;min-height:44px}
+.game-identity .detail-actions .icon-btn{width:44px;min-width:44px;min-height:44px}
+.game-totals,.game-grade{margin-top:12px}
+.game-grade .grade{height:39px;font-size:20px}
+.game-tabs{min-height:51px}
+.game-tabs a{padding-block:10px 8px}
+#game-trophy[hidden]{display:none}
+.game-overview .dash-panel{padding:clamp(12px,1.05vw,18px)}
+.game-overview .achievement-overview{margin-bottom:11px}
+.game-overview .achievement-list li[hidden]{display:none}
+.game-overview .achievement-list{gap:6px}
+.game-overview .achievement-list li,.game-overview .achievement-list li:last-child{gap:9px;min-height:0;padding:3px 8px}
+.game-overview .achievement-icon{width:clamp(34px,2.55vw,43px);height:clamp(34px,2.55vw,43px)}
+.game-overview .achievement-list li strong{font-size:clamp(13px,1.1vw,19px)}
+.game-overview .achievement-list li p{font-size:clamp(12px,.91vw,15px)}
+.status-picker{position:relative;z-index:4}
+.status-picker>summary{display:flex;justify-content:space-between;align-items:center;gap:10px;min-width:clamp(155px,13vw,220px);padding:0 14px;border:1px solid #554965;border-radius:11px;background:#211d31e8;color:#f4edff;cursor:pointer;list-style:none}
+.status-picker>summary::-webkit-details-marker{display:none}
+.status-picker>summary>span{display:flex;align-items:center;gap:7px}
+.status-picker>summary>svg{color:#cdbbfa;flex:none}
+.status-picker[open]>summary{border-color:#b5a1ea;background:#2d2443}
+.status-picker[open]>summary>svg{transform:rotate(180deg)}
+.status-options{position:absolute;top:calc(100% + 6px);left:0;display:grid;gap:3px;min-width:100%;width:max-content;padding:5px;border:1px solid #63537d;border-radius:11px;background:#242034;box-shadow:0 10px 24px #080610b0}
+.status-options button{display:grid;grid-template-columns:19px 1fr 16px;align-items:center;gap:9px;border:1px solid transparent;border-radius:7px;background:transparent;color:#f4edff;text-align:left;padding:6px 9px;min-height:39px;cursor:pointer}
+.status-options button>svg{color:#cbb6ff}
+.status-options button[aria-pressed=true]{background:#3b3154;border-color:#645483}
+.status-options button:hover,.status-options button:focus-visible{background:#4a3b65}
+
+/* Elden Ring map and compact tracker */
+.boss-tracker-main>h2{font-size:clamp(29px,2.45vw,41px)}
+.boss-subtitle,.boss-tracker-main>.back-link{font-size:clamp(14px,1.06vw,18px)}
+.boss-metric strong{font-size:clamp(16px,1.35vw,23px)}
+.boss-metric span{font-size:clamp(13px,1.07vw,18px)}
+.boss-region-toggle{font-size:clamp(16px,1.42vw,24px)}
+.boss-area-tabs button{font-size:clamp(12px,1vw,16px)}
+.boss-row{gap:clamp(8px,1.05vw,17px);padding-block:8px}
+.boss-row-copy strong{font-size:clamp(14px,1.08vw,18px)}
+.boss-row-copy>span{font-size:clamp(12px,.91vw,16px)}
+.boss-row-actions .btn{font-size:clamp(12px,.92vw,15px)}
+#boss-map-dialog{width:min(970px,calc(100vw - 24px));max-height:calc(100dvh - 24px);border-color:#6a5c81}
+#boss-map-dialog::backdrop{background:#0a0817b8;backdrop-filter:none}
+.boss-map-panel{background:#201d31}
+.boss-map-panel>header,.boss-map-panel>footer{display:flex;align-items:center;justify-content:space-between;gap:9px;padding:9px 13px}
+.boss-map-panel h2{font-size:clamp(17px,1.45vw,24px);margin:0;line-height:1.24}
+.boss-map-panel>footer{flex-wrap:wrap;color:#e0d3f1;font-size:clamp(12px,1vw,15px)}
+.boss-map-panel>footer p{margin:0}
+.boss-map-panel>footer a{display:inline-flex;align-items:center;gap:4px;color:#d0b9ff}
+.boss-map-image{display:block;background:#151422}
+.boss-map-image img{display:block;width:100%;height:auto;max-height:calc(100dvh - 195px);object-fit:contain}
+.boss-map-error{margin:12px 14px;color:#dfc8f9}
+.boss-map-panel [hidden]{display:none}
+@media(max-width:680px){
+  .library-controls{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .list-view .card-body{padding:8px 8px 8px 10px}
+  .card-title{padding-right:68px}
+  .card-title .cup-label{font-size:12px}
+  .card-title .cup-label svg{width:17px;height:17px}
+  .stats-cups>a{grid-template-columns:17px minmax(0,1fr);gap:5px;padding-inline:5px}
+  .stats-cups>a>svg:first-child{width:17px;height:17px}
+  .stats-cups>a>svg:last-child{display:none}
+  .stats-cups>a span{font-size:11px}
+  .stats-cups>a strong{font-size:20px}
+  .stats-metrics>div strong{font-size:clamp(19px,6vw,30px)}
+  .game-banner:not(.game-banner-compact){padding-block:14px 15px}
+  .game-identity h1{font-size:clamp(26px,7.9vw,37px)}
+  .game-identity .detail-actions .btn,.status-picker>summary{height:36px;min-height:36px}
+  .game-identity .detail-actions .icon-btn{width:33px;min-width:33px;min-height:36px}
+  .game-grade .grade{height:31px;font-size:15px}
+  .game-identity .back-link,.game-identity .detail-actions,.game-totals,.game-grade{margin-bottom:0}
+  .game-identity .back-link{margin-bottom:10px}
+  .game-totals,.game-grade{margin-top:12px}
+  .game-tabs{min-height:47px}
+  .status-picker>summary{min-width:0;min-height:36px;padding-inline:7px;font-size:12px;gap:4px}
+  .status-picker svg{width:14px}
+  .status-picker>summary>span{gap:4px}
+  .status-options{min-width:121px}
+  .boss-map-panel>header,.boss-map-panel>footer{padding:8px 9px}
+}

@@ -252,26 +252,44 @@ async function cacheOperation(mode, run) {
 export async function cachedAchievements(account, id) {
   const key = account + ':' + id;
   const record = memory.get(key) ?? await cacheOperation('readonly', store => store.get(key));
-  return enrichWitcher(record);
+  return enrichAchievements(record);
 }
 
-let witcherMetadata;
-async function enrichWitcher(record) {
-  if (record?.appid !== 292030) return record;
-  witcherMetadata ??= fetch(new URL('./assets/witcher-3-achievements.json', import.meta.url))
-    .then(response => response.ok ? response.json() : [])
+const achievementMetadata = { 292030: 'witcher-3', 1245620: 'elden-ring' };
+const metadataCache = new Map();
+async function enrichAchievements(record) {
+  const name = record && achievementMetadata[record.appid];
+  if (!name) return record;
+  if (!metadataCache.has(name)) metadataCache.set(name, fetch(new URL(`./assets/${name}-achievements.json`, import.meta.url))
+    .then(response => {
+      if (!response.ok) throw new Error('Achievement metadata unavailable');
+      return response.json();
+    })
     .then(rows => new Map(rows.flatMap(item => item.name ? [[item.id, item], [item.name, item]] : [[item.id, item]])))
-    .catch(() => new Map());
-  const metadata = await witcherMetadata;
+    .catch(() => { metadataCache.delete(name); return new Map(); }));
+  const metadata = await metadataCache.get(name);
   return { ...record, items: record.items.map(item => {
     const extra = metadata.get(item.id) ?? metadata.get(item.name);
     if (!extra) return item;
     const file = item.unlocked ? extra.icon : extra.gray;
+    const fallbackIcon = /^[a-f0-9]{40}\.(?:jpg|png|webp)$/i.test(file) ?
+      `https://shared.fastly.steamstatic.com/community_assets/images/apps/${record.appid}/${file}` : '';
     return { ...item, description: item.description || extra.description || '', hidden: item.hidden || extra.hidden,
       percent: item.percent ?? extra.percent,
-      icon: item.icon || (/^[a-f0-9]{40}\.(?:jpg|png)$/i.test(file) ?
-        'https://shared.fastly.steamstatic.com/community_assets/images/apps/292030/' + file : '') };
+      icon: item.icon || fallbackIcon, fallbackIcon };
   }) };
+}
+
+export function achievementIconAlternatives(value) {
+  try {
+    const url = new URL(value);
+    const path = /\/(?:community_assets|steamcommunity\/public)\/images\/apps\/(\d+\/[a-f0-9]{40}\.(?:jpg|png|webp))$/i.exec(url.pathname);
+    if (url.protocol !== 'https:' || !/(^|\.)(steamstatic\.com|akamaihd\.net)$/.test(url.hostname) || !path) return [];
+    return [
+      'https://shared.fastly.steamstatic.com/community_assets/images/apps/' + path[1],
+      'https://cdn.akamai.steamstatic.com/steamcommunity/public/images/apps/' + path[1]
+    ];
+  } catch { return []; }
 }
 
 export async function achievementSummaries(account) {
@@ -295,6 +313,7 @@ export async function fetchAchievements(account, id, legacy, force = false) {
     if (!stats?.success || !Array.isArray(stats.achievements) || stats.achievements.length > 5000) {
       throw new Error('Steam не предоставил список достижений для этой игры.');
     }
+    const oldIcons = new Map((cached?.items ?? []).map(item => [item.id, item]));
     const items = [...new Map(stats.achievements.filter(item => typeof item?.apiname === 'string')
       .map(item => [item.apiname, {
         id: item.apiname,
@@ -304,13 +323,14 @@ export async function fetchAchievements(account, id, legacy, force = false) {
         percent: Number.isFinite(item.percent) && item.percent >= 0 && item.percent <= 100 ? item.percent : null,
         unlocked: item.achieved === 1 || item.achieved === true,
         time: Math.min(nonnegative(item.unlocktime), 253402300799),
-        icon: typeof item.icon === 'string' && /^https:\/\/[a-z0-9.-]+\//i.test(item.icon) ? item.icon : ''
+        icon: typeof item.icon === 'string' && /^https:\/\/[a-z0-9.-]+\//i.test(item.icon) ? item.icon :
+          oldIcons.get(item.apiname)?.unlocked === (item.achieved === 1 || item.achieved === true) ? oldIcons.get(item.apiname).icon : ''
       }])).values()];
     const record = { key, account, appid: id, fetchedAt: Date.now(), items,
       total: items.length, unlocked: items.filter(item => item.unlocked).length };
     memory.set(key, record);
     await cacheOperation('readwrite', store => store.put(record));
-    return enrichWitcher(record);
+    return enrichAchievements(record);
   })();
   pending.set(key, job);
   try { return await job; } finally { pending.delete(key); }
