@@ -117,7 +117,7 @@ async function steamFetch(path, env, params) {
 
 async function cached(requestURL, path, ttl, ctx, load) {
   const cache = caches.default;
-  const key = new URL('/__aftersave_private_v1/' + path, requestURL);
+  const key = new Request(new URL('/__aftersave_private_v1/' + path, requestURL).href);
   const hit = await cache.match(key).catch(() => null);
   if (hit) return hit.json();
   const data = await load();
