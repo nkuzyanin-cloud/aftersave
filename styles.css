@@ -890,7 +890,7 @@ h1,.library-heading h1,.stats-dashboard>h1{font-size:clamp(34px,3.05vw,54px);let
 .stats-metrics strong{font-size:clamp(29px,4vw,68px);line-height:1;letter-spacing:-.05em}
 .stats-metrics span{font-size:clamp(13px,1.55vw,26px);color:#c6b7db}
 .stats-layout{display:grid;grid-template-columns:minmax(0,1.57fr) minmax(0,1fr);gap:23px}
-.stats-ranking,.stats-achievements,.stats-ratings{padding:16px clamp(14px,1.6vw,27px) 18px;border-radius:16px}
+.stats-ranking,.stats-achievements{padding:16px clamp(14px,1.6vw,27px) 18px;border-radius:16px}
 .stats-side{display:grid;gap:15px}
 .stats-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .stats-heading select{font-size:12px;min-height:32px;padding:0 7px}
@@ -908,11 +908,6 @@ h1,.library-heading h1,.stats-dashboard>h1{font-size:clamp(34px,3.05vw,54px);let
 .stats-achievements>strong{display:block;font-size:clamp(24px,2.9vw,49px);line-height:1.15;letter-spacing:-.035em;margin:8px 0 4px}
 .stats-achievements>p{font-size:clamp(13px,1.28vw,22px)}
 .stats-progress{margin:12px 0 3px}
-.stats-rating-columns{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:13px}
-.stats-rating-columns>div+div{border-left:1px solid #4b415e;padding-left:13px}
-.stats-rating-columns h3{font-size:clamp(14px,1.35vw,23px);border-bottom:1px solid #473c59;padding-bottom:8px}
-.rated-covers{display:grid;gap:6px;margin-top:10px}
-.rated-covers a{max-width:210px}
 .collection-choices{display:grid;gap:3px;max-height:min(50vh,440px);overflow:auto;margin-top:12px}
 .collection-choices .checkbox{padding:7px 8px;background:#262339;border:1px solid #36314c;border-radius:7px;font-size:14px}
 .collection-choices small{margin-left:auto;color:var(--muted)}
@@ -1139,6 +1134,29 @@ input[type=checkbox]{accent-color:#b29afe}
 .boss-map-image img{display:block;width:100%;height:auto;max-height:calc(100dvh - 195px);object-fit:contain}
 .boss-map-error{margin:12px 14px;color:#dfc8f9}
 .boss-map-panel [hidden]{display:none}
+
+/* Statistics tier board */
+.tier-board{--tier-tile-width:clamp(98px,9.15vw,150px);margin-bottom:16px;padding:6px clamp(6px,1.05vw,17px);border-color:#4a405c}
+.tier-row{display:grid;grid-template-columns:clamp(54px,5vw,81px) minmax(0,1fr);min-height:55px}
+.tier-row+.tier-row{border-top:1px solid #40374f}
+.tier-row.grade-S{--grade:#c0a3f5}
+.tier-letter{display:grid;place-items:center;padding:4px 5px;color:var(--grade,#c3b7d8);border-right:1px solid #453a58;font-size:clamp(19px,1.57vw,26px);font-weight:650;line-height:1.14;text-align:center}
+.tier-unrated .tier-letter{font-size:clamp(11px,.88vw,15px)}
+.tier-covers{display:flex;flex-wrap:wrap;align-items:center;align-content:center;gap:6px 9px;padding:5px 0 5px clamp(8px,1.2vw,20px)}
+.tier-card{position:relative;width:var(--tier-tile-width);min-width:0;user-select:none}
+.tier-card .wide-cover{aspect-ratio:3.04;border-radius:6px;pointer-events:none}
+.tier-card .cover-fallback{display:none}
+.tier-cover-action{position:absolute;inset:0;display:grid;place-items:center;padding:2px 5px;border:1px solid transparent;border-radius:6px;background:transparent;color:#f2eafa;cursor:grab}
+.tier-cover-action:hover{border-color:#b09adf}
+.tier-cover-action:active{cursor:grabbing}
+.tier-fallback{font-size:11px;line-height:1.15;text-align:center;overflow:hidden;max-height:2.3em}
+.tier-card:has(img:not([hidden])) .tier-fallback{visibility:hidden}
+.tier-empty{font-size:13px;color:#b4a8c8}
+.tier-board.is-dragging .tier-row{background:#b9a1fd09}
+.tier-board.is-dragging .tier-row.is-drop-target{background:#ab8af735;box-shadow:inset 0 0 0 1px #a18acc}
+.tier-card.is-dragging{opacity:.48}
+.tier-picker-grades{display:flex;flex-wrap:wrap;gap:8px}
+
 @media(max-width:680px){
   .library-controls{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
   .list-view .card-body{padding:8px 8px 8px 10px}
@@ -1165,4 +1183,8 @@ input[type=checkbox]{accent-color:#b29afe}
   .status-picker>summary>span{gap:4px}
   .status-options{min-width:121px}
   .boss-map-panel>header,.boss-map-panel>footer{padding:8px 9px}
+  .tier-board{--tier-tile-width:clamp(72px,24vw,114px)}
+  .tier-row{min-height:43px;grid-template-columns:47px minmax(0,1fr)}
+  .tier-covers{gap:5px 6px}
+  .tier-cover-action{cursor:pointer}
 }

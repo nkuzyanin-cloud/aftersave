@@ -16,6 +16,7 @@ const toast = document.querySelector('#toast');
 const labels = { library: 'Библиотека', collections: 'Коллекции', stats: 'Статистика', settings: 'Настройки', game: 'Игра' };
 const filter = { query: '', status: '', platform: '', tag: '', collection: '', sort: 'recent' };
 const cups = { platinum: 'Платина', silver: 'Серебро', sapphire: 'Сапфир' };
+const grades = [...'SABCDEF'];
 const number = new Intl.NumberFormat('ru', { maximumFractionDigits: 2 });
 const dateFormat = new Intl.DateTimeFormat('ru', { day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -24,6 +25,7 @@ let storageError = '';
 try { state = load(); } catch (error) { state = emptyState(); storageError = error.message; }
 let shelfMode = 'all';
 let statsOrder = 'time';
+let tierDrag = null;
 let achievementQuery = '';
 let achievementSort = 'rare';
 let revealHidden = false;
@@ -335,6 +337,27 @@ function dateLabel(value) {
 
 function gamePage() { return gameDashboard(); }
 
+function tierBoard() {
+  const groups = new Map([...grades, ''].map(grade => [grade, []]));
+  for (const game of games()) {
+    if (!game.hidden) groups.get(gradeFor(game)).push(game);
+  }
+  return `<section class="panel tier-board" aria-label="Распределение игр по оценкам">
+    ${[...groups].map(([grade, group]) => `<div class="tier-row ${grade ? 'grade-' + grade : 'tier-unrated'}" data-tier="${grade}"
+      role="group" aria-label="${grade ? 'Тир ' + grade : 'Без оценки'}">
+      <span class="tier-letter" aria-hidden="true">${grade || 'Без оценки'}</span>
+      <div class="tier-covers">${group.length ? group.map(game => {
+        const title = esc(displayName(game));
+        return `<div class="tier-card" draggable="true" data-tier-game="${esc(game.id)}">
+          ${wideCover(game)}
+          <button type="button" class="tier-cover-action" data-action="tier-picker" aria-haspopup="dialog"
+            aria-label="Изменить оценку: ${title}" title="${title}"><span class="tier-fallback" aria-hidden="true">${title}</span></button>
+        </div>`;
+      }).join('') : '<span class="tier-empty">Пока пусто</span>'}</div>
+    </div>`).join('')}
+  </section>`;
+}
+
 function statsPage() {
   const linked = games().filter(game => game.steam);
   const achievements = totalsFor(linked);
@@ -347,8 +370,8 @@ function statsPage() {
   const hours = linked.reduce((sum,game) => sum + game.steam.minutes,0) / 60;
   const score = game => statsOrder === 'time' ? game.steam.minutes : summaryFor(game)?.unlocked || 0;
   const top = [...linked].filter(game => score(game) > 0).sort((a,b) => score(b)-score(a)).slice(0,10);
-  const rates = [['Лучшие','S'],['Худшие','F']];
   return `<div class="stats-dashboard"><h1>Статистика</h1>
+    ${tierBoard()}
     <section class="stats-cups stats-metrics panel" aria-labelledby="stats-cup-heading">
       <h2 id="stats-cup-heading">Кубки</h2>
       ${Object.entries(cups).map(([tier,label]) => `<a href="#library/cup/${tier}" class="cup-${tier}" aria-label="${label}, игр: ${cupTotals[tier]}">
@@ -373,11 +396,6 @@ function statsPage() {
           <div class="stats-progress">${progressBar(achievements.percentage)}<span>${achievements.percentage}%</span></div>
           ${scanMessage ? `<p class="scan-status" role="status">${esc(scanMessage)}</p>` : ''}
         </section>
-        <section class="panel stats-ratings"><h2>Мои оценки</h2><div class="stats-rating-columns">
-          ${rates.map(([label,grade]) => {
-            const rated=games().filter(game=>gradeFor(game)===grade);
-            return `<div><h3>${label}</h3><div class="rated-covers">${rated.length ? rated.map(game=>`<a href="#game/${encodeURIComponent(game.id)}" title="${esc(displayName(game))}" aria-label="${esc(displayName(game))}">${wideCover(game)}</a>`).join('') : '<p>Пока нет игр</p>'}</div></div>`;
-          }).join('')}</div></section>
       </div>
     </div></div>`;
 }
@@ -412,6 +430,7 @@ function settingsPage() {
 
 function render(focusMain = false) {
   const views = { library, collections: collectionsPage, stats: statsPage, settings: settingsPage, game: gamePage };
+  clearTierDrag();
   app.innerHTML = shell(views[route.page]());
 
   imageFallbacks(app);
@@ -607,8 +626,11 @@ const actions = {
   'grade': control => {
     const game = findByRoute(games());
     const grade = control.dataset.value;
-    if (game && updateGame(game, { grade: gradeFor(game) === grade ? '' : grade, gradeCleared: gradeFor(game) === grade }, 'Оценка сохранена')) render();
+    if (game && saveGrade(game, gradeFor(game) === grade ? '' : grade)) render();
   },
+  'tier-picker': control => openTierPicker(control.closest('[data-tier-game]').dataset.tierGame),
+  'tier-set': control => moveTierGame(control.dataset.id, control.dataset.value, true),
+  'tier-open-game': () => dialog.close(),
   'shelf': control => { shelfMode = control.dataset.value; displayLimit = 24; render(); },
   'hide-game': control => {
     const game = state.games.find(item => item.id === control.dataset.id) ?? findByRoute(state.games);
@@ -688,6 +710,56 @@ document.addEventListener('keydown', event => {
     status.querySelector('summary').focus({ preventScroll: true });
   }
 });
+
+function clearTierDrag() {
+  if (!tierDrag) return;
+  tierDrag.card.classList.remove('is-dragging');
+  tierDrag.board.classList.remove('is-dragging');
+  tierDrag.target?.classList.remove('is-drop-target');
+  tierDrag = null;
+}
+
+app.addEventListener('dragstart', event => {
+  const card = event.target.closest('[data-tier-game]');
+  if (!card || !event.dataTransfer) return;
+  clearTierDrag();
+  const board = card.closest('.tier-board');
+  tierDrag = { card, board, target: null };
+  event.dataTransfer.effectAllowed = 'move';
+  event.dataTransfer.setData('text/plain', card.dataset.tierGame);
+  card.classList.add('is-dragging');
+  board.classList.add('is-dragging');
+});
+
+app.addEventListener('dragover', event => {
+  const row = event.target.closest('[data-tier]');
+  if (!tierDrag || !row || !tierDrag.board.contains(row)) return;
+  event.preventDefault();
+  event.dataTransfer.dropEffect = 'move';
+  if (row === tierDrag.target) return;
+  tierDrag.target?.classList.remove('is-drop-target');
+  row.classList.add('is-drop-target');
+  tierDrag.target = row;
+});
+
+app.addEventListener('dragleave', event => {
+  const row = tierDrag?.target;
+  if (row && !row.contains(event.relatedTarget)) {
+    row.classList.remove('is-drop-target');
+    tierDrag.target = null;
+  }
+});
+
+app.addEventListener('drop', event => {
+  const row = event.target.closest('[data-tier]');
+  if (!tierDrag || !row || !tierDrag.board.contains(row)) return;
+  event.preventDefault();
+  const id = tierDrag.card.dataset.tierGame;
+  clearTierDrag();
+  moveTierGame(id, row.dataset.tier);
+});
+
+app.addEventListener('dragend', clearTierDrag);
 
 mapDialog.addEventListener('close', () => {
   if (!bossMap || mapDialog.open) return;
@@ -1100,7 +1172,37 @@ function journalOrder(items) {
 
 function gradeFor(game) {
   if (game.gradeCleared || game.rating === null && !game.grade) return '';
-  return game.grade || 'SABCDEF'[Math.min(6, Math.max(0, 9 - Math.floor(game.rating)))];
+  return game.grade || grades[Math.min(6, Math.max(0, 9 - Math.floor(game.rating)))];
+}
+
+function saveGrade(game, grade) {
+  return updateGame(game, { grade, gradeCleared: !grade }, grade ? 'Оценка сохранена' : 'Оценка снята');
+}
+
+function openTierPicker(id) {
+  const game = games().find(item => item.id === id && !item.hidden);
+  if (!game) return;
+  const current = gradeFor(game);
+  showDialog(esc(displayName(game)), 'ОЦЕНКА ИГРЫ', `<div class="dialog-body">
+    <div class="tier-picker-grades" role="group" aria-label="Выбрать оценку">
+      ${grades.map(grade => `<button type="button" class="grade grade-${grade}" data-action="tier-set" data-id="${esc(id)}" data-value="${grade}"
+        aria-label="Оценка ${grade}" aria-pressed="${grade === current}" ${grade === current ? 'autofocus' : ''}>${grade}</button>`).join('')}
+    </div>
+  </div><div class="dialog-footer">
+    <a href="#game/${encodeURIComponent(id)}" class="btn btn-secondary" data-action="tier-open-game">Открыть игру ${icon('right',16)}</a>
+    ${button('tier-set', 'Без оценки', '', 'secondary', `data-id="${esc(id)}" data-value="" aria-pressed="${!current}"`)}
+  </div>`, 'tier-picker');
+  dialog.querySelector('[data-action="tier-set"][aria-pressed="true"]').focus();
+}
+
+function moveTierGame(id, grade, fromPicker = false) {
+  const game = games().find(item => item.id === id && !item.hidden);
+  if (!game || route.page !== 'stats' || (grade !== '' && !grades.includes(grade))) return;
+  const changed = grade !== gradeFor(game);
+  if (changed && !saveGrade(game, grade)) return;
+  if (fromPicker) dialog.close();
+  if (changed) render();
+  app.querySelector(`[data-tier-game="${CSS.escape(id)}"] button`)?.focus({ preventScroll: !fromPicker });
 }
 
 function gameDashboard() {
@@ -1139,7 +1241,7 @@ function gameDashboard() {
         <div class="game-totals"><span>${icon('clock',23)} ${numeric(Math.round(game.steam ? game.steam.minutes / 60 : game.hours))} ч${game.steam ? ' в Steam' : ''}</span>
           <span>${icon('trophy',23)} <span id="game-achievement-count">${summary?.total ? summary.unlocked + ' из ' + summary.total + ' достижений' : 'Достижения'}</span></span>
           <span id="game-trophy" ${trophy ? '' : 'hidden'}>${trophyBadge(trophy)}</span></div>
-        <div class="game-grade"><span>Моя оценка</span><div role="group" aria-label="Оценка игры">${[...'SABCDEF'].map(letter =>
+        <div class="game-grade"><span>Моя оценка</span><div role="group" aria-label="Оценка игры">${grades.map(letter =>
           `<button type="button" class="grade grade-${letter}" data-action="grade" data-value="${letter}" aria-label="Оценка ${letter}" aria-pressed="${grade === letter}">${letter}</button>`).join('')}</div></div>`}
       </div>
     </section>
