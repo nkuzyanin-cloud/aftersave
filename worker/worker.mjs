@@ -106,7 +106,7 @@ async function steamFetch(path, env, params) {
   url.search = new URLSearchParams(path === 'percentages' ? params : { ...params, key: env.STEAM_API_KEY });
   let response;
   try {
-    response = await fetch(url, { redirect: 'error', signal: AbortSignal.timeout(TIMEOUT) });
+    response = await fetch(url.href, { redirect: 'manual', signal: AbortSignal.timeout(TIMEOUT) });
   } catch { throw new RequestError(502, 'upstream_unavailable'); }
   if (response.status === 429) throw new RequestError(429, 'upstream_limit');
   if (response.status === 403) throw new RequestError(403, 'private');
@@ -118,13 +118,14 @@ async function steamFetch(path, env, params) {
 async function cached(requestURL, path, ttl, ctx, load) {
   const cache = caches.default;
   const key = new Request(new URL('/__aftersave_private_v1/' + path, requestURL).href);
-  const hit = await cache.match(key).catch(() => null);
+  let hit;
+  try { hit = await cache?.match(key); } catch { /* A cache failure should not block Steam. */ }
   if (hit) return hit.json();
   const data = await load();
   const response = new Response(JSON.stringify(data), {
     headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=' + ttl }
   });
-  ctx.waitUntil(cache.put(key, response).catch(() => {}));
+  if (cache) ctx.waitUntil(Promise.resolve().then(() => cache.put(key, response)).catch(() => {}));
   return data;
 }
 
@@ -156,7 +157,7 @@ function communityIcon(appid, filename) {
 
 async function communitySchema(appid) {
   const response = await fetch(`https://steamcommunity.com/achievements/${appid}?l=russian`, {
-    headers: { Cookie: 'Steam_Language=russian' }, redirect: 'error', signal: AbortSignal.timeout(TIMEOUT)
+    headers: { Cookie: 'Steam_Language=russian' }, redirect: 'manual', signal: AbortSignal.timeout(TIMEOUT)
   });
   if (!response.ok) throw new Error('Steam Community unavailable');
   const html = await response.text();
@@ -177,9 +178,15 @@ async function artwork(appid) {
     data_request: { include_assets: true } };
   const url = new URL('IStoreBrowseService/GetItems/v1/', STEAM);
   url.searchParams.set('input_json', JSON.stringify(query));
-  const response = await fetch(url, { redirect: 'error', signal: AbortSignal.timeout(TIMEOUT) });
+  let response;
+  try {
+    response = await fetch(url.href, { redirect: 'manual', signal: AbortSignal.timeout(TIMEOUT) });
+  } catch { throw new RequestError(502, 'artwork_network'); }
   if (!response.ok) throw new RequestError(502, 'artwork_unavailable');
-  const assets = (await response.json()).response?.store_items?.find(item => item.appid === appid)?.assets;
+  const data = await response.json().catch(() => null);
+  if (!data) throw new RequestError(502, 'artwork_invalid');
+  const entries = data.response?.store_items;
+  const assets = Array.isArray(entries) ? entries.find(item => item.appid === appid)?.assets : undefined;
   const format = assets?.asset_url_format;
   const path = filename => typeof filename === 'string' && /^[\w.-]+(?:\/[\w.-]+)?$/.test(filename) &&
     typeof format === 'string' && /^steam\/apps\/\d+\/\$\{FILENAME\}(?:\?t=\d+)?$/.test(format) &&
@@ -258,7 +265,10 @@ export default {
         if ([...url.searchParams].length !== 1 || !/^[1-9]\d{0,9}$/.test(raw ?? '') || Number(raw) > 4294967295) {
           throw new RequestError(400, 'invalid_appid');
         }
-        if (!env.API_LIMIT || !(await env.API_LIMIT.limit({ key: 'art:' + (request.headers.get('CF-Connecting-IP') || 'unknown') })).success) {
+        const artKey = 'art:' + (request.headers.get('CF-Connecting-IP') || 'unknown');
+        const allowed = await env.API_LIMIT?.limit({ key: artKey }).catch(() => null);
+        if (!allowed) throw new RequestError(503, 'artwork_limit_unavailable');
+        if (!allowed.success) {
           throw new RequestError(429, 'rate_limit');
         }
         return reply(await cached(url, 'artwork/' + raw, 86400, ctx, () => artwork(Number(raw))), 200, true);
