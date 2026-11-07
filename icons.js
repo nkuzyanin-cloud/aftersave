@@ -1,4 +1,7 @@
 const paths = {
+  ribbon: '<path d="M5 2.5h14a2 2 0 0 1 2 2v16a1 1 0 0 1-1.54.84L12 16.5l-7.46 4.84A1 1 0 0 1 3 20.5v-16a2 2 0 0 1 2-2Z" fill="currentColor" stroke="none"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M10 3h4l.6 2.2 1.4.8 2.2-.6 2 3.5-1.6 1.6v1.7l1.6 1.6-2 3.5-2.2-.6-1.4.8-.6 2.5h-4l-.6-2.5-1.4-.8-2.2.6-2-3.5 1.6-1.6v-1.7L3.8 9l2-3.5 2.2.6 1.4-.8z" transform="translate(0 1)"/>',
+  more: '<circle cx="5" cy="12" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/><circle cx="19" cy="12" r="1" fill="currentColor"/>',
   steam: '<path d="M3 14.5a9 9 0 1 1 5.2 6.1m-5.7-6.4 5 2.1m-.3 3.4-4.7-2"/><circle cx="15.6" cy="8.6" r="3.2"/><circle cx="8.8" cy="17.5" r="2.6"/><path d="m10.8 15.7 3.7-4.1m-5.1 3.2 3.2-4.9"/>',
   eye: '<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="2.5"/>',
   eyeOff: '<path d="m3 3 18 18M9.5 6.3A10 10 0 0 1 12 6c6.5 0 10 6 10 6a15 15 0 0 1-3.2 3.6M6.4 7.6A15 15 0 0 0 2 12s3.5 6 10 6c1.4 0 2.7-.3 3.8-.7"/>',

@@ -1,4 +1,4 @@
-const VERSION = 5;
+const VERSION = 6;
 const FORMAT = 'game-library';
 export const STORAGE_KEY = `game-library:${new URL('.', import.meta.url).pathname}`;
 const EPOCH = '1970-01-01T00:00:00.000Z';
@@ -236,6 +236,8 @@ function normalizeGame(value, fallbackId, fallbackTimestamp) {
     title: requiredText(game.title, 'Название игры', 160),
     status,
     rating: number(game.rating, 'Оценка', 0, 10),
+    grade: typeof game.grade === 'string' && /^[SABCDEF]$/.test(game.grade) ? game.grade : '',
+    gradeCleared: bool(game.gradeCleared, 'Оценка сброшена'),
     platform: text(game.platform, 'Платформа', 50, 'PC') || 'Другое',
     startedAt,
     finishedAt,
@@ -408,7 +410,7 @@ function normalizeState(value) {
     throw new Error('Выберите резервную копию игровой библиотеки в формате JSON.');
   }
   if (state.version === 1) state = migrateV1(state);
-  if ([2, 3, 4].includes(state.version)) state = { ...state, version: VERSION };
+  if ([2, 3, 4, 5].includes(state.version)) state = { ...state, version: VERSION };
   if (state.version !== VERSION) {
     throw new Error('Эта версия формата библиотеки не поддерживается.');
   }

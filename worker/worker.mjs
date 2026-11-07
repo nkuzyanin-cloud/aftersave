@@ -1,5 +1,6 @@
 
 import { readActivity, recordSnapshot } from './activity.mjs';
+import { requestJson, rememberDevice, renewDevice, forgetDevice, readPersonal, savePersonal, MAX_SNAPSHOT } from './cloud.mjs';
 
 const ORIGIN = 'https://nkuzyanin-cloud.github.io';
 const STEAM = 'https://api.steampowered.com/';
@@ -56,34 +57,20 @@ async function sessionKey(env) {
 }
 
 async function startSession(request, env) {
-  if (request.headers.get('content-length') > 1024 || !request.headers.get('content-type')?.startsWith('application/json')) {
-    throw new RequestError(400, 'invalid_request');
-  }
-  // Bound streaming bodies as well as requests with Content-Length.
-  const reader = request.body?.getReader();
-  if (!reader) throw new RequestError(400, 'invalid_request');
-  const decoder = new TextDecoder();
-  let bytes = 0;
-  let input = '';
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    bytes += value.byteLength;
-    if (bytes > 1024) {
-      await reader.cancel();
-      throw new RequestError(400, 'invalid_request');
-    }
-    input += decoder.decode(value, { stream: true });
-  }
-  let candidate;
-  try { candidate = JSON.parse(input + decoder.decode()).password; }
-  catch { throw new RequestError(400, 'invalid_request'); }
+  const input = await requestJson(request, 1024);
+  if (!input) throw new RequestError(400, 'invalid_request');
+  const candidate = input.password;
   if (typeof candidate !== 'string' || candidate.length > 256) throw new RequestError(401, 'unauthorized');
   const [actual, expected] = await Promise.all([candidate, env.AFTERSAVE_PASSWORD]
     .map(value => crypto.subtle.digest('SHA-256', encoder.encode(value))));
   const other = new Uint8Array(expected);
   const difference = new Uint8Array(actual).reduce((result, byte, i) => result | (byte ^ other[i]), 0);
   if (difference !== 0) throw new RequestError(401, 'unauthorized');
+  const refresh = env.STEAM_ACTIVITY ? await rememberDevice(env).catch(() => undefined) : undefined;
+  return { ...await sessionResponse(env), refresh };
+}
+
+async function sessionResponse(env) {
   const account = env.STEAM_ID;
   const expiresAt = Date.now() + 60 * 60 * 1000;
   const body = base64(encoder.encode(JSON.stringify({ account, expiresAt, origin: ORIGIN })));
@@ -248,17 +235,18 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const cors = allowedOrigin(request);
-    if (url.pathname === '/health' && request.method === 'GET') return reply({ ok: true, version: 5 }, 200, cors);
+    if (url.pathname === '/health' && request.method === 'GET') return reply({ ok: true, version: 6 }, 200, cors);
     const route = url.pathname;
-    if (!['/session', '/library', '/achievements', '/artwork'].includes(route)) return reply({ error: 'not_found' }, 404, cors);
+    if (!['/session', '/session/refresh', '/session/forget', '/personal', '/library', '/achievements', '/artwork'].includes(route)) return reply({ error: 'not_found' }, 404, cors);
     if (!cors) return reply({ error: 'origin' }, 403, false);
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: {
-        ...headers(true), 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        ...headers(true), 'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization', 'Access-Control-Max-Age': '600'
       } });
     }
-    if (request.method !== (route === '/session' ? 'POST' : 'GET')) return reply({ error: 'method' }, 405, true);
+    const methods = route.startsWith('/session') ? ['POST'] : route === '/personal' ? ['GET','PUT'] : ['GET'];
+    if (!methods.includes(request.method)) return reply({ error: 'method' }, 405, true);
     try {
       if (route === '/artwork') {
         const raw = url.searchParams.get('appid');
@@ -275,15 +263,31 @@ export default {
       }
       if (!env.STEAM_API_KEY || !validAccount(env.STEAM_ID) || env.AFTERSAVE_PASSWORD?.length < 24 ||
           !env.AFTERSAVE_PASSWORD || !env.LOGIN_LIMIT || !env.API_LIMIT) throw new RequestError(503, 'configuration');
-      if (route === '/session') {
+      if (route.startsWith('/session')) {
         if (url.search) throw new RequestError(400, 'invalid_request');
-        const { success } = await env.LOGIN_LIMIT.limit({ key: request.headers.get('CF-Connecting-IP') || 'unknown' });
+        const limiter = route === '/session' ? env.LOGIN_LIMIT : env.API_LIMIT;
+        const { success } = await limiter.limit({ key: route + ':' + (request.headers.get('CF-Connecting-IP') || 'unknown') });
         if (!success) throw new RequestError(429, 'rate_limit');
-        return reply(await startSession(request, env), 200, true);
+        if (route === '/session') return reply(await startSession(request, env), 200, true);
+        if (!env.STEAM_ACTIVITY) throw new RequestError(503, 'configuration');
+        const token = (await requestJson(request, 1024))?.refresh;
+        if (route === '/session/forget') {
+          await forgetDevice(env,token);
+          return reply({ ok:true },200,true);
+        }
+        if (!await renewDevice(env,token)) throw new RequestError(401, 'unauthorized');
+        return reply(await sessionResponse(env),200,true);
       }
       await authorize(request, env);
       const { success } = await env.API_LIMIT.limit({ key: env.STEAM_ID });
       if (!success) throw new RequestError(429, 'rate_limit');
+      if (route === '/personal') {
+        if (url.search || !env.STEAM_ACTIVITY) throw new RequestError(400, 'invalid_request');
+        if (request.method === 'GET') return reply(await readPersonal(env),200,true);
+        const result = await savePersonal(env, await requestJson(request,MAX_SNAPSHOT+256));
+        if (!result) throw new RequestError(400,'invalid_snapshot');
+        return reply(result,result.conflict ? 409 : 200,true);
+      }
       if (route === '/library') {
         if (url.search) throw new RequestError(400, 'invalid_request');
         const data = await library(url, env, ctx);

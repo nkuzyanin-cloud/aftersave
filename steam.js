@@ -1,5 +1,5 @@
 
-import { createGame } from './data.js';
+import { createGame, STORAGE_KEY } from './data.js';
 
 const BASE = 'https://aftersave-steam.n-kuzyanin.workers.dev/';
 const KNOWN = new Map(Object.entries({
@@ -44,51 +44,102 @@ export function fetchSteamArtwork(id) {
 }
 
 let session;
+let renewal;
+let authGeneration = 0;
 const pending = new Map();
+const loginKey = STORAGE_KEY + ':remember';
 
-async function request(path, { legacy = false, password } = {}) {
-  const headers = { Accept: 'application/json' };
-  if (!legacy && password === undefined) {
-    if (!session || session.expiresAt <= Date.now()) throw new Error('Войдите в Steam-интеграцию снова.');
-    headers.Authorization = 'Bearer ' + session.token;
-  }
-  if (password !== undefined) headers['Content-Type'] = 'application/json';
+function remembered() {
+  try {
+    const value = JSON.parse(localStorage.getItem(loginKey));
+    return steamId(value?.account) && /^[a-f0-9]{64}$/.test(value.refresh) ? value : null;
+  } catch { return null; }
+}
+
+function remember(value) {
+  try {
+    if (value) localStorage.setItem(loginKey, JSON.stringify(value));
+    else localStorage.removeItem(loginKey);
+  } catch { /* The active tab can still use its in-memory access token. */ }
+}
+
+async function send(path, { method = 'GET', body, token } = {}) {
+  const headers = { Accept:'application/json' };
+  if (token) headers.Authorization = 'Bearer ' + token;
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 18000);
   try {
-    let response;
-    try {
-      response = await fetch(new URL(path, BASE), {
-        headers, method: password === undefined ? 'GET' : 'POST',
-        body: password === undefined ? undefined : JSON.stringify({ password }),
-        cache: 'no-store', credentials: 'omit', redirect: 'error', signal: controller.signal
-      });
-    } catch {
-      throw new Error('Worker недоступен. Проверьте подключение и настройки CORS.');
-    }
-    if (response.status === 429) throw new Error('Steam временно ограничил запросы. Повторите позже.');
-    if (response.status === 401) {
-      if (password === undefined && !legacy) session = undefined;
-      throw new Error(password === undefined ? 'Требуется вход в Steam-интеграцию.' : 'Пароль Steam-интеграции отклонён.');
-    }
-    if (password !== undefined && [404, 405].includes(response.status)) throw new Error('Защищённый Worker ещё не развёрнут.');
-    const data = await response.json().catch(() => null);
-    if (response.status === 403 || data?.error === 'private') throw new Error('Steam ограничил доступ. Проверьте видимость игровых данных профиля.');
-    if (!response.ok || !data) throw new Error('Worker или Steam вернул ошибку (' + response.status + ').');
-    return data;
-  } finally { clearTimeout(timeout); }
+    const response = await fetch(new URL(path, BASE), {
+      method, headers, body:body === undefined ? undefined : JSON.stringify(body),
+      cache:'no-store', credentials:'omit', redirect:'error', signal:controller.signal
+    });
+    return { status:response.status, ok:response.ok, data:await response.json().catch(()=>null) };
+  } catch { throw new Error('Связь с Cloudflare недоступна.'); }
+  finally { clearTimeout(timeout); }
 }
 
-export function connected() { return Boolean(session && session.expiresAt > Date.now()); }
-export function disconnect() { session = undefined; }
-
-export async function connect(password, expectedAccount) {
-  const result = await request('session', { password });
-  if (!steamId(result.account) || typeof result.token !== 'string' || result.token.length > 2048 ||
+function acceptSession(result, expected) {
+  checkAccount(result?.account,expected);
+  if (typeof result.token !== 'string' || result.token.length > 2048 ||
       !Number.isFinite(result.expiresAt) || result.expiresAt <= Date.now()) throw new Error('Некорректный ответ авторизации.');
-  if (expectedAccount && expectedAccount !== result.account) throw new Error('Этот Worker подключён к другому Steam-аккаунту.');
   session = result;
 }
+
+async function ensureSession() {
+  if (session?.expiresAt > Date.now()+10000) return session;
+  const device = remembered();
+  if (!device) throw new Error('Войди в Steam через настройки.');
+  if (!renewal) {
+    const generation = authGeneration;
+    renewal = (async () => {
+      const response = await send('session/refresh', { method:'POST', body:{ refresh:device.refresh } });
+      if (generation !== authGeneration || remembered()?.refresh !== device.refresh) throw new Error('Сеанс изменился.');
+      if (response.status === 401) remember(null);
+      if (!response.ok) throw new Error(response.status === 401 ? 'Сеанс истёк. Войди в Steam через настройки.' : 'Не удалось продлить вход.');
+      acceptSession(response.data,device.account);
+      return session;
+    })().finally(()=>{ renewal = undefined; });
+  }
+  return renewal;
+}
+
+async function request(path, { legacy = false, method = 'GET', body } = {}) {
+  const active = !legacy ? await ensureSession() : null;
+  let response = await send(path, { method, body, token:active?.token });
+  if (response.status === 401 && !legacy && remembered()) {
+    if (session === active) session = undefined;
+    const renewed = await ensureSession();
+    response = await send(path, { method, body, token:renewed.token });
+  }
+  if (response.status === 429) throw new Error('Steam временно ограничил запросы. Повтори позже.');
+  if (response.status === 403 || response.data?.error === 'private') throw new Error('Steam ограничил доступ. Проверь видимость игровых данных профиля.');
+  if (response.status === 409 && path === 'personal') return { conflict:true };
+  if (response.status === 401 && !legacy) session = undefined;
+  if (!response.ok || !response.data) throw new Error('Сервис вернул ошибку (' + response.status + ').');
+  return response.data;
+}
+
+export function connected() { return Boolean(session && session.expiresAt > Date.now() || remembered()); }
+export function disconnect() {
+  const device = remembered();
+  authGeneration++;
+  session = undefined;
+  remember(null);
+  if (device) send('session/forget',{method:'POST',body:{refresh:device.refresh}}).catch(()=>{});
+}
+
+export async function connect(password, expectedAccount) {
+  const response = await send('session',{method:'POST',body:{password}});
+  if (!response.ok) throw new Error(response.status === 401 ? 'Пароль AFTERSAVE отклонён.' : 'Cloudflare не подтвердил вход.');
+  authGeneration++;
+  acceptSession(response.data,expectedAccount);
+  const {account,refresh} = response.data;
+  remember(typeof refresh === 'string' && /^[a-f0-9]{64}$/.test(refresh) ? {account,refresh} : null);
+}
+
+export const readCloud = () => request('personal');
+export const writeCloud = (revision,snapshot) => request('personal',{method:'PUT',body:{revision,snapshot}});
 
 function checkAccount(actual, expected) {
   if (!steamId(actual)) throw new Error('Worker не подтвердил SteamID.');
