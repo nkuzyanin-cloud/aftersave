@@ -883,31 +883,46 @@ h1,.library-heading h1,.stats-dashboard>h1{font-size:clamp(34px,3.05vw,54px);let
 .redesign-achievements li p{font-size:clamp(12px,1.02vw,17px)}
 .achievement-filters select{height:48px}
 .stats-dashboard>h1{margin:0 0 26px}
-.stats-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:27px;padding:24px clamp(14px,3.1vw,52px);background:
- radial-gradient(ellipse at 41% 12%,#5b3c7b72,transparent 68%),linear-gradient(130deg,#33284e,#3b2b56 62%,#2d2448)}
-.stats-metrics>div{display:grid;gap:3px;padding:0 clamp(12px,2.5vw,43px);border-left:1px solid #7b659b77}
-.stats-metrics>div:first-child{border:0;padding-left:10px}
-.stats-metrics strong{font-size:clamp(29px,4vw,68px);line-height:1;letter-spacing:-.05em}
-.stats-metrics span{font-size:clamp(13px,1.55vw,26px);color:#c6b7db}
-.stats-layout{display:grid;grid-template-columns:minmax(0,1.57fr) minmax(0,1fr);gap:23px}
-.stats-ranking,.stats-achievements{padding:16px clamp(14px,1.6vw,27px) 18px;border-radius:16px}
-.stats-side{display:grid;gap:15px}
-.stats-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.stats-heading select{font-size:12px;min-height:32px;padding:0 7px}
-.stats-heading .icon-btn{min-height:33px;width:33px;min-width:33px}
-.stats-rows{display:grid;margin-top:14px}
-.stats-rows>a{display:grid;grid-template-columns:minmax(86px,26%) minmax(0,1fr);gap:clamp(9px,1.3vw,23px);align-items:center;padding:10px 0;border-bottom:1px solid #423951}
-.stats-rows>a:last-child{border:0;padding-bottom:0}
+.stats-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:16px;padding:13px clamp(7px,1.65vw,28px)}
+.stats-metrics>div{display:flex;align-items:center;gap:clamp(7px,1.3vw,22px);min-width:0;padding:0 clamp(6px,1.65vw,28px);border-left:1px solid #51445f}
+.stats-metrics>div:first-child{border:0}
+.stats-metrics>div>svg{color:#bcabd8}
+.stats-metrics strong,.stats-metrics span{display:block}
+.stats-metrics strong{font-size:var(--type-metric);line-height:1.12;letter-spacing:-.035em}
+.stats-metrics span{font-size:var(--type-body);color:#c6b7db;margin-top:4px}
+.stats-layout{display:grid;grid-template-columns:minmax(0,1.65fr) minmax(0,1fr);align-items:start;gap:clamp(12px,1.4vw,23px)}
+.stats-ranking,.stats-achievements,.stats-cups{min-width:0;padding:clamp(13px,1.45vw,24px);border-radius:14px}
+.stats-side{display:grid;gap:clamp(10px,1.25vw,20px)}
+.stats-heading{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.stats-filters{display:flex;flex-wrap:wrap;gap:6px}
+.stats-filters select{min-height:36px;padding:0 8px;border:1px solid #554b68;border-radius:8px;background:#222232;color:var(--text);font-size:var(--type-caption)}
+.stats-heading .icon-btn{min-height:36px;width:36px;min-width:36px}
+.stats-rows{display:grid;margin-top:9px}
+.stats-rows>a{display:grid;grid-template-columns:2.5ch minmax(75px,24%) minmax(0,1fr) auto;gap:clamp(7px,1.05vw,17px);align-items:center;padding:8px 0;border-bottom:1px solid #423951}
+.stats-rows>a:hover .stats-rank-game strong{color:#d7c4ff}
+.stats-rank-game{display:grid;gap:7px;min-width:0}
+.stats-rank-game>div:first-child{display:flex;align-items:baseline;gap:7px}
+.stats-rank-game strong{font-size:var(--type-item);line-height:1.3;overflow-wrap:anywhere}
+.stats-rank-number{color:#c0b4d4;font-size:var(--type-caption)}
+.stats-rank-grade{color:var(--grade,#c3a9fc);font-size:var(--type-body);font-weight:750}
+.stats-rank-value{font-size:var(--type-body);white-space:nowrap;text-align:right}
+.stats-rank-number,.stats-rank-value,.stats-cups strong{font-variant-numeric:tabular-nums}
+.stats-rank-game .progress-track{height:6px}
+.stats-more{min-height:37px;padding:5px 0;margin-top:4px}
+.stats-more[aria-expanded=true] svg{transform:rotate(-90deg)}
 .wide-cover{aspect-ratio:2.55;border-radius:9px}
 .wide-cover img{object-position:center}
-.stats-rows>a>div:last-child strong{font-size:clamp(14px,1.35vw,23px);overflow-wrap:anywhere}
-.stats-rows>a>div:last-child>div,.stats-progress{display:flex;gap:clamp(10px,1.8vw,34px);align-items:center;margin-top:8px}
-.stats-progress .progress-track,.stats-rows .progress-track{flex:1}
-.stats-rows>a span,.stats-progress span{font-size:clamp(13px,1.36vw,23px);white-space:nowrap}
-.stats-rows>a span{min-width:60px;text-align:right}
-.stats-achievements>strong{display:block;font-size:clamp(24px,2.9vw,49px);line-height:1.15;letter-spacing:-.035em;margin:8px 0 4px}
-.stats-achievements>p{font-size:clamp(13px,1.28vw,22px)}
-.stats-progress{margin:12px 0 3px}
+.stats-progress{display:flex;gap:13px;align-items:center;margin-top:11px}
+.stats-progress .progress-track{flex:1;height:8px}
+.stats-progress span{font-size:var(--type-body)}
+.stats-achievements>strong{display:block;font-size:var(--type-metric);line-height:1.15;letter-spacing:-.035em;margin-top:14px}
+.stats-achievements .stats-coverage{margin-top:13px;padding-top:10px;border-top:1px solid #463c55;font-size:var(--type-caption)}
+.stats-cups h2{margin:0 0 5px}
+.stats-cups>a{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;gap:11px;min-height:44px;padding:4px 0;border-bottom:1px solid #463c55}
+.stats-cups>a:last-child{border-bottom:0}
+.stats-cups>a:hover span,.stats-cups>a:hover>svg:last-child{color:#d7c4ff}
+.stats-cups>a strong{font-size:var(--type-item)}
+.stats-cups>a span{font-size:var(--type-body)}
 .collection-choices{display:grid;gap:3px;max-height:min(50vh,440px);overflow:auto;margin-top:12px}
 .collection-choices .checkbox{padding:7px 8px;background:#262339;border:1px solid #36314c;border-radius:7px;font-size:14px}
 .collection-choices small{margin-left:auto;color:var(--muted)}
@@ -958,10 +973,12 @@ input[type=checkbox]{accent-color:#b29afe}
   .game-tabs{padding:0 9px;min-height:49px;gap:6px}.game-tabs a{font-size:13px;padding:8px 6px}
   .game-overview,.stats-layout{grid-template-columns:1fr;gap:9px}
   .game-overview>div{gap:9px}
-  .stats-dashboard>h1{margin-bottom:14px}.stats-metrics{padding:12px 6px;margin-bottom:12px}
-  .stats-metrics>div,.stats-metrics>div:first-child{padding:0 7px}.stats-metrics strong{font-size:clamp(19px,6vw,30px)}
-  .stats-metrics span{font-size:10px;line-height:1.25}.stats-side{gap:9px}
-  .stats-rows>a span{min-width:38px}
+  .stats-dashboard>h1{margin-bottom:14px}
+  .stats-metrics{padding:10px 4px;margin-bottom:12px}
+  .stats-metrics>div{padding:0 7px}
+  .stats-metrics>div>svg{display:none}
+  .stats-metrics span{font-size:var(--type-caption);line-height:1.35}
+  .stats-side{gap:9px}
   .dashboard-panel-head .btn{min-height:33px;padding-inline:7px}
   .journal-actions{gap:4px}
 }
@@ -1062,21 +1079,6 @@ input[type=checkbox]{accent-color:#b29afe}
 .collection-card .collection-covers{height:auto;width:clamp(64px,7vw,118px);aspect-ratio:2/3}
 .collection-covers .cover img{object-fit:contain}
 .collection-arrow{position:static;color:#cab8fb}
-.stats-metrics{padding-block:15px;margin-bottom:16px}
-.stats-metrics>div strong{font-size:clamp(22px,3.25vw,55px)}
-.stats-cups{padding:11px clamp(14px,2.6vw,44px);row-gap:5px}
-.stats-cups h2{grid-column:1/-1;margin:0;font-size:clamp(16px,1.3vw,22px)}
-.stats-cups>a{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:clamp(6px,1.15vw,18px);padding:4px clamp(8px,2.25vw,39px);border-left:1px solid #7b659b77;color:inherit;text-decoration:none}
-.stats-cups>a:first-of-type{border-left:0;padding-left:0}
-.stats-cups>a:hover span,.stats-cups>a:hover>svg:last-child{color:#fff}
-.stats-cups>a>div{display:grid;gap:4px}
-.stats-cups>a strong{font-size:clamp(22px,2.7vw,45px)}
-.stats-cups>a span{font-size:clamp(13px,1.2vw,20px)}
-.stats-rows>a{grid-template-columns:minmax(76px,22%) minmax(0,1fr);padding:6px 0}
-.stats-rows>a>div:last-child strong{font-size:clamp(13px,1.12vw,19px)}
-.stats-rows>a>div:last-child>div{margin-top:5px}
-.stats-rows>a span{font-size:clamp(12px,1.1vw,18px)}
-.stats-rows .wide-cover{max-height:47px}
 
 /* Game page */
 .game-banner:not(.game-banner-compact){min-height:0;padding-block:15px 16px;overflow:visible;z-index:1}
@@ -1163,12 +1165,6 @@ input[type=checkbox]{accent-color:#b29afe}
   .card-title{padding-right:68px}
   .card-title .cup-label{font-size:12px}
   .card-title .cup-label svg{width:17px;height:17px}
-  .stats-cups>a{grid-template-columns:17px minmax(0,1fr);gap:5px;padding-inline:5px}
-  .stats-cups>a>svg:first-child{width:17px;height:17px}
-  .stats-cups>a>svg:last-child{display:none}
-  .stats-cups>a span{font-size:11px}
-  .stats-cups>a strong{font-size:20px}
-  .stats-metrics>div strong{font-size:clamp(19px,6vw,30px)}
   .game-banner:not(.game-banner-compact){padding-block:14px 15px}
   .game-identity h1{font-size:clamp(26px,7.9vw,37px)}
   .game-identity .detail-actions .btn,.status-picker>summary{height:36px;min-height:36px}
@@ -1187,4 +1183,68 @@ input[type=checkbox]{accent-color:#b29afe}
   .tier-row{min-height:43px;grid-template-columns:47px minmax(0,1fr)}
   .tier-covers{gap:5px 6px}
   .tier-cover-action{cursor:pointer}
+}
+
+/* Shared typography across pages and dialogs. */
+:root{
+  --type-page:clamp(1.75rem,1.34rem + 1.35vw,2.65rem);
+  --type-section:clamp(1.12rem,.98rem + .55vw,1.45rem);
+  --type-item:clamp(.9375rem,.86rem + .25vw,1.125rem);
+  --type-body:clamp(.875rem,.83rem + .19vw,1rem);
+  --type-caption:clamp(.75rem,.72rem + .16vw,.875rem);
+  --type-metric:clamp(1.3rem,1.08rem + .87vw,2rem);
+}
+body{font-size:var(--type-body);line-height:1.45}
+.page h1,.page .game-identity h1{font-size:var(--type-page);font-weight:760;line-height:1.12;letter-spacing:-.04em}
+.panel h2,.empty h2,.dialog-head h2,.boss-map-panel h2,.boss-tracker-main>h2{
+  font-size:var(--type-section);font-weight:710;line-height:1.24;letter-spacing:-.025em
+}
+.boss-tracker-main>h2{font-size:var(--type-page)}
+.panel h3,.card-body h3,.collection-card h2,.game-overview .achievement-list li strong,
+.redesign-achievements li strong,.boss-row-copy strong,.boss-region-toggle,.boss-cleared>summary,.boss-note strong{
+  font-size:var(--type-item);font-weight:710;line-height:1.3
+}
+.page p,.panel p,.empty p,.dialog-body>p,.dialog-body .checkbox,.game-identity>p,.game-totals,.game-grade,
+.journal-list li>div,.settings-panel .checkbox,.boss-subtitle,.boss-row-copy>span{
+  font-size:var(--type-body);line-height:1.5
+}
+.violet-nav>a,.shelf-switch button,.game-tabs a{font-size:var(--type-body);font-weight:690;line-height:1.35}
+.violet-brand span{font-size:var(--type-section)}
+.btn,.quiet-link,.dashboard-panel-head .btn,.game-identity .detail-actions .btn,.status-picker>summary,
+.status-options button,.boss-row-actions .btn,.boss-area-tabs button,.game-identity .back-link,.boss-tracker-main>.back-link{
+  font-size:var(--type-body)
+}
+.library-controls select,.achievement-filters select,.searchbox input,.field input,.field textarea,.field select{font-size:var(--type-body)}
+.eyebrow,.status,.card-meta,.card-progress,.card-title .cup-label,.cup-label,.settings-panel small,.field>span,
+.achievement-overview>div,.redesign-achievements li small,.boss-row-copy>small,.boss-row-deaths,.boss-type,.boss-note small,
+.boss-map-panel>footer,.tier-unrated .tier-letter,.tier-empty,.tier-fallback{
+  font-size:var(--type-caption)
+}
+.game-overview .achievement-list li p,.redesign-achievements li p,.stats-achievements .stats-coverage{
+  font-size:var(--type-caption);line-height:1.45
+}
+.boss-metric strong,.achievement-overview strong{font-size:var(--type-item)}
+.boss-metric span{font-size:var(--type-body)}
+.tier-letter{font-size:var(--type-section)}
+.tier-unrated .tier-letter{font-size:var(--type-caption)}
+@media(max-width:680px){
+  .violet-brand span{font-size:1rem}
+  .violet-nav>a{font-size:var(--type-caption)}
+  .searchbox input,.field input,.field textarea,.field select{font-size:1rem}
+  .game-identity .detail-actions .btn,.status-picker>summary{font-size:var(--type-caption)}
+  .game-tabs{gap:4px}
+  .settings-grid{grid-template-columns:minmax(0,1fr)}
+  .settings-actions .btn{max-width:100%;white-space:normal;text-align:left}
+  .stats-rows>a{grid-template-columns:2ch minmax(54px,23%) minmax(0,1fr) auto;gap:6px}
+  .stats-rank-game strong{font-size:var(--type-body)}
+  .stats-rank-value{font-size:var(--type-caption)}
+}
+@media(max-width:360px){
+  .violet-header{grid-template-columns:auto minmax(0,1fr) auto;padding-inline:7px}
+  .violet-brand span{font-size:.8125rem}
+  .violet-nav{justify-content:center}
+  .violet-nav>a{padding-inline:4px}
+}
+@media(max-width:310px){
+  .violet-brand span{display:none}
 }

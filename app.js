@@ -25,6 +25,8 @@ let storageError = '';
 try { state = load(); } catch (error) { state = emptyState(); storageError = error.message; }
 let shelfMode = 'all';
 let statsOrder = 'time';
+let statsGrade = '';
+let statsExpanded = false;
 let tierDrag = null;
 let achievementQuery = '';
 let achievementSort = 'rare';
@@ -368,36 +370,65 @@ function statsPage() {
     if (tier) cupTotals[tier]++;
   }
   const hours = linked.reduce((sum,game) => sum + game.steam.minutes,0) / 60;
-  const score = game => statsOrder === 'time' ? game.steam.minutes : summaryFor(game)?.unlocked || 0;
-  const top = [...linked].filter(game => score(game) > 0).sort((a,b) => score(b)-score(a)).slice(0,10);
   return `<div class="stats-dashboard"><h1>Статистика</h1>
     ${tierBoard()}
-    <section class="stats-cups stats-metrics panel" aria-labelledby="stats-cup-heading">
-      <h2 id="stats-cup-heading">Кубки</h2>
-      ${Object.entries(cups).map(([tier,label]) => `<a href="#library/cup/${tier}" class="cup-${tier}" aria-label="${label}, игр: ${cupTotals[tier]}">
-        ${icon('trophy',32)}<div><strong>${numeric(cupTotals[tier])}</strong><span>${label}</span></div>${icon('right',18)}</a>`).join('')}
-    </section>
-    <div class="stats-metrics panel">${[[numeric(Math.round(hours))+' ч','Время в Steam'],[completed,'Пройдено игр'],[cupTotals.platinum,'Игр со всеми достижениями']].map(([value,label])=>
-      `<div><strong>${value}</strong><span>${label}</span></div>`).join('')}</div>
+    <div class="stats-metrics panel">${[[numeric(Math.round(hours))+' ч','Время в Steam','clock'],[completed,'Пройдено игр','game'],[cupTotals.platinum,'Игр со всеми достижениями','trophy']].map(([value,label,glyph])=>
+      `<div>${icon(glyph,26)}<div><strong>${value}</strong><span>${label}</span></div></div>`).join('')}</div>
     <div class="stats-layout">
-      <section class="panel stats-ranking">
-        <div class="stats-heading"><h2>${statsOrder === 'time' ? 'Больше всего времени' : 'Больше всего достижений'}</h2>
-          <select id="stats-order" aria-label="Показатель рейтинга">${option('time','По времени',statsOrder)}${option('achievements','По достижениям',statsOrder)}</select></div>
-        ${top.length ? `<div class="stats-rows">${top.map(game => `<a href="#game/${encodeURIComponent(game.id)}">
-          ${wideCover(game)}<div><strong>${esc(displayName(game))}</strong><div>${progressBar(score(game) / score(top[0]) * 100)}
-            <span>${statsOrder === 'time' ? numeric(Math.round(game.steam.minutes/60)) + ' ч' : score(game)}</span></div></div></a>`).join('')}</div>` :
-          '<p class="dash-empty">Данных пока нет.</p>'}
-      </section>
+      ${statsRanking(linked)}
       <div class="stats-side">
         <section class="panel stats-achievements"><div class="stats-heading"><h2>Достижения Steam</h2>
           ${iconButton(scanningAchievements ? 'achievement-stop' : 'achievement-scan',scanningAchievements ? 'Остановить загрузку' : 'Обновить по всем играм','download')}</div>
-          <strong>${numeric(achievements.unlocked)} получено</strong>
-          <p>из ${numeric(achievements.total)} · данные по ${achievements.included.length} из ${linked.length} игр</p>
-          <div class="stats-progress">${progressBar(achievements.percentage)}<span>${achievements.percentage}%</span></div>
+          ${achievements.total ? `<strong>${numeric(achievements.unlocked)} из ${numeric(achievements.total)}</strong>
+            <div class="stats-progress">${progressBar(achievements.percentage)}<span>${achievements.percentage}%</span></div>` :
+            '<p class="dash-empty">Пока нет данных о достижениях.</p>'}
+          <p class="stats-coverage">Данные по ${numeric(achievements.included.length)} из ${numeric(linked.length)} игр</p>
           ${scanMessage ? `<p class="scan-status" role="status">${esc(scanMessage)}</p>` : ''}
+        </section>
+        <section class="stats-cups panel" aria-labelledby="stats-cup-heading">
+          <h2 id="stats-cup-heading">Кубки</h2>
+          ${Object.entries(cups).map(([tier,label]) => `<a href="#library/cup/${tier}" class="cup-${tier}" aria-label="${label}, игр: ${cupTotals[tier]}">
+            ${icon('trophy',23)}<span>${label}</span><strong>${numeric(cupTotals[tier])}</strong>${icon('right',16)}</a>`).join('')}
         </section>
       </div>
     </div></div>`;
+}
+
+function statsRanking(linked) {
+  const byTime = statsOrder === 'time';
+  const score = game => byTime ? game.steam.minutes : summaryFor(game)?.unlocked || 0;
+  const top = linked.filter(game => score(game) > 0 &&
+    (!statsGrade || gradeFor(game) === (statsGrade === 'unrated' ? '' : statsGrade)))
+    .sort((a,b) => score(b) - score(a)).slice(0,10);
+  return `<section class="panel stats-ranking">
+    <div class="stats-heading"><h2>${byTime ? 'Больше всего времени' : 'Больше всего достижений'}</h2>
+      <div class="stats-filters">
+        <select id="stats-order" aria-label="Показатель рейтинга">${option('time','По времени',statsOrder)}${option('achievements','По достижениям',statsOrder)}</select>
+        <select id="stats-grade" aria-label="Оценка игр в рейтинге">${option('','Все оценки',statsGrade)}
+          ${grades.map(grade => option(grade,grade,statsGrade)).join('')}${option('unrated','Без оценки',statsGrade)}</select>
+      </div></div>
+    ${top.length ? `<div class="stats-rows" id="stats-rows">${top.slice(0,statsExpanded ? 10 : 5).map((game,index) => {
+      const grade = gradeFor(game);
+      const value = score(game);
+      return `<a href="#game/${encodeURIComponent(game.id)}">
+        <span class="stats-rank-number" aria-label="Место ${index + 1}">${String(index + 1).padStart(2,'0')}</span>${wideCover(game)}
+        <div class="stats-rank-game"><div><strong>${esc(displayName(game))}</strong>${grade ? `<span class="stats-rank-grade grade-${grade}" aria-label="Оценка ${grade}">${grade}</span>` : ''}</div>
+        ${progressBar(value / score(top[0]) * 100)}</div>
+        <span class="stats-rank-value">${byTime ? numeric(Math.round(value/60)) + ' ч' : numeric(value)}</span>
+      </a>`;
+    }).join('')}</div>` : '<p class="dash-empty">Для этой выборки пока нет данных.</p>'}
+    ${top.length > 5 ? `<button type="button" class="quiet-link stats-more" data-action="stats-more" aria-expanded="${statsExpanded}" aria-controls="stats-rows">
+      ${statsExpanded ? 'Свернуть список' : 'Показать все ' + top.length} ${icon('right',15)}</button>` : ''}
+  </section>`;
+}
+
+function refreshStatsRanking(focusSelector) {
+  const panel = app.querySelector('.stats-ranking');
+  if (!panel) return;
+  panel.outerHTML = statsRanking(games().filter(game => game.steam));
+  const next = app.querySelector('.stats-ranking');
+  imageFallbacks(next);
+  next.querySelector(focusSelector)?.focus({ preventScroll: true });
 }
 
 function wideCover(game) {
@@ -570,6 +601,10 @@ function dateStamp(now = new Date()) {
 
 
 const actions = {
+  'stats-more': () => {
+    statsExpanded = !statsExpanded;
+    refreshStatsRanking('[data-action="stats-more"]');
+  },
   'boss-region': control => {
     bossRegion = Number(control.dataset.region) === bossRegion ? -1 : Number(control.dataset.region);
     bossArea = '';
@@ -786,7 +821,12 @@ document.addEventListener('input', event => {
 
 app.addEventListener('change', async event => {
   const field = event.target;
-  if (field.id === 'stats-order') { statsOrder = field.value; render(); }
+  if (field.id === 'stats-order' || field.id === 'stats-grade') {
+    if (field.id === 'stats-order') statsOrder = field.value;
+    else statsGrade = field.value;
+    statsExpanded = false;
+    refreshStatsRanking('#' + field.id);
+  }
   if (field.id === 'achievement-filter') {
     achievementFilter = field.value;
     updateAchievementRows();
