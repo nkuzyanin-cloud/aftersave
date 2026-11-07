@@ -1,0 +1,15 @@
+name = "aftersave-steam"
+main = "worker.mjs"
+compatibility_date = "2025-01-01"
+workers_dev = true
+preview_urls = false
+
+[[ratelimits]]
+name = "LOGIN_LIMIT"
+namespace_id = "93031"
+simple = { limit = 5, period = 60 }
+
+[[ratelimits]]
+name = "API_LIMIT"
+namespace_id = "93032"
+simple = { limit = 90, period = 60 }

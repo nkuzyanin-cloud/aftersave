@@ -395,3 +395,40 @@ dialog::backdrop{background:#070910c9;backdrop-filter:blur(5px)}
   *,*::before,*::after{transition:none!important;animation:none!important;scroll-behavior:auto!important}
 }
 
+
+.steam-panel,.steam-section{margin:13px 0;padding:16px 18px}
+.steam-panel h2,.steam-section h2{margin:4px 0}
+.steam-panel .settings-actions{margin-top:10px}
+.steam-panel .steam-message,.scan-status{margin-top:9px}
+.steam-panel .form-error{color:#ffb4be}
+.steam-progress{display:block;accent-color:var(--accent);height:7px;width:min(100%,330px);margin-top:10px}
+.steam-section-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.steam-summary,.steam-columns,.runs-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:12px 0}
+.steam-summary>div,.steam-columns>div,.run-card{border:1px solid var(--border);border-radius:8px;background:#191c26;padding:10px;min-width:0}
+.steam-summary strong,.steam-summary span{display:block}
+.steam-summary strong{color:var(--accent);font-size:19px}
+.steam-summary span,.run-card small{font-size:11px;color:var(--muted)}
+.steam-rows,.achievement-list{list-style:none;padding:0}
+.steam-rows li{display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);font-size:11px}
+.steam-rows a{overflow-wrap:anywhere}
+.steam-rows a:hover{color:var(--accent)}
+.steam-rows span{color:var(--muted);flex:none}
+.achievement-toolbar{display:flex;justify-content:flex-end;margin:12px 0 6px;color:var(--muted)}
+.achievement-toolbar select{background:var(--raised);padding:6px;border:1px solid var(--border);border-radius:5px}
+.achievement-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.achievement-list li{display:flex;align-items:center;gap:8px;padding:8px;border:1px solid var(--border);border-radius:7px;min-width:0}
+.achievement-list li>div{flex:1;overflow-wrap:anywhere}
+.achievement-list li small{font-size:10px;color:var(--muted)}
+.achievement-icon{display:grid;place-items:center;flex:none;width:36px;height:36px;border-radius:6px;background:var(--raised);overflow:hidden}
+.achievement-list li.unlocked .achievement-icon{color:var(--accent);background:#293325}
+.run-card h3{margin:3px 0}
+.load-more{display:flex;justify-content:center;margin-top:14px}
+.favorite-mark{font-size:11px;color:#efcc83}
+@media(max-width:700px){
+  .heading-actions{max-width:100%;flex-shrink:1}
+  .steam-panel,.steam-section{padding:12px}
+  .steam-columns,.runs-grid,.achievement-list{grid-template-columns:1fr}
+  .steam-summary>div{padding:7px}
+  .steam-summary strong{font-size:14px}
+  .steam-section-head>.btn{white-space:normal}
+}

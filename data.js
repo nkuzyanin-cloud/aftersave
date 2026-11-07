@@ -1,4 +1,4 @@
-const VERSION = 2;
+const VERSION = 3;
 const FORMAT = 'game-library';
 export const STORAGE_KEY = `game-library:${new URL('.', import.meta.url).pathname}`;
 const EPOCH = '1970-01-01T00:00:00.000Z';
@@ -254,8 +254,48 @@ function normalizeGame(value, fallbackId, fallbackTimestamp) {
     catalogId: text(game.catalogId, 'Идентификатор в каталоге', 96),
     createdAt,
     updatedAt: stamp(game.updatedAt, createdAt),
-    demo: bool(game.demo, 'Метка демо')
+    demo: bool(game.demo, 'Метка демо'),
+    favorite: bool(game.favorite, 'Избранное'),
+    steam: game.steam == null ? null : normalizeSteamGame(game.steam),
+    runs: normalizeRuns(game.runs ?? [])
   };
+}
+
+function normalizeSteamGame(value) {
+  const game = object(value, 'Запись Steam');
+  return {
+    appid: number(game.appid, 'AppID', 1, 4294967295, null, true),
+    minutes: number(game.minutes, 'Время Steam', 0, Number.MAX_SAFE_INTEGER, 0, true),
+    lastPlayed: number(game.lastPlayed, 'Последний запуск', 0, 253402300799, 0, true)
+  };
+}
+
+function normalizeRuns(value) {
+  const runs = list(value, 'Прохождения', 500).map(value => {
+    const run = object(value, 'Прохождение');
+    const startedAt = day(run.startedAt);
+    const finishedAt = day(run.finishedAt);
+    if (startedAt && finishedAt && finishedAt < startedAt) throw new Error('Проверьте даты прохождения.');
+    return {
+      id: identifier(run.id, 'Идентификатор прохождения'),
+      title: requiredText(run.title, 'Название прохождения', 120),
+      cycle: text(run.cycle, 'Цикл', 40),
+      startedAt, finishedAt,
+      build: text(run.build, 'Билд', 150),
+      difficulty: text(run.difficulty, 'Сложность', 80),
+      notes: text(run.notes, 'Заметки прохождения', 5000),
+      rating: number(run.rating, 'Оценка прохождения', 0, 10)
+    };
+  });
+  ensureUnique(runs, 'Прохождения');
+  return runs;
+}
+
+function normalizeSteam(value) {
+  if (value == null) return null;
+  const steam = object(value, 'Профиль Steam');
+  if (typeof steam.account !== 'string' || !/^7656\d{13}$/.test(steam.account)) throw new Error('Неверный SteamID.');
+  return { account: steam.account, lastSync: stamp(steam.lastSync, EPOCH) };
 }
 
 function newId() {
@@ -270,7 +310,7 @@ export function createGame(partial = {}) {
 export function emptyState() {
   return {
     format: FORMAT, version: VERSION, revision: 0, games: [], collections: [],
-    profile: { name: 'Игрок', bio: '' }, showDemo: true
+    profile: { name: 'Игрок', bio: '' }, showDemo: true, steam: null
   };
 }
 
@@ -311,6 +351,7 @@ function normalizeState(value) {
     throw new Error('Выберите резервную копию игровой библиотеки в формате JSON.');
   }
   if (state.version === 1) state = migrateV1(state);
+  if (state.version === 2) state = { ...state, version: VERSION };
   if (state.version !== VERSION) {
     throw new Error('Эта версия формата библиотеки не поддерживается.');
   }
@@ -328,9 +369,15 @@ function normalizeState(value) {
     .map(value => normalizeGame(value, undefined, EPOCH))
     .filter(game => !game.demo);
   ensureUnique(games, 'Игры');
+  const steam = normalizeSteam(state.steam);
+  const linked = new Set();
   for (const game of games) {
     if (game.collectionIds.some(id => !collectionIds.has(id))) {
       throw new Error(`Карточка «${game.title}» ссылается на неизвестную коллекцию.`);
+    }
+    if (game.steam) {
+      if (!steam || !game.steam.appid || linked.has(game.steam.appid)) throw new Error('Некорректная связь с библиотекой Steam.');
+      linked.add(game.steam.appid);
     }
   }
 
@@ -345,7 +392,8 @@ function normalizeState(value) {
       name: text(profile.name, 'Имя профиля', 64) || 'Игрок',
       bio: text(profile.bio, 'Описание профиля', 500)
     },
-    showDemo: bool(state.showDemo, 'Показ демо', true)
+    showDemo: bool(state.showDemo, 'Показ демо', true),
+    steam
   };
 }
 
