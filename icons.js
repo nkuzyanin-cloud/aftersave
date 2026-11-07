@@ -1,4 +1,7 @@
 const paths = {
+  steam: '<path d="M3 14.5a9 9 0 1 1 5.2 6.1m-5.7-6.4 5 2.1m-.3 3.4-4.7-2"/><circle cx="15.6" cy="8.6" r="3.2"/><circle cx="8.8" cy="17.5" r="2.6"/><path d="m10.8 15.7 3.7-4.1m-5.1 3.2 3.2-4.9"/>',
+  eye: '<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="2.5"/>',
+  eyeOff: '<path d="m3 3 18 18M9.5 6.3A10 10 0 0 1 12 6c6.5 0 10 6 10 6a15 15 0 0 1-3.2 3.6M6.4 7.6A15 15 0 0 0 2 12s3.5 6 10 6c1.4 0 2.7-.3 3.8-.7"/>',
   brand: '<path d="M5 4h14l3 4v8l-3 4H5l-3-4V8z"/><path d="m7 16 3.5-8h3L17 16m-8.5-3h7"/>',
   library: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
   layers: '<path d="m12 2 9 5-9 5-9-5 9-5Zm-9 10 9 5 9-5m-18 5 9 5 9-5"/>',

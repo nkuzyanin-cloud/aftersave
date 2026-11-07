@@ -14,6 +14,7 @@ const titleKey = title => title.normalize('NFKC').toLowerCase().replace(/[^\p{L}
 const nonnegative = value => Number.isSafeInteger(value) && value >= 0 ? value : 0;
 export const steamCover = id => appId(id) ? `https://cdn.cloudflare.steamstatic.com/steam/apps/${id}/library_600x900.jpg` : '';
 export const steamHeader = id => appId(id) ? `https://cdn.cloudflare.steamstatic.com/steam/apps/${id}/header.jpg` : '';
+export const steamHero = id => appId(id) ? `https://cdn.cloudflare.steamstatic.com/steam/apps/${id}/library_hero.jpg` : '';
 
 let session;
 const pending = new Map();
@@ -130,7 +131,7 @@ export function mergeSteam(state, { account, entries }, lastSync = new Date().to
       updated++;
     } else {
       games.push(createGame({
-        title: entry.name.trim().slice(0, 160), status: 'planned', platform: 'PC', steam,
+        title: entry.name.trim().slice(0, 160), status: 'planned', platform: 'PC', steam, shelf: false,
         cover: steamCover(entry.appid), createdAt: lastSync, updatedAt: lastSync
       }));
       added++;
@@ -199,6 +200,7 @@ export async function fetchAchievements(account, id, legacy, force = false) {
       .map(item => [item.apiname, {
         name: String(item.name || item.apiname).slice(0, 300),
         description: String(item.description || '').slice(0, 1000),
+        percent: Number.isFinite(item.percent) && item.percent >= 0 && item.percent <= 100 ? item.percent : null,
         unlocked: item.achieved === 1 || item.achieved === true,
         time: Math.min(nonnegative(item.unlocktime), 253402300799),
         icon: typeof item.icon === 'string' && /^https:\/\/[a-z0-9.-]+\//i.test(item.icon) ? item.icon : ''

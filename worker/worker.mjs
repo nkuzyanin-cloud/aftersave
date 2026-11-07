@@ -6,7 +6,8 @@ const encoder = new TextEncoder();
 const paths = {
   library: 'IPlayerService/GetOwnedGames/v0001/',
   player: 'ISteamUserStats/GetPlayerAchievements/v0001/',
-  schema: 'ISteamUserStats/GetSchemaForGame/v0002/'
+  schema: 'ISteamUserStats/GetSchemaForGame/v0002/',
+  percentages: 'ISteamUserStats/GetGlobalAchievementPercentagesForApp/v2/'
 };
 
 class RequestError extends Error {
@@ -100,7 +101,7 @@ async function authorize(request, env) {
 
 async function steamFetch(path, env, params) {
   const url = new URL(paths[path], STEAM);
-  url.search = new URLSearchParams({ ...params, key: env.STEAM_API_KEY });
+  url.search = new URLSearchParams(path === 'percentages' ? params : { ...params, key: env.STEAM_API_KEY });
   let response;
   try {
     response = await fetch(url, { redirect: 'error', signal: AbortSignal.timeout(TIMEOUT) });
@@ -145,15 +146,23 @@ function safeIcon(value) {
 async function achievements(url, id, env, ctx) {
   const owned = await library(url, env, ctx);
   if (!owned.response.games?.some(item => item.appid === id)) throw new RequestError(404, 'not_owned');
-  return cached(url, env.STEAM_ID + '/achievements/' + id, 1200, ctx, async () => {
+  return cached(url, env.STEAM_ID + '/achievements-v2/' + id, 1200, ctx, async () => {
     const { playerstats } = await steamFetch('player', env, { steamid: env.STEAM_ID, appid: id, l: 'russian' });
     if (!playerstats?.success || playerstats.steamID !== env.STEAM_ID) throw new RequestError(404, 'unavailable');
     const list = Array.isArray(playerstats.achievements) ? playerstats.achievements : [];
     let metadata = new Map();
+    let rarity = new Map();
     if (list.length) {
-      const schema = await cached(url, 'schema/' + id, 86400, ctx, () =>
-        steamFetch('schema', env, { appid: id, l: 'russian' })).catch(() => null);
+      const [schema, percentages] = await Promise.all([
+        cached(url, 'schema/' + id, 86400, ctx, () =>
+          steamFetch('schema', env, { appid: id, l: 'russian' })).catch(() => null),
+        cached(url, 'percentages/' + id, 86400, ctx, () =>
+          steamFetch('percentages', env, { gameid: id })).catch(() => null)
+      ]);
       metadata = new Map((schema?.game?.availableGameStats?.achievements ?? []).map(item => [item.name, item]));
+      rarity = new Map((percentages?.achievementpercentages?.achievements ?? [])
+        .filter(item => Number.isFinite(item.percent) && item.percent >= 0 && item.percent <= 100)
+        .map(item => [item.name, item.percent]));
     }
     return { account: env.STEAM_ID, playerstats: {
       success: true, achievements: list.map(item => {
@@ -161,6 +170,7 @@ async function achievements(url, id, env, ctx) {
         return {
           apiname: item.apiname, achieved: item.achieved, unlocktime: item.unlocktime,
           name: item.name || meta?.displayName, description: item.description || (item.achieved || !meta?.hidden ? meta?.description : ''),
+          percent: rarity.get(item.apiname),
           icon: safeIcon(item.achieved ? meta?.icon : meta?.icongray)
         };
       })

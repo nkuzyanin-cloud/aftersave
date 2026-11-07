@@ -1,4 +1,4 @@
-const VERSION = 3;
+const VERSION = 4;
 const FORMAT = 'game-library';
 export const STORAGE_KEY = `game-library:${new URL('.', import.meta.url).pathname}`;
 const EPOCH = '1970-01-01T00:00:00.000Z';
@@ -257,7 +257,43 @@ function normalizeGame(value, fallbackId, fallbackTimestamp) {
     demo: bool(game.demo, 'Метка демо'),
     favorite: bool(game.favorite, 'Избранное'),
     steam: game.steam == null ? null : normalizeSteamGame(game.steam),
-    runs: normalizeRuns(game.runs ?? [])
+    runs: normalizeRuns(game.runs ?? []),
+    shelf: bool(game.shelf, 'Моя полка', !game.steam),
+    hidden: bool(game.hidden, 'Скрытая игра'),
+    sessions: normalizeJournal(game.sessions ?? [], true),
+    journal: normalizeJournal(game.journal ?? [], false)
+  };
+}
+
+function normalizeJournal(value, session) {
+  const label = session ? 'Сессии' : 'Заметки';
+  const items = list(value, label, 2000).map(value => {
+    const item = object(value, 'Запись журнала');
+    const result = {
+      id: identifier(item.id, 'Идентификатор записи'),
+      date: day(item.date),
+      text: session ? text(item.text, 'Комментарий', 5000) : requiredText(item.text, 'Заметка', 5000)
+    };
+    if (session) {
+      if (!result.date) throw new Error('Укажите дату сессии.');
+      result.minutes = number(item.minutes, 'Длительность в минутах', 1, 1440, null, true);
+      if (!result.minutes) throw new Error('Укажите длительность сессии.');
+    }
+    return result;
+  });
+  ensureUnique(items, label);
+  return items;
+}
+
+function migrateGame(game) {
+  const untouchedImport = game.steam && game.status === 'planned' && game.createdAt === game.updatedAt &&
+    !game.catalogId && game.cover === `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.steam.appid}/library_600x900.jpg` &&
+    game.rating == null && !game.notes && !game.hours && !game.progress && !game.favorite && !game.wishlist &&
+    !game.startedAt && !game.finishedAt && !game.tags?.length && !game.collectionIds?.length && !game.runs?.length;
+  return {
+    ...game, shelf: game.shelf ?? !untouchedImport,
+    journal: game.journal ?? (typeof game.notes === 'string' && game.notes.trim() ?
+      [{ id: 'previous-note', date: '', text: game.notes }] : [])
   };
 }
 
@@ -351,7 +387,7 @@ function normalizeState(value) {
     throw new Error('Выберите резервную копию игровой библиотеки в формате JSON.');
   }
   if (state.version === 1) state = migrateV1(state);
-  if (state.version === 2) state = { ...state, version: VERSION };
+  if ([2, 3].includes(state.version)) state = { ...state, version: VERSION };
   if (state.version !== VERSION) {
     throw new Error('Эта версия формата библиотеки не поддерживается.');
   }
@@ -366,7 +402,7 @@ function normalizeState(value) {
   ensureUnique(collections, 'Коллекции');
   const collectionIds = new Set(collections.map(collection => collection.id));
   const games = list(state.games, 'Игры', 10000)
-    .map(value => normalizeGame(value, undefined, EPOCH))
+    .map(value => normalizeGame(migrateGame(object(value, 'Запись игры')), undefined, EPOCH))
     .filter(game => !game.demo);
   ensureUnique(games, 'Игры');
   const steam = normalizeSteam(state.steam);
@@ -481,7 +517,7 @@ export function exportCSV(state) {
   const rows = games.map(game => [
     game.title, STATUSES[game.status], game.platform, game.genre, game.year, game.rating,
     game.hours, game.progress, game.wishlist ? 'Да' : 'Нет', game.startedAt, game.finishedAt,
-    game.tags.join(', '), game.collectionIds.map(id => names.get(id)).join(', '), game.notes,
+    game.tags.join(', '), game.collectionIds.map(id => names.get(id)).join(', '), game.journal.map(item => item.text).join('\n\n'),
     game.description, game.cover, game.createdAt, game.updatedAt
   ]);
   return '\uFEFF' + [header, ...rows].map(row => row.map(csvCell).join(';')).join('\r\n') + '\r\n';

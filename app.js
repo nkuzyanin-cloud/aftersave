@@ -1,10 +1,10 @@
 
 import {
-  STORAGE_KEY, STATUSES, PLATFORMS, DEMO, DEMO_COLLECTIONS, DEMO_PROFILE, load, save, emptyState,
+  STORAGE_KEY, STATUSES, PLATFORMS, load, save, emptyState,
   createGame, exportJSON, importJSON, exportCSV, searchCatalog, searchOnlineCatalog
 } from './data.js';
 import { icon } from './icons.js';
-import { mergeSteam, fetchLibrary, connect, disconnect, connected, steamCover, steamHeader,
+import { mergeSteam, fetchLibrary, connect, disconnect, connected, steamCover, steamHeader, steamHero,
   fetchAchievements, cachedAchievements, achievementSummaries } from './steam.js';
 
 const app = document.querySelector('#app');
@@ -23,7 +23,12 @@ const dateFormat = new Intl.DateTimeFormat('ru', { day: 'numeric', month: 'long'
 let state;
 let storageError = '';
 try { state = load(); } catch (error) { state = emptyState(); storageError = error.message; }
-let demo = !storageError && state.showDemo;
+let shelfMode = 'shelf';
+let achievementQuery = '';
+let achievementSort = 'default';
+let openFavorites = false;
+const gameTabs = [['overview', 'Обзор', 'game'], ['achievements', 'Достижения', 'trophy'],
+  ['sessions', 'Сессии', 'clock'], ['notes', 'Заметки', 'edit']];
 let toastTimer;
 let route = getRoute();
 let catalogController;
@@ -48,9 +53,9 @@ const esc = value => String(value ?? '').replace(/[&<>"']/g, char =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
 const numeric = value => number.format(value);
 const percent = value => Math.min(100, Math.max(0, Number(value) || 0));
-const games = () => demo ? DEMO : state.games;
-const collections = () => demo ? DEMO_COLLECTIONS : state.collections;
-const profile = () => demo ? DEMO_PROFILE : state.profile;
+const games = () => state.games;
+const collections = () => state.collections;
+const profile = () => state.profile;
 const coverUrl = value => {
   if (/^\.?\/?assets\/covers\/[a-z0-9-]+\.jpg$/i.test(value ?? '')) return './' + value.replace(/^\.?\//, '');
   try {
@@ -60,8 +65,9 @@ const coverUrl = value => {
 };
 
 function getRoute() {
-  const [page, id] = location.hash.slice(1).split('/');
-  return { page: Object.hasOwn(labels, page) ? page : 'library', id };
+  const [page, id, tab] = location.hash.slice(1).split('/');
+  return { page: Object.hasOwn(labels, page) ? page : 'library', id,
+    tab: ['achievements', 'sessions', 'notes'].includes(tab) ? tab : 'overview' };
 }
 
 function go(page, id = '') {
@@ -131,7 +137,7 @@ function shell(content) {
     <div class="sidebar-footer">
       <div class="storage-card"><span class="storage-icon">${icon('shield', 17)}</span><div>
       <strong>Локальное хранилище</strong><small>Данные на этом устройстве</small></div></div>
-      <div class="sidebar-version"><span>AFTERSAVE / V.03</span><span>◆</span></div>
+      <div class="sidebar-version"><span>AFTERSAVE / V.04</span><span>◆</span></div>
     </div>
   </aside>
   <div class="workspace">
@@ -166,23 +172,7 @@ function progressBar(value) {
   return `<div class="progress-track" role="progressbar" aria-label="Прогресс" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent(value)}"><span style="width:${percent(value)}%"></span></div>`;
 }
 
-function hero() {
-  const feature = games().find(game => game.status === 'playing') ?? (demo ? DEMO[0] : games()[0]);
-  const image = feature?.catalogId === 'elden-ring' || feature?.title === 'Elden Ring' ? './assets/elden-ring-hero.jpg' : coverUrl(feature?.cover);
-  return `<section class="hero ${image ? 'hero-image' : 'hero-abstract'}" aria-label="Главная игра">
-    ${image ? `<img class="hero-backdrop" src="${esc(image)}" alt="" fetchpriority="high">` : '<div class="hero-pattern"></div>'}
-    <div class="hero-shade"></div>
-    <div class="hero-content">
-      <div class="hero-kicker"><span></span>${feature?.status === 'playing' ? 'СЕЙЧАС В ИГРЕ' : 'ЛИЧНАЯ БИБЛИОТЕКА'}</div>
-      <h1>${feature ? esc(feature.title) : 'Твоя игровая история'}</h1>
-      <p>${feature ? [feature.genre, feature.year, feature.platform].filter(Boolean).map(esc).join('<i></i>') : 'Собирай игры, отмечай прогресс и возвращайся к любимым мирам.'}</p>
-      ${feature ? `<div class="hero-progress"><div>${progressBar(feature.progress)}</div><strong>${numeric(feature.progress)}%</strong></div>` : ''}
-      ${feature ? `<a class="btn btn-primary" href="#game/${encodeURIComponent(feature.id)}">Открыть игру ${icon('arrow', 17)}</a>` : button('add', 'Добавить первую игру', 'plus', 'primary')}
-    </div>
-    ${demo ? `<div class="hero-demo">${icon('sparkle', 13)} ДЕМО</div>` : ''}
-    <span class="hero-index">01 <i></i> ИГРОВОЙ ЖУРНАЛ</span>
-  </section>`;
-}
+
 
 function metrics(source) {
   const hours = source.reduce((sum, game) => sum + gameHours(game), 0);
@@ -206,7 +196,7 @@ function filtered(source) {
   const result = source.filter(game => {
     const haystack = [game.title, game.genre, game.platform, game.steam?.appid, ...game.tags].join(' ').toLocaleLowerCase('ru');
     return (!query || query.split(/\s+/).every(term => haystack.includes(term))) &&
-      (!filter.status || game.status === filter.status) &&
+      (!filter.status || (game.shelf && game.status === filter.status)) &&
       (!filter.platform || game.platform === filter.platform) &&
       (!filter.tag || game.tags.includes(filter.tag)) &&
       (!filter.collection || game.collectionIds.includes(filter.collection)) &&
@@ -220,23 +210,27 @@ function filtered(source) {
     rating: (a, b) => (b.rating ?? -1) - (a.rating ?? -1),
     progress: (a, b) => b.progress - a.progress
   };
-  if (filter.sort === 'recent' && !demo) return result.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  if (filter.sort === 'recent') return result.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) ||
+    (b.steam?.lastPlayed ?? 0) - (a.steam?.lastPlayed ?? 0));
   return sorts[filter.sort] ? result.sort(sorts[filter.sort]) : result;
 }
 
-function gameCard(game) {
-  const id = esc(game.id);
-  return `<article class="game-card">
+function gameCard(game, compact = false) {
+  const total = summaryFor(game);
+  const achieved = total?.total ? Math.round(total.unlocked / total.total * 100) : null;
+  return `<article class="game-card ${compact ? 'compact-card' : ''}">
     <a href="#game/${encodeURIComponent(game.id)}" class="card-link" aria-label="Открыть ${esc(game.title)}">
-      <div class="card-art">${cover(game)}${statusBadge(game.status)}<span class="card-open">${icon('upRight', 18)}</span></div>
-      <div class="card-body"><h3>${esc(game.title)}${game.favorite ? ' <span class="favorite-mark">★</span>' : ''}</h3>
-        <div class="card-meta"><span>${icon('monitor', 14)} ${esc(game.platform)}</span>
-          ${game.rating !== null ? `<span class="rating">${icon('star', 14)} ${numeric(game.rating)}</span>` : ''}</div>
-        <div class="card-progress"><span>${game.steam ? `Steam · ${numeric(game.steam.minutes / 60)} ч` : 'Прогресс'}</span><strong>${numeric(game.progress)}%</strong></div>${progressBar(game.progress)}
+      <div class="card-art">${cover(game)}${game.shelf ? statusBadge(game.status) : ''}</div>
+      <div class="card-body"><h3>${esc(game.title)}</h3>
+        <div class="card-meta"><span>${icon('clock', 14)} ${numeric(gameHours(game))} ч</span></div>
+        <div class="card-progress"><span>${icon('trophy', 13)} ${total?.total ? total.unlocked + ' / ' + total.total : '—'}</span>
+          ${achieved === null ? '' : `<strong>${achieved}%</strong>`}</div>
+        ${achieved === null ? '<div class="progress-track"></div>' : progressBar(achieved)}
       </div>
     </a>
-    ${!demo ? iconButton('wish', game.wishlist ? 'Убрать из списка желаний' : 'В список желаний', 'bookmark',
-      `data-id="${id}" aria-pressed="${game.wishlist}"`) : ''}
+    ${compact ? '' : `<div class="card-tools">${iconButton('favorite', game.favorite ? 'Убрать из избранного' : 'В избранное', 'star',
+      `data-id="${esc(game.id)}" aria-pressed="${game.favorite}"`)}${iconButton('hide-game', game.hidden ? 'Вернуть игру' : 'Скрыть игру',
+      game.hidden ? 'eye' : 'eyeOff', `data-id="${esc(game.id)}"`)}</div>`}
   </article>`;
 }
 
@@ -246,8 +240,13 @@ function gameList(source) {
     const isFiltered = Boolean(filter.query || filter.status || filter.platform || filter.tag || filter.collection || steamScope);
     return `<div class="empty"><span class="empty-icon">${icon(isFiltered ? 'search' : 'game', 29)}</span>
       <h2>${isFiltered ? 'Игры не найдены' : 'Здесь пока пусто'}</h2>
-      <p>${isFiltered ? 'Попробуйте другой запрос или сбросьте фильтры.' : 'Добавьте игру из каталога или заполните карточку вручную.'}</p>
-      ${isFiltered ? button('clear-filters', 'Сбросить фильтры', 'x') : button('add', 'Добавить игру', 'plus', 'primary')}</div>`;
+      <p>${isFiltered ? 'Попробуйте другой запрос или сбросьте фильтры.' :
+        route.page === 'library' && shelfMode === 'hidden' ? 'Скрытые игры можно вернуть в библиотеку в любой момент.' :
+        route.page === 'library' && shelfMode === 'shelf' ? 'Добавьте игру или выставьте статус любой игре из полного списка.' :
+        'Добавьте игру из каталога или заполните карточку вручную.'}</p>
+      ${isFiltered ? button('clear-filters', 'Сбросить фильтры', 'x') :
+        route.page === 'library' && shelfMode === 'hidden' ? button('shelf', 'Все игры', 'library', 'secondary', 'data-value="all"') :
+        button('add', 'Добавить игру', 'plus', 'primary')}</div>`;
   }
   return `<div class="game-grid ${filter.view === 'list' ? 'list-view' : ''}">${result.slice(0, displayLimit).map(gameCard).join('')}</div>
     ${result.length > displayLimit ? `<div class="load-more">${button('more-games', 'Показать ещё игры', 'down')}</div>` : ''}`;
@@ -261,7 +260,7 @@ function viewControls(source) {
   const platforms = [...new Set(source.map(game => game.platform))].sort();
   const tags = [...new Set(source.flatMap(game => game.tags))].sort((a, b) => a.localeCompare(b, 'ru'));
   return `<div class="library-controls">
-    <div class="tabs" aria-label="Статус игры">${[['', 'Все игры'], ...Object.entries(STATUSES)].map(([value, label]) =>
+    <div class="tabs" aria-label="Статус игры">${[['', 'Любой статус'], ...Object.entries(STATUSES)].map(([value, label]) =>
       `<button type="button" class="tab ${filter.status === value ? 'selected' : ''}" data-action="status" data-value="${value}" aria-pressed="${filter.status === value}">${label}</button>`).join('')}</div>
     <div class="filter-actions">
       ${iconButton('filters', 'Платформы, теги и коллекции', 'filter', `aria-controls="advanced-filters" aria-expanded="${Boolean(filter.advanced || filter.platform || filter.tag || filter.collection)}" aria-pressed="${Boolean(filter.platform || filter.tag || filter.collection)}"`)}
@@ -284,7 +283,9 @@ function viewControls(source) {
 }
 
 function sourceForPage() {
-  if (route.page === 'wishlist') return games().filter(game => game.wishlist);
+  if (route.page === 'library') return games().filter(game => shelfMode === 'hidden' ? game.hidden :
+    !game.hidden && (shelfMode === 'all' || game.shelf));
+  if (route.page === 'wishlist') return games().filter(game => !game.hidden && game.wishlist);
   if (route.page === 'collections' && route.id) {
     const collection = findByRoute(collections());
     return collection ? games().filter(game => game.collectionIds.includes(collection.id)) : [];
@@ -297,21 +298,22 @@ function gameResults(source) {
 }
 
 function library() {
-  return `${demo || !state.steam ? hero() : ''}${!demo ? steamPanel() : ''}${metrics(games())}
-    <section class="library-section" aria-labelledby="library-heading">
-      <div class="section-heading"><div><div class="eyebrow"><i></i>ТВОЯ КОЛЛЕКЦИЯ</div>
-      <h2 id="library-heading">Игровая библиотека</h2>
-      <p>${demo ? 'Демо · примеры записей и прогресса' : 'Все игровые миры в одном месте'}</p></div>
-      <div class="heading-actions">${button('toggle-demo', demo ? 'Мои игры' : 'Демо', demo ? 'arrow' : 'sparkle', 'secondary', 'id="switch-library"')}
-      ${demo ? `<a class="btn btn-secondary" href="#settings">${icon('download', 17)} Steam</a>` : ''}
-      ${button('add', 'Добавить игру', 'plus', 'primary')}</div></div>
-      ${viewControls(games())}${gameResults(games())}
-    </section>`;
+  const source = sourceForPage();
+  const visible = games().filter(game => !game.hidden);
+  const options = [['shelf','Моя полка',visible.filter(game => game.shelf).length],['all','Все игры',visible.length],
+    ['hidden','Скрытые',games().length - visible.length]];
+  return `<section class="library-section">
+    ` + header('КОЛЛЕКЦИЯ', 'Библиотека', 'Личные записи и игры из Steam', button('add', 'Добавить игру', 'plus', 'primary')) + `
+    ${dashboardMetrics(visible, visible.filter(game => game.shelf && game.status === 'playing'))}
+    <div class="shelf-switch" aria-label="Раздел библиотеки">${options.map(([id,label,count]) =>
+      `<button type="button" data-action="shelf" data-value="${id}" aria-pressed="${shelfMode === id}">${label} <small>${count}</small></button>`).join('')}</div>
+    ${viewControls(source)}${gameResults(source)}
+  </section>`;
 }
 
 function wishlistPage() {
   const source = sourceForPage();
-  return `${header('ПЛАНЫ', labels.wishlist, demo ? 'Демонстрационная подборка игр на будущее.' : 'Игры, к которым хочется вернуться позже.', button('add-wish', 'Добавить игру', 'plus', 'primary'))}
+  return `${header('ПЛАНЫ', labels.wishlist, 'Игры, к которым хочется вернуться позже.', button('add-wish', 'Добавить игру', 'plus', 'primary'))}
     ${viewControls(source)}${gameResults(source)}`;
 }
 
@@ -319,13 +321,13 @@ function collectionsPage() {
   const collection = findByRoute(collections());
   if (collection) {
     const source = sourceForPage();
-    const actions = demo ? '' : button('edit-collection', 'Редактировать', 'edit', 'secondary', `data-id="${esc(collection.id)}"`);
+    const actions = button('edit-collection', 'Редактировать', 'edit', 'secondary', `data-id="${esc(collection.id)}"`);
     return `<a class="back-link" href="#collections">${icon('back', 17)} Все коллекции</a>
-      ${header('ПОДБОРКА', esc(collection.name), demo ? 'Демонстрационная коллекция.' : 'Игры из этой коллекции.', actions)}
+      ${header('ПОДБОРКА', esc(collection.name), 'Игры из этой коллекции.', actions)}
       ${viewControls(source)}${gameResults(source)}`;
   }
   const list = collections();
-  return `${header('ПОДБОРКИ', labels.collections, demo ? 'Демонстрационные подборки. Свои коллекции доступны в личной библиотеке.' : 'Группируй игры по серии, настроению или любому другому принципу.', button('new-collection', 'Новая коллекция', 'plus', 'primary'))}
+  return `${header('ПОДБОРКИ', labels.collections, 'Группируй игры по серии, настроению или любому другому принципу.', button('new-collection', 'Новая коллекция', 'plus', 'primary'))}
     ${list.length ? `<div class="collection-grid">${list.map(item => {
       const grouped = games().filter(game => game.collectionIds.includes(item.id));
       return `<a href="#collections/${encodeURIComponent(item.id)}" class="collection-card panel">
@@ -342,39 +344,7 @@ function dateLabel(value) {
   return Number.isNaN(date.valueOf()) ? '—' : dateFormat.format(date);
 }
 
-function gamePage() {
-  const game = findByRoute(games());
-  if (!game) return `<a class="back-link" href="#library">${icon('back', 17)} Библиотека</a>
-    <div class="empty"><span class="empty-icon">${icon('game', 29)}</span><h2>Игра не найдена</h2><p>Откройте карточку из текущей библиотеки.</p></div>`;
-  const actions = demo ? button('copy-demo', 'Добавить к себе', 'plus', 'primary') :
-    button('edit-game', 'Редактировать', 'edit', 'primary') + iconButton('wish', game.wishlist ? 'Убрать из списка желаний' : 'В список желаний', 'bookmark',
-      `data-id="${esc(game.id)}" aria-pressed="${game.wishlist}"`) + iconButton('favorite', game.favorite ? 'Убрать из избранного' : 'В избранное', 'star', `aria-pressed="${game.favorite}"`);
-  const tags = game.tags.map(tag => `<span class="pill"># ${esc(tag)}</span>`).join('');
-  const groups = collections().filter(item => game.collectionIds.includes(item.id));
-  return `<a class="back-link" href="#library">${icon('back', 17)} Библиотека</a>
-    <section class="game-detail panel">${cover(game, 'detail-cover')}<div class="detail-info">
-      <div class="eyebrow"><i></i>${demo ? 'ДЕМО · ПРИМЕР ЗАПИСИ' : 'ИГРОВОЙ ЖУРНАЛ'}</div>
-      <h1>${esc(game.title)}</h1><p class="detail-meta">${[game.genre, game.year, game.platform].filter(Boolean).map(esc).join(' · ')}</p>
-      ${statusBadge(game.status)}
-      ${game.description ? `<p class="description">${esc(game.description)}</p>` : ''}
-      <div class="detail-actions">${actions}</div>
-    </div></section>
-    <div class="detail-grid">
-      <section class="panel detail-panel"><h2>Личный прогресс</h2><div class="progress-label"><strong>${numeric(game.progress)}%</strong><span>${numeric(game.hours)} ч вручную</span></div>
-        ${progressBar(game.progress)}<dl>
-        <div><dt>Оценка</dt><dd>${game.rating === null ? '—' : numeric(game.rating) + ' / 10'}</dd></div>
-        <div><dt>Начало</dt><dd>${dateLabel(game.startedAt)}</dd></div>
-        <div><dt>Завершение</dt><dd>${dateLabel(game.finishedAt)}</dd></div>
-        ${game.steam ? `<div><dt>Steam AppID</dt><dd>${game.steam.appid}</dd></div><div><dt>Время в Steam</dt><dd>${numeric(game.steam.minutes / 60)} ч</dd></div><div><dt>Последний запуск Steam</dt><dd>${steamDate(game.steam.lastPlayed)}</dd></div>` : ''}
-        </dl></section>
-      <section class="panel detail-panel"><h2>Заметки</h2><p class="notes">${game.notes ? esc(game.notes) : 'Здесь можно записать впечатления, планы и полезные находки.'}</p>
-        ${tags ? `<div class="pills">${tags}</div>` : ''}
-        ${groups.length ? `<div class="pills">${groups.map(item => `<a class="pill" href="#collections/${encodeURIComponent(item.id)}">${icon('layers', 15)} ${esc(item.name)}</a>`).join('')}</div>` : ''}</section>
-    </div>
-    ${!demo ? runsPanel(game) : ''}
-    ${!demo && game.steam ? `<section class="panel steam-section" id="steam-achievements" data-appid="${game.steam.appid}"><h2>Достижения Steam</h2><p>Загружаем сохранённые данные…</p></section>` : ''}
-    ${demo ? '' : `<div class="detail-delete">${button('delete-game', 'Удалить игру', 'trash', 'danger')}</div>`}`;
-}
+function gamePage() { return gameDashboard(); }
 
 function statsPage() {
   const source = games();
@@ -394,8 +364,8 @@ function statsPage() {
   const totalRated = source.filter(game => game.rating !== null);
   const average = totalRated.length ? totalRated.reduce((sum, game) => sum + game.rating, 0) / totalRated.length : 0;
   const best = [...totalRated].sort((a, b) => b.rating - a.rating).slice(0, 4);
-  return `${header('ОБЗОР', labels.stats, demo ? 'Пример сводки по демонстрационным данным.' : 'Прогресс и привычки в цифрах.')}
-    ${metrics(source)}${!demo ? steamStats() : ''}
+  return `${header('ОБЗОР', labels.stats, 'Прогресс и привычки в цифрах.')}
+    ${metrics(source)}${steamStats()}
     <div class="charts">
       <section class="panel chart-panel"><h2>По статусам</h2><p>Как распределены игры</p>
         <div class="donut-layout"><div class="donut" style="--segments:${segments.join(', ') || '#2b2e3b 0deg 360deg'}" aria-hidden="true"><strong>${source.length}<small>ИГР</small></strong></div>
@@ -409,17 +379,7 @@ function statsPage() {
     </div>`;
 }
 
-function profilePage() {
-  const player = profile();
-  return `${header('ИГРОК', labels.profile, demo ? 'Пример игрового профиля.' : 'Твой профиль и краткая сводка.')}
-    <section class="panel profile-card"><div class="profile-avatar">${esc(initials(player.name))}</div>
-      <div><div class="eyebrow"><i></i>${demo ? 'ДЕМО-ПРОФИЛЬ' : 'ЛОКАЛЬНЫЙ ПРОФИЛЬ'}</div>
-        <h2>${esc(player.name)}</h2><p class="notes">${esc(player.bio || 'Добавь пару слов о себе.')}</p></div>
-      ${button('edit-profile', demo ? 'Настроить свой профиль' : 'Редактировать', 'edit')}</section>
-    ${metrics(games())}${!demo ? steamStats() : ''}
-    <div class="panel quick-links"><a href="#stats">${icon('chart', 20)} Полная статистика ${icon('right', 16)}</a>
-      <a href="#settings">${icon('settings', 20)} Настройки и резервные копии ${icon('right', 16)}</a></div>`;
-}
+function profilePage() { return profileDashboard(); }
 
 function settingsPage() {
   return `${header('ЛИЧНОЕ', labels.settings, 'Данные библиотеки, резервные копии и установка приложения.')}
@@ -430,9 +390,6 @@ function settingsPage() {
           ${button('import-json', 'Восстановить JSON', 'upload')}
           ${button('export-csv', 'Скачать CSV', 'download', 'secondary', storageError ? 'disabled' : '')}</div>
         <input id="backup-file" type="file" accept=".json,application/json" hidden></section>
-      <section class="panel settings-panel"><span class="metric-icon violet">${icon('sparkle', 21)}</span><h2>Режим библиотеки</h2>
-        <p>Демо открывает отдельный набор примеров. Личные записи и резервные копии хранятся отдельно.</p>
-        <div class="settings-actions">${button('toggle-demo', demo ? 'Перейти в мои игры' : 'Открыть демо', demo ? 'arrow' : 'sparkle')}</div></section>
       <section class="panel settings-panel"><span class="metric-icon aqua">${icon('monitor', 21)}</span><h2>Приложение на экране «Домой»</h2>
         <p>На iPhone открой AFTERSAVE в Safari и выбери «Поделиться» → «На экран “Домой”». На компьютере используй пункт установки приложения в браузере, если он доступен.</p>
         <small id="offline-label">${'serviceWorker' in navigator && navigator.serviceWorker.controller ? 'Офлайн-режим готов на этом устройстве.' : 'Офлайн-режим доступен после первой загрузки по HTTPS.'}</small></section>
@@ -443,11 +400,10 @@ function settingsPage() {
 
 function render(focusMain = false) {
   const views = { library, wishlist: wishlistPage, collections: collectionsPage, stats: statsPage, profile: profilePage, settings: settingsPage, game: gamePage };
-  const demoNotice = demo && !['library', 'settings', 'game'].includes(route.page) ?
-    `<div class="demo-notice">${icon('sparkle', 17)} <span>Демонстрационные данные</span> ${button('toggle-demo', 'Мои игры', 'arrow', 'quiet')}</div>` : '';
-  app.innerHTML = shell(demoNotice + views[route.page]());
+  app.innerHTML = shell(views[route.page]());
+
   imageFallbacks(app);
-  if (route.page === 'game' && !demo) showAchievements();
+  if (route.page === 'game') showAchievements();
   document.title = route.page === 'library' ? 'AFTERSAVE — игровая библиотека' : `${labels[route.page]} · AFTERSAVE`;
   if (focusMain) app.querySelector('#main').focus({ preventScroll: true });
 }
@@ -520,8 +476,9 @@ function openGameForm(game = {}, editing = false) {
   showDialog(title, 'ИГРОВОЙ ЖУРНАЛ', `<form id="game-form"><div class="dialog-body form-grid">
     ${inputField('Название', 'title', game.title, 'required maxlength="160" autofocus')}
     <label class="field"><span>Платформа</span><select name="platform">${platforms.map(value => option(value, value, knownPlatform)).join('')}</select></label>
-    <label class="field"><span>Статус</span><select name="status">${Object.entries(STATUSES).map(([value, label]) => option(value, label, game.status || 'planned')).join('')}</select></label>
-    ${inputField('Прогресс, %', 'progress', game.progress ?? 0, 'min="0" max="100" step="any" required', 'number')}
+    <label class="field"><span>Статус</span><select name="status">
+      ${editing && !game.shelf ? option('', 'Без статуса', '') : ''}
+      ${Object.entries(STATUSES).map(([value, label]) => option(value, label, editing && !game.shelf ? '' : game.status || 'planned')).join('')}</select></label>
     ${inputField('Время, ч', 'hours', game.hours ?? 0, 'min="0" max="100000" step="any" required', 'number')}
     ${inputField('Оценка / 10', 'rating', game.rating, 'min="0" max="10" step="any" placeholder="Без оценки"', 'number')}
     ${inputField('Дата начала', 'startedAt', game.startedAt, '', 'date')}
@@ -530,7 +487,6 @@ function openGameForm(game = {}, editing = false) {
     ${inputField('Год выпуска', 'year', game.year, 'min="1900" max="2100" step="1" placeholder="Например, 2022"', 'number')}
     ${inputField('Теги через запятую', 'tags', (game.tags || []).join(', '), 'maxlength="819" placeholder="кооператив, уютные игры"')}
     <label class="field"><span>Обложка по HTTPS</span><input name="cover" value="${esc(coverUrl(game.cover).startsWith('https:') ? game.cover : '')}" type="url" placeholder="https://…" maxlength="2048"></label>
-    <label class="field span-all"><span>Заметки</span><textarea name="notes" rows="3" maxlength="5000" placeholder="Впечатления, цели или напоминания">${esc(game.notes)}</textarea></label>
     <label class="checkbox span-all"><input name="wishlist" type="checkbox" ${game.wishlist ? 'checked' : ''}> В списке желаний</label>
     ${state.collections.length ? `<fieldset class="fieldset span-all"><legend>Коллекции</legend>
       ${state.collections.map(item => `<label class="checkbox"><input type="checkbox" name="collection" value="${esc(item.id)}" ${game.collectionIds?.includes(item.id) ? 'checked' : ''}> ${esc(item.name)}</label>`).join('')}</fieldset>` : ''}
@@ -566,14 +522,15 @@ function saveGame(form) {
   const title = fields.get('title').trim();
   const startedAt = fields.get('startedAt');
   const finishedAt = fields.get('finishedAt');
+  const status = fields.get('status');
   if (!title) return formError(form, 'Введите название игры.');
   if (coverInput && !coverUrl(coverInput).startsWith('https:')) return formError(form, 'Адрес обложки должен начинаться с https://.');
   if (startedAt && finishedAt && finishedAt < startedAt) return formError(form, 'Дата завершения должна быть не раньше даты начала.');
   const value = {
-    ...draft.game, title, platform: fields.get('platform'), status: fields.get('status'),
-    progress: Number(fields.get('progress')), hours: Number(fields.get('hours')),
+    ...draft.game, title, platform: fields.get('platform'), status: status || draft.game.status || 'planned',
+    hours: Number(fields.get('hours')),
     rating: fields.get('rating') === '' ? null : Number(fields.get('rating')),
-    startedAt, finishedAt, notes: fields.get('notes'), genre: fields.get('genre'), year: fields.get('year') ? Number(fields.get('year')) : null,
+    startedAt, finishedAt, shelf: Boolean(status || draft.game.shelf), genre: fields.get('genre'), year: fields.get('year') ? Number(fields.get('year')) : null,
     tags: fields.get('tags').split(',').map(tag => tag.trim()).filter(Boolean), wishlist: fields.has('wishlist'),
     collectionIds: fields.getAll('collection'), cover: coverInput || (coverUrl(draft.game.cover).startsWith('./') ? draft.game.cover : ''),
     demo: false, updatedAt: new Date().toISOString()
@@ -582,8 +539,6 @@ function saveGame(form) {
     const record = createGame(value);
     const allGames = draft.editing ? state.games.map(game => game.id === record.id ? record : game) : [...state.games, record];
     if (commit({ ...state, showDemo: false, games: allGames }, draft.editing ? 'Изменения сохранены' : 'Игра добавлена')) {
-      if (demo) clearFilters();
-      demo = false;
       dialog.close();
       go('game', record.id);
       render();
@@ -597,14 +552,7 @@ function clearFilters() {
   displayLimit = 24;
 }
 
-function toggleDemo() {
-  if (commit({ ...state, showDemo: !demo })) {
-    demo = !demo;
-    clearFilters();
-    if (route.page === 'game' || route.id) go('library');
-    render();
-  }
-}
+
 
 function download(name, data, mime) {
   const url = URL.createObjectURL(new Blob([data], { type: mime }));
@@ -626,6 +574,18 @@ function dateStamp() {
 const actions = {
   'more-games': () => { displayLimit += 24; renderResults(true); },
   'steam-sync': () => steamSync(),
+  'steam-entry': steamEntry,
+  'open-favorites': () => { openFavorites = true; go('library'); },
+  'shelf': control => { shelfMode = control.dataset.value; displayLimit = 24; render(); },
+  'hide-game': control => {
+    const game = state.games.find(item => item.id === control.dataset.id) ?? findByRoute(state.games);
+    if (game && updateGame(game, { hidden: !game.hidden }, game.hidden ? 'Игра возвращена' : 'Игра скрыта')) render();
+  },
+  'new-session': () => openJournal('sessions'),
+  'edit-session': control => openJournal('sessions', control.dataset.id),
+  'new-note': () => openJournal('journal'),
+  'edit-note': control => openJournal('journal', control.dataset.id),
+  'delete-journal': control => deleteJournal(control.dataset.kind, control.dataset.id),
   'steam-connect': openSteamLogin,
   'steam-disconnect': () => { disconnect(); legacySteam = false; stopAchievementScan = true; render(); },
   'steam-legacy': openSteamLegacy,
@@ -635,9 +595,9 @@ const actions = {
   'new-run': () => openRun(),
   'edit-run': control => openRun(control.dataset.id),
   'delete-run': control => deleteRun(control.dataset.id),
-  'favorite': () => {
-    const game = findByRoute(state.games);
-    if (game && !demo && updateGame(game, { favorite: !game.favorite }, game.favorite ? 'Убрано из избранного' : 'В избранном')) render();
+  'favorite': control => {
+    const game = state.games.find(item => item.id === control.dataset.id) ?? findByRoute(state.games);
+    if (game && updateGame(game, { favorite: !game.favorite }, game.favorite ? 'Убрано из избранного' : 'В избранном')) render();
   },
   'add': () => openCatalog(),
   'add-wish': () => openCatalog(true),
@@ -647,18 +607,13 @@ const actions = {
     const item = candidates[Number(control.dataset.index)];
     if (item) openGameForm({ ...item, catalogId: item.id, id: undefined, wishlist: wishDefault });
   },
-  'copy-demo': () => {
-    const game = findByRoute(DEMO);
-    if (game) openGameForm({ title: game.title, platform: game.platform, cover: game.cover,
-      description: game.description, genre: game.genre, accent: game.accent, year: game.year, catalogId: game.catalogId });
-  },
   'edit-game': () => {
     const game = findByRoute(state.games);
-    if (game && !demo) openGameForm(game, true);
+    if (game) openGameForm(game, true);
   },
   'delete-game': () => {
     const game = findByRoute(state.games);
-    if (!game || demo) return;
+    if (!game) return;
     confirmAction('Удалить игру?', `«${esc(game.title)}» и её прогресс будут удалены из библиотеки.`, 'Удалить игру', () => {
       if (!commit({ ...state, games: state.games.filter(item => item.id !== game.id) }, 'Игра удалена')) return false;
       go('library');
@@ -667,7 +622,7 @@ const actions = {
   },
   'wish': control => {
     const game = state.games.find(item => item.id === control.dataset.id);
-    if (!game || demo) return;
+    if (!game) return;
     const next = state.games.map(item => item.id === game.id ?
       { ...item, wishlist: !item.wishlist, updatedAt: new Date().toISOString() } : item);
     if (commit({ ...state, games: next }, game.wishlist ? 'Удалено из списка желаний' : 'Добавлено в список желаний')) render();
@@ -689,15 +644,14 @@ const actions = {
   'grid': () => { filter.view = 'grid'; render(); app.querySelector('[data-action="grid"]')?.focus(); },
   'list': () => { filter.view = 'list'; render(); app.querySelector('[data-action="list"]')?.focus(); },
   'clear-filters': () => { clearFilters(); render(); },
-  'toggle-demo': toggleDemo,
   'new-collection': () => openCollectionForm(),
   'edit-collection': control => {
     const item = state.collections.find(item => item.id === control.dataset.id);
-    if (item && !demo) openCollectionForm(item);
+    if (item) openCollectionForm(item);
   },
   'delete-collection': control => {
     const item = state.collections.find(item => item.id === control.dataset.id);
-    if (!item || demo) return;
+    if (!item) return;
     confirmAction('Удалить коллекцию?', `Подборка «${esc(item.name)}» исчезнет. Её игры останутся в библиотеке.`, 'Удалить коллекцию', () => {
       const next = state.collections.filter(collection => collection.id !== item.id);
       const updated = state.games.map(game => ({ ...game, collectionIds: game.collectionIds.filter(id => id !== item.id) }));
@@ -734,6 +688,10 @@ document.addEventListener('input', event => {
       go('library');
     } else renderResults();
   }
+  if (event.target.id === 'achievement-query') {
+    achievementQuery = event.target.value;
+    updateAchievementRows();
+  }
   if (event.target.id === 'catalog-query') {
     catalogController?.abort();
     catalogController = undefined;
@@ -751,7 +709,16 @@ app.addEventListener('change', async event => {
   }
   if (field.id === 'achievement-filter') {
     achievementFilter = field.value;
-    showAchievements();
+    updateAchievementRows();
+  }
+  if (field.id === 'achievement-sort') {
+    achievementSort = field.value;
+    updateAchievementRows();
+  }
+  if (field.id === 'game-status') {
+    const game = findByRoute(state.games);
+    if (game && updateGame(game, { status: field.value, shelf: true }, 'Статус сохранён')) render();
+    else if (game) field.value = game.shelf ? game.status : '';
   }
   const fields = { sort: 'sort', 'platform-filter': 'platform', 'tag-filter': 'tag', 'collection-filter': 'collection' };
   if (Object.hasOwn(fields, field.id)) {
@@ -770,7 +737,6 @@ app.addEventListener('change', async event => {
     const backup = importJSON(await file.text());
     confirmAction('Восстановить библиотеку?', `В копии ${backup.games.length} игр и ${backup.collections.length} коллекций. Она заменит текущую библиотеку и профиль.`, 'Восстановить', () => {
       if (!commit(backup, 'Библиотека восстановлена', { replace: true })) return false;
-      demo = state.showDemo;
       clearFilters();
       render();
       return true;
@@ -778,25 +744,18 @@ app.addEventListener('change', async event => {
   } catch (error) { notify(error.message || 'Не удалось прочитать файл копии.', true); }
 });
 
-dialog.addEventListener('change', event => {
-  if (event.target.name === 'status' && ['completed', 'perfect'].includes(event.target.value)) {
-    event.target.form.elements.progress.value = 100;
-  }
-});
-
 dialog.addEventListener('submit', event => {
   const form = event.target;
   event.preventDefault();
   if (form.id === 'steam-login-form') loginSteam(form);
   if (form.id === 'run-form') saveRun(form);
+  if (form.id === 'journal-form') saveJournal(form);
   if (form.id === 'game-form') saveGame(form);
   if (form.id === 'profile-form') {
     const fields = new FormData(form);
     const name = fields.get('name').trim();
     if (!name) return formError(form, 'Введите имя.');
     if (commit({ ...state, showDemo: false, profile: { name, bio: fields.get('bio') } }, 'Профиль сохранён')) {
-      if (demo) clearFilters();
-      demo = false;
       dialog.close();
       render();
     }
@@ -808,8 +767,6 @@ dialog.addEventListener('submit', event => {
     const item = { id, name };
     const list = form.dataset.id ? state.collections.map(record => record.id === id ? item : record) : [...state.collections, item];
     if (commit({ ...state, showDemo: false, collections: list }, 'Коллекция сохранена')) {
-      if (demo) clearFilters();
-      demo = false;
       dialog.close();
       go('collections', id);
       render();
@@ -851,8 +808,17 @@ window.addEventListener('hashchange', () => {
     filter.query = query;
   }
   route = next;
+  if (openFavorites && route.page === 'library') {
+    openFavorites = false;
+    clearFilters();
+    shelfMode = 'all';
+    steamScope = 'favorite';
+    filter.advanced = true;
+  }
   displayLimit = 24;
   achievementFilter = '';
+  achievementQuery = '';
+  achievementSort = 'default';
   window.scrollTo(0, 0);
   if (dialog.open) dialog.close();
   render(!searchPending);
@@ -869,7 +835,6 @@ function refreshFromStorage() {
   try {
     state = load();
     storageError = '';
-    demo = state.showDemo;
   } catch (error) {
     storageError = error.message;
   }
@@ -905,20 +870,6 @@ document.addEventListener('keydown', event => {
   search.querySelector('input').focus();
 });
 
-render();
-refreshSteamSummaries();
-setInterval(() => {
-  if (state.steam && Date.now() - Date.parse(state.steam.lastSync) >= 30 * 60 * 1000 &&
-      (connected() || legacySteam) && !document.hidden && !dialog.open && navigator.onLine) steamSync();
-}, 60 * 1000);
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register(new URL('./sw.js', import.meta.url)).catch(error => console.warn('AFTERSAVE offline:', error));
-  navigator.serviceWorker.addEventListener('controllerchange', () => {
-    const offline = app.querySelector('#offline-label');
-    if (offline) offline.textContent = 'Офлайн-режим готов на этом устройстве.';
-  });
-}
-
 
 function imageFallbacks(root) {
   root.querySelectorAll('img').forEach(image => {
@@ -942,11 +893,11 @@ function steamPanel() {
   const last = state.steam ? 'Последняя синхронизация · ' + new Date(state.steam.lastSync).toLocaleString('ru') :
     'Игры и время появятся после первого импорта.';
   return `<section class="panel steam-panel" aria-label="Синхронизация Steam">
-    <div><div class="eyebrow"><i></i>STEAM ${legacySteam ? '· ТЕСТОВЫЙ РЕЖИМ' : ''}</div>
+    <div><div class="eyebrow"><i></i>STEAM ${legacySteam ? '· ПУБЛИЧНЫЙ WORKER' : ''}</div>
       <h2>Библиотека Steam</h2><p>${esc(last)}</p></div>
     <div class="settings-actions">${button('steam-sync', 'Синхронизировать Steam', 'download', 'primary', syncingSteam ? 'disabled' : '')}
       ${active ? button('steam-disconnect', 'Отключить сеанс', 'x', 'secondary', syncingSteam ? 'disabled' : '') :
-        button('steam-legacy', 'Тестовое подключение', 'settings', 'secondary')}</div>
+        button('steam-legacy', 'Публичный Worker', 'settings', 'secondary')}</div>
     ${syncingSteam ? '<progress class="steam-progress" aria-label="Синхронизация Steam"></progress>' : ''}
     ${steamMessage ? `<p class="steam-message ${steamError ? 'form-error' : ''}" role="status">${esc(steamMessage)}</p>` : ''}
   </section>`;
@@ -960,7 +911,7 @@ function openSteamLogin() {
 }
 
 function openSteamLegacy() {
-  confirmAction('Подключить тестовый Worker?', 'Текущий Worker выдаёт библиотеку через публичный адрес. Используйте этот режим для проверки существующего подключения. Для личного использования настройте защищённый Worker.', 'Синхронизировать', () => {
+  confirmAction('Подключить публичный Worker?', 'Этот Worker отдаёт данные Steam по публичному адресу. Для доступа с паролем выберите защищённое подключение.', 'Синхронизировать', () => {
     legacySteam = true;
     disconnect();
     steamSync();
@@ -986,7 +937,6 @@ async function steamSync() {
   if (syncingSteam) return;
   if (!(legacySteam || connected())) return openSteamLogin();
   if (storageError) return notify('Сначала восстановите библиотеку из копии.', true);
-  const startedFromDemo = demo;
   const originalAccount = state.steam?.account;
   syncingSteam = true;
   steamError = false;
@@ -995,14 +945,12 @@ async function steamSync() {
   try {
     const response = await fetchLibrary(legacySteam, originalAccount, step => {
       steamMessage = step;
-      const status = app.querySelector('.steam-message');
+      const status = app.querySelector('.steam-message, .profile-sync-message');
       if (status) status.textContent = step;
     });
     if (storageError || state.steam?.account !== originalAccount) throw new Error('Библиотека изменилась во время синхронизации. Повторите попытку.');
     const result = mergeSteam(state, response);
     if (!commit(result.state)) throw new Error('Данные Steam не сохранены. Проверьте сообщение и повторите попытку.');
-    if (startedFromDemo) clearFilters();
-    demo = false;
     steamMessage = response.entries.length ? `Получено ${response.entries.length} игр · добавлено ${result.added} · обновлено ${result.updated}.` :
       'Steam вернул пустую библиотеку. Личные записи сохранены.';
     refreshSteamSummaries();
@@ -1048,47 +996,10 @@ async function refreshSteamSummaries(repaint = true) {
   summaryAccount = account;
   summaries = records;
   if (repaint && !dialog.open && ['stats', 'profile'].includes(route.page)) render();
+  if (repaint && !dialog.open && route.page === 'library' && records.length) renderResults(true);
 }
 
-async function showAchievements(force = false) {
-  const box = document.querySelector('#steam-achievements');
-  if (!box) return;
-  const view = ++achievementView;
-  const account = state.steam?.account;
-  const id = Number(box.dataset.appid);
-  const cached = await cachedAchievements(account, id);
-  if (!box.isConnected || view !== achievementView) return;
-  const active = connected() || legacySteam;
-  drawAchievements(box, cached, active && (force || !cached) ? 'Загружаем достижения…' :
-    (!active && !cached ? 'Включите Steam в настройках, чтобы загрузить достижения.' : ''));
-  if (!active) {
-    if (force) openSteamLogin();
-    return;
-  }
-  if (!force && cached && Date.now() - cached.fetchedAt < 24 * 60 * 60 * 1000) return;
-  try {
-    const record = await fetchAchievements(account, id, legacySteam, force);
-    if (box.isConnected && view === achievementView) drawAchievements(box, record);
-    refreshSteamSummaries(false);
-  } catch (error) {
-    if (box.isConnected && view === achievementView) drawAchievements(box, cached, error.message);
-  }
-}
 
-function drawAchievements(box, record, message = '') {
-  const items = record?.items.filter(item => !achievementFilter || item.unlocked === (achievementFilter === 'yes')) ?? [];
-  box.innerHTML = `<div class="steam-section-head"><div><div class="eyebrow"><i></i>STEAM</div><h2>Достижения</h2>
-    <p>${record ? record.total ? `${record.unlocked} из ${record.total} · ${Math.round(record.unlocked / record.total * 100)}%` : 'Steam сообщает, что у игры нет достижений.' : 'Список пока недоступен.'}</p></div>
-    ${button('achievement-reload', 'Обновить', 'download', 'secondary', message === 'Загружаем достижения…' ? 'disabled' : '')}</div>
-    ${message ? `<p role="status">${esc(message)}</p>` : ''}
-    ${record?.total ? `<div class="achievement-toolbar"><label>Показать <select id="achievement-filter">
-      ${[['','Все'],['yes','Полученные'],['no','Неполученные']].map(([value, label]) => option(value, label, achievementFilter)).join('')}</select></label></div>
-      ${items.length ? `<ul class="achievement-list">${items.map(item =>
-        `<li class="${item.unlocked ? 'unlocked' : ''}"><span class="achievement-icon">${item.icon ? `<img loading="lazy" src="${esc(item.icon)}" alt="" referrerpolicy="no-referrer">` : icon(item.unlocked ? 'trophy' : 'shield', 20)}</span>
-          <div><strong>${esc(item.name)}</strong>${item.description ? `<p>${esc(item.description)}</p>` : ''}</div>
-          <small>${item.unlocked ? item.time ? steamDate(item.time) : 'Получено' : 'Не получено'}</small></li>`).join('')}</ul>` : '<p>В этом фильтре нет достижений.</p>'}` : ''}`;
-  imageFallbacks(box);
-}
 
 async function scanAchievements() {
   if (scanningAchievements) return;
@@ -1141,7 +1052,7 @@ function runsPanel(game) {
 
 function openRun(id) {
   const game = findByRoute(state.games);
-  if (!game || demo) return;
+  if (!game) return;
   const run = game.runs.find(item => item.id === id);
   if (id && !run) return;
   showDialog(run ? 'Редактировать прохождение' : 'Новое прохождение', 'ЛИЧНЫЙ ЖУРНАЛ', `<form id="run-form" data-id="${esc(id)}"><div class="dialog-body form-grid">
@@ -1159,7 +1070,7 @@ function openRun(id) {
 
 function saveRun(form) {
   const game = findByRoute(state.games);
-  if (!game || demo) return;
+  if (!game) return;
   const fields = Object.fromEntries(new FormData(form));
   if (!fields.title.trim()) return formError(form, 'Введите название прохождения.');
   const id = form.dataset.id || crypto.randomUUID();
@@ -1173,10 +1084,327 @@ function saveRun(form) {
 
 function deleteRun(id) {
   const game = findByRoute(state.games);
-  if (!game || demo || !game.runs.some(run => run.id === id)) return;
+  if (!game || !game.runs.some(run => run.id === id)) return;
   confirmAction('Удалить прохождение?', 'Запись исчезнет из личного журнала.', 'Удалить', () => {
     if (!updateGame(game, { runs: game.runs.filter(run => run.id !== id) }, 'Прохождение удалено')) return false;
     render();
     return true;
   }, true);
+}
+
+function summaryFor(game) {
+  return summaryAccount === state.steam?.account && game.steam ?
+    summaries.find(record => record.appid === game.steam.appid) : undefined;
+}
+
+function totalsFor(source) {
+  const included = source.flatMap(game => {
+    const record = summaryFor(game);
+    return record ? [{ game, record }] : [];
+  });
+  const total = included.reduce((sum, item) => sum + item.record.total, 0);
+  const unlocked = included.reduce((sum, item) => sum + item.record.unlocked, 0);
+  return { included, total, unlocked, percentage: total ? Math.round(unlocked / total * 100) : 0 };
+}
+
+function dashboardMetrics(source, playing) {
+  const achievements = totalsFor(playing);
+  const completed = source.filter(game => ['completed','perfect'].includes(game.status)).length;
+  return `<div class="metrics dashboard-metrics">${[
+    ['game','Игр в библиотеке', numeric(source.length), 'lime'],
+    ['clock','Общее время в играх', numeric(source.reduce((sum, game) => sum + gameHours(game), 0)) + ' ч','lime'],
+    ['check','Пройдено игр', numeric(completed),'lime'],
+    ['trophy','Достижения · сейчас играю', achievements.total ? achievements.unlocked + ' / ' + achievements.total : '—','amber']
+  ].map(([glyph,label,value,tone]) => `<div class="metric"><span class="metric-icon ${tone}">${icon(glyph,23)}</span>
+    <div><strong>${value}</strong><span class="metric-label">${label}</span></div></div>`).join('')}</div>`;
+}
+
+function steamEntry() {
+  if (connected() || legacySteam) return steamSync();
+  showDialog('Подключить Steam', 'СИНХРОНИЗАЦИЯ', `<div class="dialog-body single-form">
+    <p>Выберите, как подключиться к своему Worker.</p>
+    ${button('steam-connect','Защищённое подключение','shield','primary')}
+    ${button('steam-legacy','Публичный Worker','steam')}
+  </div>`);
+}
+
+function panelHeading(glyph, title, action = '', subtitle = '') {
+  return `<div class="dashboard-panel-head"><div><h2>${icon(glyph, 20)}<span>${title}</span></h2>
+    ${subtitle ? `<p>${subtitle}</p>` : ''}</div>${action}</div>`;
+}
+
+function journalOrder(items) {
+  return [...items].reverse().sort((a, b) => b.date.localeCompare(a.date));
+}
+
+function profileDashboard() {
+  const player = profile();
+  const visible = games().filter(game => !game.hidden);
+  const playing = visible.filter(game => game.shelf && game.status === 'playing');
+  const achievements = totalsFor(playing);
+  const perfect = achievements.included.filter(({ record }) => record.total > 0 && record.total === record.unlocked).length;
+  const sessions = visible.flatMap(game => game.sessions.map(session => ({ ...session, game })))
+    .sort((a,b) => b.date.localeCompare(a.date));
+  const start = new Date();
+  start.setDate(start.getDate() - 13);
+  const dayKey = date => [date.getFullYear(), String(date.getMonth()+1).padStart(2,'0'), String(date.getDate()).padStart(2,'0')].join('-');
+  const minutes = sessions.filter(item => item.date >= dayKey(start) && item.date <= dayKey(new Date()))
+    .reduce((sum, item) => sum + item.minutes, 0);
+  const top = [...visible].filter(game => gameHours(game) > 0).sort((a,b) => gameHours(b) - gameHours(a)).slice(0, 4);
+  const favorites = visible.filter(game => game.favorite);
+  const status = connected() || legacySteam ? 'Steam подключён' : state.steam ? 'Сеанс Steam завершён' : 'Steam не подключён';
+  const lastSync = state.steam ? 'Последняя синхронизация · ' + new Date(state.steam.lastSync).toLocaleString('ru') : 'Ещё не синхронизировано';
+  return `<div class="profile-dashboard">
+    <section class="profile-banner">
+      <div class="profile-avatar" aria-hidden="true"><span>${esc(initials(player.name))}</span></div>
+      <div class="profile-identity"><div class="eyebrow"><i></i>ИГРОВОЙ ПРОФИЛЬ</div>
+        <div class="profile-name"><h1>${esc(player.name)}</h1>
+          ${iconButton('edit-profile','Редактировать профиль','edit')}
+          ${iconButton('steam-entry','Синхронизировать Steam','steam', syncingSteam ? 'disabled' : '')}
+        </div>
+        <p class="profile-bio">${esc(player.bio || 'Игровой журнал и статистика')}</p>
+        <div class="profile-connection"><span>${icon('steam',16)} ${status}</span><span>${esc(lastSync)}</span></div>
+        ${steamMessage ? `<p class="profile-sync-message ${steamError ? 'form-error' : ''}" role="status">${esc(steamMessage)}</p>` : ''}
+      </div>
+    </section>
+    ${dashboardMetrics(visible, playing)}
+    <div class="dashboard-row dashboard-overview">
+      <section class="panel dash-panel">${panelHeading('trophy','Достижения','','Считаются по видимым играм со статусом «Играю».')}
+        <div class="profile-achievement-content">
+          <div class="profile-ring" style="--ring:${achievements.percentage}%" aria-hidden="true"><strong>${achievements.total ? achievements.percentage + '%' : '—'}</strong></div>
+          <div><strong class="profile-total">${achievements.total ? achievements.unlocked + ' / ' + achievements.total : 'Данных пока нет'}</strong>
+            <p>${achievements.total ? 'Получено достижений · 100% у ' + perfect + ' игр' : 'Открой достижения игры, чтобы загрузить данные Steam.'}</p>
+          </div>
+          <div class="included-games"><span>В расчёте ${achievements.included.length} из ${playing.length} игр</span>
+            ${achievements.included.map(({game,record}) => `<a href="#game/${encodeURIComponent(game.id)}/achievements">${esc(game.title)} <small>${record.unlocked} / ${record.total}</small></a>`).join('')}
+          </div>
+        </div>
+      </section>
+      <section class="panel dash-panel">${panelHeading('pulse','Текущая активность','','Последние 14 календарных дней · ручной журнал сессий')}
+        <div class="profile-activity"><div>${icon('game',21)}<div><strong>${playing.length}</strong><span>Сейчас играю</span></div></div>
+          <div>${icon('clock',21)}<div><strong>${numeric(minutes / 60)} ч</strong><span>В записанных сессиях</span></div></div></div>
+      </section>
+    </div>
+    <div class="dashboard-row dashboard-activity">
+      <section class="panel dash-panel">${panelHeading('clock','Последние сессии')}
+        ${sessions.length ? `<div class="profile-rows">${sessions.slice(0,5).map(({game,date,minutes}) => `
+          <a href="#game/${encodeURIComponent(game.id)}/sessions">${cover(game)}<span><strong>${esc(game.title)}</strong><small>${dateLabel(date)}</small></span><b>${duration(minutes)}</b></a>`).join('')}</div>` :
+          '<p class="dash-empty">Добавь сессию на странице игры, и она появится здесь.</p>'}
+      </section>
+      <section class="panel dash-panel">${panelHeading('game', 'Сейчас играю', `<span class="panel-count">${playing.length}</span>`)}
+        ${playing.length ? `<div class="profile-playing">${playing.slice(0,3).map(game => gameCard(game,true)).join('')}</div>` :
+          '<p class="dash-empty">Отметь текущие игры статусом «Играю».</p>'}
+      </section>
+    </div>
+    <div class="dashboard-row dashboard-bottom">
+      <section class="panel dash-panel">${panelHeading('chart','Больше всего часов','','По времени в Steam или вручную')}
+        ${top.length ? `<div class="profile-rows profile-hours">${top.map((game,index) => `<a href="#game/${encodeURIComponent(game.id)}"><small>${index + 1}</small>${cover(game)}<span><strong>${esc(game.title)}</strong></span>
+          <i>${progressBar(100 * gameHours(game) / gameHours(top[0]))}</i><b>${numeric(gameHours(game))} ч</b></a>`).join('')}</div>` :
+          '<p class="dash-empty">Синхронизируй Steam или укажи время вручную.</p>'}
+      </section>
+      <section class="panel dash-panel">${panelHeading('star','Избранное',button('open-favorites','Все игры','right','quiet'))}
+        ${favorites.length ? `<div class="profile-favorites">${favorites.slice(0,5).map(game => `<a href="#game/${encodeURIComponent(game.id)}" title="${esc(game.title)}">${cover(game)}<span>${esc(game.title)}</span></a>`).join('')}</div>` :
+          '<p class="dash-empty">Нажми на звезду у игры, чтобы добавить её сюда.</p>'}
+      </section>
+    </div>
+  </div>`;
+}
+
+function gameDashboard() {
+  const game = findByRoute(games());
+  if (!game) return `<div class="empty"><h2>Игра не найдена</h2><a class="btn btn-secondary" href="#library">К библиотеке</a></div>`;
+  const url = '#game/' + encodeURIComponent(game.id);
+  const summary = summaryFor(game);
+  const journalMinutes = game.sessions.reduce((sum, item) => sum + item.minutes, 0);
+  const achievementBox = `<section class="panel dash-panel game-achievements" id="steam-achievements" ${game.steam ? `data-appid="${game.steam.appid}"` : ''}>
+    ${panelHeading('trophy','Достижения')}<p class="dash-empty">${game.steam ? 'Загружаем сохранённые данные…' : 'Достижения доступны для игр, связанных со Steam.'}</p></section>`;
+  const sessions = journalPanel(game, 'sessions', route.tab === 'overview');
+  const notes = journalPanel(game, 'journal', route.tab === 'overview');
+  const content = {
+    overview: `<div class="game-overview">${achievementBox}<div>${sessions}${notes}</div></div>`,
+    achievements: achievementBox,
+    sessions: sessions + (game.runs.length ? `<details class="panel saved-runs"><summary>Прохождения из журнала · ${game.runs.length}</summary>${runsPanel(game)}</details>` : ''),
+    notes
+  };
+  const hero = steamHero(game.steam?.appid);
+  return `<div class="game-dashboard"><a class="back-link" href="#library">${icon('back',16)} Библиотека</a>
+    <section class="game-banner panel">
+      ${hero ? `<img class="game-hero-art" src="${esc(hero)}" alt="" referrerpolicy="no-referrer">` : ''}
+      ${cover(game,'game-poster')}
+      <div class="game-identity"><div class="eyebrow"><i></i>${game.steam ? 'БИБЛИОТЕКА STEAM' : esc(game.platform)}</div>
+        <h1>${esc(game.title)}</h1>
+        <p>${[game.steam ? 'Steam' : game.platform, game.genre, game.year].filter(Boolean).map(esc).join(' · ')}</p>
+        <div class="detail-actions">
+          ${game.steam ? `<a href="https://store.steampowered.com/app/${game.steam.appid}/" target="_blank" rel="noopener noreferrer" class="btn btn-primary">${icon('steam',17)} Открыть в Steam ${icon('upRight',15)}</a>` : ''}
+          ${iconButton('edit-game','Редактировать игру','edit')}
+          ${iconButton('favorite',game.favorite ? 'Убрать из избранного' : 'В избранное','star', `aria-pressed="${game.favorite}"`)}
+          ${iconButton('hide-game',game.hidden ? 'Вернуть игру' : 'Скрыть игру',game.hidden ? 'eye' : 'eyeOff')}
+        </div>
+        <div class="game-quick-stats">
+          <div>${icon('clock',22)}<span><strong>${game.steam ? numeric(game.steam.minutes / 60) : numeric(game.hours)} ч</strong><small>${game.steam ? 'Время в Steam' : 'Ручное время'}</small></span></div>
+          <div>${icon('trophy',22)}<span><strong id="game-achievement-count">${summary?.total ? summary.unlocked + ' / ' + summary.total : '—'}</strong><small id="game-achievement-caption">Достижения Steam</small>
+            <span id="game-achievement-progress">${summary?.total ? progressBar(summary.unlocked / summary.total * 100) : ''}</span></span></div>
+          <label>${icon('check',21)}<select id="game-status" aria-label="Ручной статус игры">
+            ${!game.shelf ? option('','Выбрать статус','') : ''}
+            ${Object.entries(STATUSES).map(([value,label]) => option(value,label,game.shelf ? game.status : '')).join('')}
+          </select></label>
+        </div>
+      </div>
+    </section>
+    <nav class="game-tabs" aria-label="Разделы игры">${gameTabs.map(([id,label,glyph]) => `<a href="${url}${id === 'overview' ? '' : '/' + id}" ${route.tab === id ? 'aria-current="page"' : ''}>${icon(glyph,18)} ${label}</a>`).join('')}</nav>
+    ${route.tab === 'sessions' ? `<div class="journal-totals"><span>${icon('clock',18)} Записано вручную <strong>${duration(journalMinutes)}</strong></span>
+      ${game.steam ? `<span>${icon('steam',18)} Всего в Steam <strong>${numeric(game.steam.minutes / 60)} ч</strong></span>` : ''}</div>` : ''}
+    <div class="game-tab-content">${content[route.tab]}</div>
+    ${route.tab === 'notes' && !game.steam ? `<div class="detail-delete">${button('delete-game','Удалить игру','trash','danger')}</div>` : ''}
+  </div>`;
+}
+
+function duration(minutes) {
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return hours ? hours + ' ч' + (rest ? ' ' + rest + ' мин' : '') : rest + ' мин';
+}
+
+function journalPanel(game, key, compact) {
+  const sessions = key === 'sessions';
+  const title = sessions ? 'Игровые сессии' : 'Заметки';
+  const rows = journalOrder(game[key]).slice(0, compact ? 3 : undefined);
+  const tab = sessions ? 'sessions' : 'notes';
+  return `<section class="panel dash-panel journal-panel">${panelHeading(sessions ? 'clock' : 'edit', title,
+    compact ? `<a class="btn btn-secondary" href="#game/${encodeURIComponent(game.id)}/${tab}">Все записи ${icon('right',14)}</a>` :
+      button(sessions ? 'new-session' : 'new-note', sessions ? 'Добавить сессию' : 'Добавить заметку','plus'))}
+    ${rows.length ? `<ul class="journal-list">${rows.map(item => `<li>
+      <div><strong>${item.date ? dateLabel(item.date) : 'Без даты'}</strong>${sessions ? `<span>${duration(item.minutes)}</span>` : ''}</div>
+      ${item.text ? `<p class="notes ${compact ? 'note-preview' : ''}">${esc(item.text)}</p>` : ''}
+      ${compact ? '' : iconButton(sessions ? 'edit-session' : 'edit-note', sessions ? 'Редактировать сессию' : 'Редактировать заметку','edit', `data-id="${esc(item.id)}"`)}
+    </li>`).join('')}</ul>` : `<p class="dash-empty">${sessions ? 'Сессий пока нет. Запиши дату, длительность и комментарий.' : 'Заметок пока нет.'}</p>`}
+  </section>`;
+}
+
+function openJournal(kind, id) {
+  const game = findByRoute(state.games);
+  if (!game) return;
+  const item = game[kind].find(row => row.id === id);
+  if (id && !item) return;
+  const session = kind === 'sessions';
+  showDialog(session ? (id ? 'Редактировать сессию' : 'Новая сессия') : (id ? 'Редактировать заметку' : 'Новая заметка'), 'ЛИЧНЫЙ ЖУРНАЛ',
+    `<form id="journal-form" data-kind="${kind}" data-id="${esc(id)}"><div class="dialog-body single-form">
+      ${session ? inputField('Дата','date',item?.date || dateStamp(),'required','date') +
+        inputField('Длительность, минуты','minutes',item?.minutes,'min="1" max="1440" step="1" required','number') : ''}
+      <label class="field"><span>${session ? 'Комментарий' : 'Текст заметки'}</span><textarea name="text" rows="5" maxlength="5000" ${session ? '' : 'required autofocus'}>${esc(item?.text)}</textarea></label>
+      ${id ? button('delete-journal','Удалить запись','trash','danger',`data-kind="${kind}" data-id="${esc(id)}"`) : ''}
+      ${errorLine()}</div>${formFooter('Сохранить')}</form>`);
+}
+
+function saveJournal(form) {
+  const game = findByRoute(state.games);
+  const { kind, id } = form.dataset;
+  if (!game || !['sessions','journal'].includes(kind)) return;
+  const fields = new FormData(form);
+  const text = fields.get('text').trim();
+  if (kind === 'journal' && !text) return formError(form,'Введите текст заметки.');
+  const existing = game[kind].find(item => item.id === id);
+  if (id && !existing) return formError(form,'Запись больше недоступна.');
+  const item = { id: id || crypto.randomUUID(), date: existing?.date ?? dateStamp(), text };
+  if (kind === 'sessions') Object.assign(item, { date: fields.get('date'), minutes: Number(fields.get('minutes')) });
+  const entries = existing ? game[kind].map(row => row.id === id ? item : row) : [...game[kind], item];
+  if (updateGame(game, { [kind]: entries }, 'Запись сохранена')) { dialog.close(); render(); }
+}
+
+function deleteJournal(kind, id) {
+  const game = findByRoute(state.games);
+  if (!game || !['sessions','journal'].includes(kind)) return;
+  confirmAction('Удалить запись?', 'Запись будет удалена из журнала игры.', 'Удалить', () => {
+    if (!updateGame(game, { [kind]: game[kind].filter(row => row.id !== id) }, 'Запись удалена')) return false;
+    render();
+    return true;
+  }, true);
+}
+
+let displayedAchievements;
+async function showAchievements(force = false) {
+  const game = findByRoute(games());
+  if (!game?.steam) return;
+  const account = state.steam?.account;
+  const id = game.steam.appid;
+  const box = document.querySelector('#steam-achievements');
+  const view = ++achievementView;
+  const cached = await cachedAchievements(account, id);
+  if (view !== achievementView || route.page !== 'game' || findByRoute(games())?.steam?.appid !== id) return;
+  const active = connected() || legacySteam;
+  const fresh = cached && Date.now() - cached.fetchedAt < 24 * 60 * 60 * 1000;
+  drawAchievements(box, cached, !active && !cached ? 'Подключи Steam в профиле, чтобы загрузить достижения.' : '');
+  if (force && !active) return steamEntry();
+  if (!active || (!force && fresh) || !box) return;
+  drawAchievements(box, cached, 'Загружаем достижения…');
+  try {
+    const record = await fetchAchievements(account,id,legacySteam,force);
+    if (view === achievementView) drawAchievements(box, record);
+    await refreshSteamSummaries(false);
+  } catch (error) {
+    if (view === achievementView) drawAchievements(box, cached, error.message);
+  }
+}
+
+function drawAchievements(box, record, message = '') {
+  const count = document.querySelector('#game-achievement-count');
+  const caption = document.querySelector('#game-achievement-caption');
+  if (count && record?.total) {
+    count.textContent = record.unlocked + ' / ' + record.total;
+    caption.textContent = 'Достижения Steam · ' + Math.round(record.unlocked / record.total * 100) + '%';
+    document.querySelector('#game-achievement-progress').innerHTML = progressBar(record.unlocked / record.total * 100);
+  }
+  if (!box?.isConnected) return;
+  displayedAchievements = record;
+  const overview = route.tab === 'overview';
+  const game = findByRoute(games());
+  const action = overview ? `<a href="#game/${encodeURIComponent(game.id)}/achievements" class="btn btn-secondary">Смотреть все ${icon('right',14)}</a>` :
+    button('achievement-reload', 'Обновить','download','secondary',message === 'Загружаем достижения…' ? 'disabled' : '');
+  const hasRarity = record?.items.some(item => Number.isFinite(item.percent));
+  box.innerHTML = panelHeading('trophy','Достижения',action) +
+    (record?.total ? `<div class="achievement-overview"><strong>${record.unlocked} / ${record.total}</strong>
+      <div><span>${Math.round(record.unlocked / record.total * 100)}%</span>${progressBar(record.unlocked / record.total * 100)}</div></div>` : '') +
+    (message ? `<p class="dash-empty" role="status">${esc(message)}</p>` : '') +
+    (!record?.total && !message ? `<p class="dash-empty">${record ? 'Steam сообщает, что у игры нет достижений.' : 'Данные пока недоступны.'}</p>` : '') +
+    (record?.total && !overview ? `<div class="achievement-filters">
+      <label class="searchbox">${icon('search',17)}<input type="search" id="achievement-query" aria-label="Поиск по достижениям" placeholder="Найти достижение" value="${esc(achievementQuery)}"></label>
+      <select id="achievement-filter" aria-label="Статус достижения">${[['','Все'],['yes','Полученные'],['no','Неполученные']].map(([id,label]) => option(id,label,achievementFilter)).join('')}</select>
+      <select id="achievement-sort" aria-label="Сортировка достижений" ${hasRarity ? '' : 'disabled'}>${option('default','Порядок Steam',achievementSort)}${hasRarity ? option('rare','Редкие сначала',achievementSort) : ''}</select>
+    </div>${hasRarity ? '<p class="rarity-label">Проценты показывают долю игроков Steam.</p>' : '<p class="rarity-label">Steam не передал доли игроков.</p>'}` : '') +
+    (record?.total ? '<div id="achievement-rows"></div>' : '');
+  updateAchievementRows();
+}
+
+function updateAchievementRows() {
+  const target = document.querySelector('#achievement-rows');
+  if (!target || !displayedAchievements) return;
+  const overview = route.tab === 'overview';
+  const query = achievementQuery.trim().toLocaleLowerCase('ru');
+  let items = displayedAchievements.items;
+  if (overview) items = [...items].sort((a,b) => Number(b.unlocked) - Number(a.unlocked) || b.time - a.time).slice(0,5);
+  else {
+    items = items.filter(item => (!achievementFilter || item.unlocked === (achievementFilter === 'yes')) &&
+      (!query || (item.name + ' ' + item.description).toLocaleLowerCase('ru').includes(query)));
+    if (achievementSort === 'rare') items.sort((a,b) => (a.percent ?? Infinity) - (b.percent ?? Infinity));
+  }
+  target.innerHTML = items.length ? `<ul class="achievement-list redesign-achievements">${items.map(item => `<li class="${item.unlocked ? 'unlocked' : ''}">
+    <span class="achievement-icon">${icon(item.unlocked ? 'trophy' : 'shield',18)}${item.icon ? `<img src="${esc(item.icon)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ''}</span>
+    <div><strong>${esc(item.name)}</strong>${item.description ? `<p>${esc(item.description)}</p>` : ''}</div>
+    <small>${Number.isFinite(item.percent) ? `<b>${numeric(item.percent)}%</b>` : ''}${item.unlocked ? item.time ? steamDate(item.time) : 'Получено' : 'Не получено'}</small>
+  </li>`).join('')}</ul>` : '<p class="dash-empty">Достижения по этим фильтрам не найдены.</p>';
+  imageFallbacks(target);
+}
+
+render();
+refreshSteamSummaries();
+setInterval(() => {
+  if (state.steam && Date.now() - Date.parse(state.steam.lastSync) >= 30 * 60 * 1000 &&
+      (connected() || legacySteam) && !document.hidden && !dialog.open && navigator.onLine) steamSync();
+}, 60 * 1000);
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register(new URL('./sw.js', import.meta.url)).catch(error => console.warn('AFTERSAVE offline:', error));
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    const offline = app.querySelector('#offline-label');
+    if (offline) offline.textContent = 'Офлайн-режим готов на этом устройстве.';
+  });
 }
