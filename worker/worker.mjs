@@ -161,8 +161,8 @@ async function achievements(url, id, env, ctx) {
       ]);
       metadata = new Map((schema?.game?.availableGameStats?.achievements ?? []).map(item => [item.name, item]));
       rarity = new Map((percentages?.achievementpercentages?.achievements ?? [])
-        .filter(item => Number.isFinite(item.percent) && item.percent >= 0 && item.percent <= 100)
-        .map(item => [item.name, item.percent]));
+        .map(item => [item.name, typeof item.percent === 'string' && item.percent.trim() ? Number(item.percent) : item.percent])
+        .filter(([name, percent]) => typeof name === 'string' && Number.isFinite(percent) && percent >= 0 && percent <= 100));
     }
     return { account: env.STEAM_ID, playerstats: {
       success: true, achievements: list.map(item => {
