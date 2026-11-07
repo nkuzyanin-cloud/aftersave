@@ -1,4 +1,4 @@
-const VERSION = 6;
+const VERSION = 7;
 const FORMAT = 'game-library';
 export const STORAGE_KEY = `game-library:${new URL('.', import.meta.url).pathname}`;
 const EPOCH = '1970-01-01T00:00:00.000Z';
@@ -218,6 +218,22 @@ function accentColor(value) {
   return color;
 }
 
+export function isEldenRing(game) {
+  return game?.steam ? Number(game.steam.appid) === 1245620 :
+    game?.catalogId === 'elden-ring' || /^\s*(elden ring|эл[ь]?ден ринг)\s*$/i.test(game?.title ?? '');
+}
+
+function normalizeBossProgress(value) {
+  const entries = Object.entries(value ?? {}).slice(0, 300);
+  return Object.fromEntries(entries.flatMap(([id, item]) => {
+    if (!/^[a-z0-9][a-z0-9-]{1,94}$/.test(id) || !item) return [];
+    const deaths = Object.fromEntries(Object.entries(item.deaths ?? {}).slice(0, 100).filter(([device, count]) =>
+      /^[a-f0-9-]{36}$/.test(device) && Number.isSafeInteger(count) && count > 0 && count <= 1000000
+    ));
+    return typeof item.won === 'boolean' || Object.keys(deaths).length ? [[id, { won: item.won === true, deaths }]] : [];
+  }));
+}
+
 function normalizeGame(value, fallbackId, fallbackTimestamp) {
   const game = object(value, 'Запись игры');
   const status = game.status || 'planned';
@@ -263,7 +279,8 @@ function normalizeGame(value, fallbackId, fallbackTimestamp) {
     shelf: bool(game.shelf, 'Моя полка', !game.steam),
     hidden: bool(game.hidden, 'Скрытая игра'),
     sessions: normalizeJournal(game.sessions ?? [], true),
-    journal: normalizeJournal(game.journal ?? [], false)
+    journal: normalizeJournal(game.journal ?? [], false),
+    bossProgress: isEldenRing(game) ? normalizeBossProgress(game.bossProgress) : {}
   };
 }
 
@@ -410,7 +427,7 @@ function normalizeState(value) {
     throw new Error('Выберите резервную копию игровой библиотеки в формате JSON.');
   }
   if (state.version === 1) state = migrateV1(state);
-  if ([2, 3, 4, 5].includes(state.version)) state = { ...state, version: VERSION };
+  if ([2, 3, 4, 5, 6].includes(state.version)) state = { ...state, version: VERSION };
   if (state.version !== VERSION) {
     throw new Error('Эта версия формата библиотеки не поддерживается.');
   }

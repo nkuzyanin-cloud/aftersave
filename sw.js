@@ -1,5 +1,5 @@
 // Bump this version whenever a file in the precache changes.
-const CACHE_VERSION = 6;
+const CACHE_VERSION = 7;
 const scope = new URL(self.registration.scope);
 const cachePrefix = `aftersave::${scope.href}::v`;
 const cacheName = `${cachePrefix}${CACHE_VERSION}`;
@@ -9,7 +9,7 @@ const coverIds = [
   'hades', 'disco-elysium', 'red-dead-redemption-2', 'control', 'witcher-3', 'baldur-gate-3',
 ];
 const precache = new Set([
-  './index.html', './styles.css', './app.js', './data.js', './icons.js', './steam.js', './cloud.js', './manifest.webmanifest',
+  './index.html', './styles.css', './app.js', './data.js', './icons.js', './steam.js', './cloud.js', './elden-ring.js', './manifest.webmanifest',
   './assets/icon.svg', './assets/icon-192.png', './assets/icon-512.png',
   './assets/apple-touch-icon.png', './assets/elden-ring-hero.jpg', './assets/witcher-3-achievements.json',
   './assets/fonts/manrope-latin.woff2', './assets/fonts/manrope-cyrillic.woff2',
@@ -44,8 +44,16 @@ self.addEventListener('fetch', event => {
   const path = request.mode === 'navigate' && url.href === scope.href
     ? indexURL
     : url.href;
-  if (!precache.has(path)) return;
-  event.respondWith(caches.open(cacheName).then(async cache =>
-    (await cache.match(path)) || fetch(request)
-  ));
+  const bossMap = request.destination === 'image' &&
+    path.startsWith(new URL('./assets/elden-ring/maps/', scope).href) && url.pathname.endsWith('.webp');
+  if (!precache.has(path) && !bossMap) return;
+  event.respondWith(caches.open(cacheName).then(async cache => {
+    const cached = await cache.match(path);
+    if (cached) return cached;
+    const response = await fetch(request);
+    if (bossMap && response.ok) {
+      await cache.put(path, response.clone()).catch(() => {});
+    }
+    return response;
+  }));
 });
