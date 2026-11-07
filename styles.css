@@ -657,3 +657,95 @@ body{background:radial-gradient(ellipse at 80% -5%,#17231f 0%,transparent 35%),v
   .profile-banner::after,.game-tab-content,#game-results{animation:none!important}
   .game-card:hover{transform:none}
 }
+
+/* Comfortable desktop scale and wide game art */
+:root{font-size:16px}
+.page{max-width:none;padding-inline:clamp(15px,2.5vw,52px)}
+.crumb,.searchbox input{font-size:14px}
+.nav-link{min-height:47px}
+.btn,.tab,.sort-select select,.shelf-switch button{font-size:13px}
+.icon-btn,.btn{min-height:43px}
+.panel p,.empty p{font-size:14px}
+.dashboard-panel-head h2{font-size:20px}
+.dashboard-panel-head p{font-size:13px}
+.dashboard-panel-head .btn{min-height:36px;font-size:12px}
+.dash-panel{padding:16px 18px}
+.profile-banner{min-height:188px}
+.profile-banner .profile-avatar{width:124px;height:124px}
+.profile-name h1{font-size:clamp(29px,3.8vw,50px)}
+.profile-connection,.profile-sync-message{font-size:13px}
+.profile-rows a{font-size:13px;min-height:41px}
+.profile-rows small,.profile-rows b{font-size:12px}
+.profile-rows .cover{width:32px;height:32px}
+.profile-playing .card-body h3,.card-body h3{font-size:15px}
+.metric-label,.card-meta,.card-progress{font-size:12px}
+.dashboard-metrics .metric{min-height:76px}
+.included-games,.included-games>span,.profile-activity span{font-size:12px}
+.game-banner{
+  min-height:clamp(295px,24vw,485px);
+  padding:clamp(20px,2.25vw,44px);
+  gap:clamp(19px,2.5vw,50px);
+  border-radius:15px;
+}
+.game-banner::after{
+  background:linear-gradient(90deg,#0b1217ee 0%,#0b141ac9 31%,#0d171a24 80%),
+    linear-gradient(0deg,#0b1317de,transparent 73%);
+}
+.game-hero-art{object-position:center 46%}
+.game-poster{width:clamp(155px,13.8vw,275px);border-radius:11px;box-shadow:0 14px 35px #0007}
+.game-identity h1{font-size:clamp(35px,4.25vw,82px);max-width:19ch;line-height:1.04;margin:7px 0 9px}
+.game-identity>p{font-size:15px}
+.game-identity .detail-actions{margin-top:16px}
+.game-quick-stats{gap:10px;margin-top:15px}
+.game-quick-stats>div,.game-quick-stats>label{min-width:155px;padding:11px 13px;gap:10px}
+.game-quick-stats strong{font-size:22px}
+.game-quick-stats small{font-size:12px}
+.game-quick-stats select,.achievement-filters select{font-size:14px;padding:8px}
+.game-tabs{gap:7px;margin:13px 0 16px}
+.game-tabs a{font-size:14px;padding:10px 15px}
+.game-overview{gap:14px}
+.game-overview>div{gap:12px}
+.achievement-overview strong{font-size:24px}
+.achievement-overview>div{font-size:13px}
+.redesign-achievements li{gap:13px;min-height:65px;padding:9px 0}
+.redesign-achievements li strong{font-size:15px;line-height:1.3}
+.redesign-achievements li p{font-size:13px;line-height:1.45;margin-top:2px}
+.redesign-achievements li small{font-size:12px;max-width:145px}
+.redesign-achievements .achievement-icon{width:48px;height:48px}
+.achievement-options{display:flex;align-items:center;flex-wrap:wrap;gap:6px 18px}
+.achievement-options .checkbox{font-size:13px}
+.profile-steam-activity{margin-top:9px;padding-top:8px;border-top:1px solid var(--border)}
+.profile-steam-activity h3{font-size:14px;color:var(--accent)}
+.steam-activity-panel{margin-bottom:11px}
+.game-overview .steam-activity-panel{margin-bottom:0}
+.steam-interval-list li{padding-right:0}
+.steam-interval-list p,.activity-source{font-size:13px!important}
+.activity-source{margin-top:8px}
+.text-link{color:var(--accent);text-decoration:underline}
+@media (max-width:700px){
+  :root{font-size:15px}
+  .page{padding-inline:12px}
+  .dash-panel{padding:11px 12px}
+  .dashboard-panel-head h2{font-size:17px}
+  .dashboard-panel-head .btn{min-height:32px;font-size:10px}
+  .dashboard-metrics .metric{min-height:62px}
+  .dashboard-metrics .metric-label{font-size:10px}
+  .shelf-switch button,.tab,.sort-select select{font-size:11px}
+  .profile-banner{min-height:120px}
+  .profile-banner .profile-avatar{width:67px;height:67px}
+  .profile-connection{font-size:10px}
+  .game-banner{min-height:0;padding:12px;gap:10px}
+  .game-poster{width:clamp(72px,24vw,114px)}
+  .game-identity h1{font-size:clamp(23px,6.5vw,34px)}
+  .game-identity>p{font-size:12px}
+  .game-quick-stats{margin-left:calc(-1 * clamp(72px,24vw,114px) - 10px)}
+  .game-quick-stats>div,.game-quick-stats>label{min-width:0;padding:7px;gap:5px}
+  .game-quick-stats strong{font-size:18px}
+  .game-quick-stats small{font-size:11px}
+  .game-tabs a{font-size:12px;padding:9px 7px}
+  .game-tabs a svg{width:14px}
+  .redesign-achievements li{gap:8px}
+  .redesign-achievements li strong{font-size:13px}
+  .redesign-achievements li p,.redesign-achievements li small{font-size:11px}
+  .redesign-achievements .achievement-icon{width:38px;height:38px}
+}

@@ -1,4 +1,4 @@
-const VERSION = 4;
+const VERSION = 5;
 const FORMAT = 'game-library';
 export const STORAGE_KEY = `game-library:${new URL('.', import.meta.url).pathname}`;
 const EPOCH = '1970-01-01T00:00:00.000Z';
@@ -331,7 +331,28 @@ function normalizeSteam(value) {
   if (value == null) return null;
   const steam = object(value, 'Профиль Steam');
   if (typeof steam.account !== 'string' || !/^7656\d{13}$/.test(steam.account)) throw new Error('Неверный SteamID.');
-  return { account: steam.account, lastSync: stamp(steam.lastSync, EPOCH) };
+  return { account: steam.account, lastSync: stamp(steam.lastSync, EPOCH), activity: normalizeActivity(steam.activity) };
+}
+
+function normalizeActivity(value) {
+  if (value == null) return null;
+  const activity = object(value, 'Автоучёт Steam');
+  const time = value => number(value, 'Время опроса Steam', 0, 253402300799999, 0, true);
+  const startedAt = time(activity.startedAt);
+  const lastObserved = time(activity.lastObserved);
+  const windows = list(activity.windows ?? [], 'Интервалы Steam', 3000).map(value => {
+    const window = object(value, 'Интервал Steam');
+    const observedFrom = time(window.observedFrom);
+    const observedTo = time(window.observedTo);
+    const appid = number(window.appid, 'AppID', 1, 4294967295, null, true);
+    const minutes = number(window.minutes, 'Минуты Steam', 1, Number.MAX_SAFE_INTEGER, null, true);
+    if (!appid || !minutes || !observedFrom || observedTo <= observedFrom || observedFrom < startedAt || observedTo > lastObserved) {
+      throw new Error('Некорректный интервал автоучёта Steam.');
+    }
+    return { appid, observedFrom, observedTo, minutes };
+  });
+  if (lastObserved < startedAt) throw new Error('Некорректные даты автоучёта Steam.');
+  return { startedAt, lastObserved, windows };
 }
 
 function newId() {
@@ -387,7 +408,7 @@ function normalizeState(value) {
     throw new Error('Выберите резервную копию игровой библиотеки в формате JSON.');
   }
   if (state.version === 1) state = migrateV1(state);
-  if ([2, 3].includes(state.version)) state = { ...state, version: VERSION };
+  if ([2, 3, 4].includes(state.version)) state = { ...state, version: VERSION };
   if (state.version !== VERSION) {
     throw new Error('Эта версия формата библиотеки не поддерживается.');
   }

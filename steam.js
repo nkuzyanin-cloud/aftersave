@@ -12,9 +12,36 @@ const appId = value => Number.isInteger(value) && value >= 1 && value <= 4294967
 const steamId = value => typeof value === 'string' && /^7656\d{13}$/.test(value);
 const titleKey = title => title.normalize('NFKC').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
 const nonnegative = value => Number.isSafeInteger(value) && value >= 0 ? value : 0;
-export const steamCover = id => appId(id) ? `https://cdn.cloudflare.steamstatic.com/steam/apps/${id}/library_600x900.jpg` : '';
+const capsulePaths = {
+  2828710: 'deef1b198941015428f5b3d3e29e819f7ef86abc',
+  5266240: '612d69b23adfba309b22e13531525430bb6f302e'
+};
+export const steamCover = id => capsulePaths[id] ?
+  `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${id}/${capsulePaths[id]}/library_capsule.jpg` :
+  appId(id) ? `https://cdn.cloudflare.steamstatic.com/steam/apps/${id}/library_600x900.jpg` : '';
 export const steamHeader = id => appId(id) ? `https://cdn.cloudflare.steamstatic.com/steam/apps/${id}/header.jpg` : '';
 export const steamHero = id => appId(id) ? `https://cdn.cloudflare.steamstatic.com/steam/apps/${id}/library_hero.jpg` : '';
+
+const artworkRequests = new Map();
+let artworkSupport;
+export function fetchSteamArtwork(id) {
+  if (!appId(id)) return Promise.resolve(null);
+  if (artworkRequests.has(id)) return artworkRequests.get(id);
+  const read = async path => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+    try {
+      const response = await fetch(new URL(path, BASE), { signal: controller.signal, credentials: 'omit' });
+      return response.ok ? await response.json() : null;
+    } catch { return null; } finally { clearTimeout(timeout); }
+  };
+  artworkSupport ??= read('health').then(data => data?.version >= 5);
+  const task = artworkSupport.then(supported => supported && read('artwork?appid=' + id))
+    .then(data => data && Object.fromEntries(['cover', 'hero', 'header'].map(key =>
+      [key, typeof data[key] === 'string' && data[key].startsWith('https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/' + id + '/') ? data[key] : ''])));
+  artworkRequests.set(id, task);
+  return task;
+}
 
 let session;
 const pending = new Map();
@@ -92,10 +119,10 @@ export async function fetchLibrary(legacy, expected, step = () => {}) {
     const proof = await request('achievements?appid=1245620', { legacy: true });
     checkAccount(proof.playerstats?.steamID, account);
   }
-  return { account, entries };
+  return { account, entries, activity: !legacy && !response.activity?.unavailable ? response.activity : undefined };
 }
 
-export function mergeSteam(state, { account, entries }, lastSync = new Date().toISOString()) {
+export function mergeSteam(state, { account, entries, activity }, lastSync = new Date().toISOString()) {
   checkAccount(account, state.steam?.account);
   const games = [...state.games];
   const linked = new Map(games.flatMap((game, index) => game.steam ? [[game.steam.appid, index]] : []));
@@ -137,7 +164,8 @@ export function mergeSteam(state, { account, entries }, lastSync = new Date().to
       added++;
     }
   }
-  return { state: { ...state, games, showDemo: false, steam: { account, lastSync } }, added, updated };
+  return { state: { ...state, games, showDemo: false,
+    steam: { account, lastSync, activity: activity ?? state.steam?.activity } }, added, updated };
 }
 
 const TTL = 24 * 60 * 60 * 1000;
@@ -172,7 +200,27 @@ async function cacheOperation(mode, run) {
 
 export async function cachedAchievements(account, id) {
   const key = account + ':' + id;
-  return memory.get(key) ?? await cacheOperation('readonly', store => store.get(key));
+  const record = memory.get(key) ?? await cacheOperation('readonly', store => store.get(key));
+  return enrichWitcher(record);
+}
+
+let witcherMetadata;
+async function enrichWitcher(record) {
+  if (record?.appid !== 292030) return record;
+  witcherMetadata ??= fetch(new URL('./assets/witcher-3-achievements.json', import.meta.url))
+    .then(response => response.ok ? response.json() : [])
+    .then(rows => new Map(rows.flatMap(item => item.name ? [[item.id, item], [item.name, item]] : [[item.id, item]])))
+    .catch(() => new Map());
+  const metadata = await witcherMetadata;
+  return { ...record, items: record.items.map(item => {
+    const extra = metadata.get(item.id) ?? metadata.get(item.name);
+    if (!extra) return item;
+    const file = item.unlocked ? extra.icon : extra.gray;
+    return { ...item, description: item.description || extra.description || '', hidden: item.hidden || extra.hidden,
+      percent: item.percent ?? extra.percent,
+      icon: item.icon || (/^[a-f0-9]{40}\.(?:jpg|png)$/i.test(file) ?
+        'https://shared.fastly.steamstatic.com/community_assets/images/apps/292030/' + file : '') };
+  }) };
 }
 
 export async function achievementSummaries(account) {
@@ -198,8 +246,10 @@ export async function fetchAchievements(account, id, legacy, force = false) {
     }
     const items = [...new Map(stats.achievements.filter(item => typeof item?.apiname === 'string')
       .map(item => [item.apiname, {
+        id: item.apiname,
         name: String(item.name || item.apiname).slice(0, 300),
         description: String(item.description || '').slice(0, 1000),
+        hidden: item.hidden === true || item.hidden === 1,
         percent: Number.isFinite(item.percent) && item.percent >= 0 && item.percent <= 100 ? item.percent : null,
         unlocked: item.achieved === 1 || item.achieved === true,
         time: Math.min(nonnegative(item.unlocktime), 253402300799),
@@ -209,7 +259,7 @@ export async function fetchAchievements(account, id, legacy, force = false) {
       total: items.length, unlocked: items.filter(item => item.unlocked).length };
     memory.set(key, record);
     await cacheOperation('readwrite', store => store.put(record));
-    return record;
+    return enrichWitcher(record);
   })();
   pending.set(key, job);
   try { return await job; } finally { pending.delete(key); }
