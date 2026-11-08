@@ -1,5 +1,5 @@
 // Bump this version whenever a file in the precache changes.
-const CACHE_VERSION = 16;
+const CACHE_VERSION = 17;
 const scope = new URL(self.registration.scope);
 const cachePrefix = `aftersave::${scope.href}::v`;
 const cacheName = `${cachePrefix}${CACHE_VERSION}`;
@@ -17,7 +17,6 @@ const precache = new Set([
   './assets/apple-touch-icon.png', './assets/elden-ring-hero.jpg', './assets/witcher-3-achievements.json', './assets/elden-ring-achievements.json',
   './assets/fonts/manrope-latin.woff2', './assets/fonts/manrope-cyrillic.woff2',
   ...coverIds.map(id => `./assets/covers/${id}.jpg`),
-  ...Array.from({ length: 31 }, (_, index) => [`./assets/elden-ring/regions/${index}.jpg`, `./assets/elden-ring/regions/${index}-thumb.jpg`]).flat(),
 ].map(path => new URL(path, scope).href));
 
 self.addEventListener('install', event => {
