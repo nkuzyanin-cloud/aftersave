@@ -1232,6 +1232,10 @@ body{font-size:var(--type-body);line-height:1.45}
 .boss-row-copy strong{font-size:var(--type-item);line-height:1.23}
 .boss-row-copy strong svg{color:#c8abff;vertical-align:-2px}
 .boss-row-copy>span,.boss-row-copy>small{color:#d6c9e8;font-size:var(--type-caption);line-height:1.38}
+.boss-row.is-defeated{background:#191827}
+.boss-row.is-defeated .boss-portrait{filter:brightness(.6) saturate(.7)}
+.boss-row.is-defeated .boss-row-copy strong{color:#c7b9dc}
+.boss-row.is-defeated .boss-row-copy>span,.boss-row.is-defeated .boss-row-copy>small{color:#b1a4c3}
 .boss-type{display:inline-block;margin-left:3px;border:1px solid #554670;border-radius:5px;padding:1px 4px;vertical-align:1px;color:#d8c4ff;font-size:.72em;font-weight:650}
 .boss-row-actions{display:flex;align-items:center;justify-content:flex-end;gap:6px}
 .boss-row-actions .btn{padding:0 7px;min-height:34px;background:#232035;border:1px solid #786b90;white-space:nowrap;font-size:var(--type-caption)}

@@ -1323,7 +1323,7 @@ function bossRow(game, boss) {
   const portrait = bossArt[boss.id];
   const deathButton = (delta, label, glyph, disabled = false) => iconButton('boss-death',
     `${label}: ${esc(boss.name)}`, glyph, `${id} data-delta="${delta}" ${disabled ? 'disabled' : ''}`);
-  return `<li class="boss-row">
+  return `<li class="boss-row${won ? ' is-defeated' : ''}">
     <div class="boss-portrait" aria-hidden="true">${icon('shield',23)}${portrait ? `<img src="${esc(portrait)}" alt="" loading="lazy" decoding="async">` : ''}</div>
     <button type="button" class="boss-win" data-action="boss-win" ${id} role="checkbox" aria-checked="${Boolean(won)}" aria-label="Побеждён: ${esc(boss.name)}">${won ? icon('check',23) : ''}</button>
     <div class="boss-row-copy">
@@ -1343,6 +1343,11 @@ function bossRow(game, boss) {
 function bossRegionPanel(game, region) {
   const stats = bossSummary(game, region.bosses);
   const filter = region.areas.find(area => area.name === bossArea);
+  const remaining = [];
+  const defeated = [];
+  for (const boss of filter?.bosses ?? region.bosses) {
+    (game.bossProgress[boss.id]?.won ? defeated : remaining).push(boss);
+  }
   const areaButton = (name, label) => `<button type="button" data-action="boss-area" data-area="${esc(name)}" aria-pressed="${bossArea === name}">${label}</button>`;
   return `<section id="boss-region-bosses" class="boss-region panel" aria-label="Боссы выбранного региона">
     <header class="boss-region-head"><h3>${esc(region.name)}</h3><span>${stats.won}/${stats.total}</span></header>
@@ -1350,7 +1355,7 @@ function bossRegionPanel(game, region) {
       ${areaButton('', 'Все')}${region.areas.map(area =>
         areaButton(area.name,`<span>${esc(area.name)}</span> <small>${bossSummary(game, area.bosses).won}/${area.bosses.length}</small>`)).join('')}
     </div>` : ''}
-    <ul class="boss-list">${(filter?.bosses ?? region.bosses).map(boss => bossRow(game, boss)).join('')}</ul>
+    <ul class="boss-list">${[...remaining, ...defeated].map(boss => bossRow(game, boss)).join('')}</ul>
   </section>`;
 }
 
