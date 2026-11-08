@@ -1,4 +1,4 @@
-// Eldenpedia and Fextralife screenshots. Boss portraits from the Fextralife boss gallery.
+// Regional landscapes and boss portraits from Eldenpedia and Fextralife.
 export const regionArt = {
   "16": {
     "source": "https://eldenring.wiki.fextralife.com/Nokron,+Eternal+City",
@@ -6,32 +6,32 @@ export const regionArt = {
     "thumb": "./assets/elden-ring/regions/16-thumb.jpg"
   },
   "12": {
-    "source": "https://eldenring.wiki.fextralife.com/Mountaintops+of+the+Giants",
+    "source": "https://eldenring.wiki.gg/wiki/Mountaintops_of_the_Giants",
     "image": "./assets/elden-ring/regions/12.jpg",
     "thumb": "./assets/elden-ring/regions/12-thumb.jpg"
   },
   "9": {
-    "source": "https://eldenring.wiki.fextralife.com/Volcano+Manor",
+    "source": "https://eldenring.wiki.gg/wiki/Volcano_Manor",
     "image": "./assets/elden-ring/regions/9.jpg",
     "thumb": "./assets/elden-ring/regions/9-thumb.jpg"
   },
   "15": {
-    "source": "https://eldenring.wiki.fextralife.com/Siofra+River",
+    "source": "https://eldenring.wiki.gg/wiki/Siofra_River",
     "image": "./assets/elden-ring/regions/15.jpg",
     "thumb": "./assets/elden-ring/regions/15-thumb.jpg"
   },
   "11": {
-    "source": "https://eldenring.wiki.fextralife.com/Forbidden+Lands",
+    "source": "https://eldenring.wiki.gg/wiki/Forbidden_Lands",
     "image": "./assets/elden-ring/regions/11.jpg",
     "thumb": "./assets/elden-ring/regions/11-thumb.jpg"
   },
   "17": {
-    "source": "https://eldenring.wiki.fextralife.com/Mohgwyn+Palace",
+    "source": "https://eldenring.wiki.gg/wiki/Mohgwyn_Palace",
     "image": "./assets/elden-ring/regions/17.jpg",
     "thumb": "./assets/elden-ring/regions/17-thumb.jpg"
   },
   "8": {
-    "source": "https://eldenring.wiki.fextralife.com/Mt.+Gelmir",
+    "source": "https://eldenring.wiki.gg/wiki/Mt._Gelmir",
     "image": "./assets/elden-ring/regions/8.jpg",
     "thumb": "./assets/elden-ring/regions/8-thumb.jpg"
   },
@@ -41,22 +41,22 @@ export const regionArt = {
     "thumb": "./assets/elden-ring/regions/4-thumb.jpg"
   },
   "22": {
-    "source": "https://eldenring.wiki.fextralife.com/Gravesite+Plain",
+    "source": "https://eldenring.wiki.gg/wiki/Gravesite_Plain",
     "image": "./assets/elden-ring/regions/22.jpg",
     "thumb": "./assets/elden-ring/regions/22-thumb.jpg"
   },
   "29": {
-    "source": "https://eldenring.wiki.fextralife.com/Abyssal+Woods",
+    "source": "https://eldenring.wiki.gg/wiki/Abyssal_Woods",
     "image": "./assets/elden-ring/regions/29.jpg",
     "thumb": "./assets/elden-ring/regions/29-thumb.jpg"
   },
   "25": {
-    "source": "https://eldenring.wiki.fextralife.com/Jagged+Peak",
+    "source": "https://eldenring.wiki.gg/wiki/Jagged_Peak",
     "image": "./assets/elden-ring/regions/25.jpg",
     "thumb": "./assets/elden-ring/regions/25-thumb.jpg"
   },
   "26": {
-    "source": "https://eldenring.wiki.fextralife.com/Rauh+Base",
+    "source": "https://eldenring.wiki.gg/wiki/Rauh_Base",
     "image": "./assets/elden-ring/regions/26.jpg",
     "thumb": "./assets/elden-ring/regions/26-thumb.jpg"
   },
@@ -66,22 +66,22 @@ export const regionArt = {
     "thumb": "./assets/elden-ring/regions/1-thumb.jpg"
   },
   "10": {
-    "source": "https://eldenring.wiki.fextralife.com/Leyndell+Royal+Capital",
+    "source": "https://eldenring.wiki.gg/wiki/Leyndell,_Royal_Capital",
     "image": "./assets/elden-ring/regions/10.jpg",
     "thumb": "./assets/elden-ring/regions/10-thumb.jpg"
   },
   "19": {
-    "source": "https://eldenring.wiki.fextralife.com/Deeproot+Depths",
+    "source": "https://eldenring.wiki.gg/wiki/Deeproot_Depths",
     "image": "./assets/elden-ring/regions/19.jpg",
     "thumb": "./assets/elden-ring/regions/19-thumb.jpg"
   },
   "20": {
-    "source": "https://eldenring.wiki.fextralife.com/Crumbling+Farum+Azula",
+    "source": "https://eldenring.wiki.gg/wiki/Crumbling_Farum_Azula",
     "image": "./assets/elden-ring/regions/20.jpg",
     "thumb": "./assets/elden-ring/regions/20-thumb.jpg"
   },
   "14": {
-    "source": "https://eldenring.wiki.fextralife.com/Miquella%27s+Haligtree",
+    "source": "https://eldenring.wiki.gg/wiki/Miquella%27s_Haligtree",
     "image": "./assets/elden-ring/regions/14.jpg",
     "thumb": "./assets/elden-ring/regions/14-thumb.jpg"
   },
@@ -91,7 +91,7 @@ export const regionArt = {
     "thumb": "./assets/elden-ring/regions/3-thumb.jpg"
   },
   "30": {
-    "source": "https://eldenring.wiki.fextralife.com/Enir-Ilim",
+    "source": "https://eldenring.wiki.gg/wiki/Enir-Ilim",
     "image": "./assets/elden-ring/regions/30.jpg",
     "thumb": "./assets/elden-ring/regions/30-thumb.jpg"
   },
@@ -101,17 +101,17 @@ export const regionArt = {
     "thumb": "./assets/elden-ring/regions/2-thumb.jpg"
   },
   "7": {
-    "source": "https://eldenring.wiki.fextralife.com/Capital+Outskirts",
+    "source": "https://eldenring.wiki.gg/wiki/Capital_Outskirts",
     "image": "./assets/elden-ring/regions/7.jpg",
     "thumb": "./assets/elden-ring/regions/7-thumb.jpg"
   },
   "13": {
-    "source": "https://eldenring.wiki.fextralife.com/Consecrated+Snowfield",
+    "source": "https://eldenring.wiki.gg/wiki/Consecrated_Snowfield",
     "image": "./assets/elden-ring/regions/13.jpg",
     "thumb": "./assets/elden-ring/regions/13-thumb.jpg"
   },
   "5": {
-    "source": "https://eldenring.wiki.fextralife.com/Dragonbarrow",
+    "source": "https://eldenring.wiki.gg/wiki/Dragonbarrow",
     "image": "./assets/elden-ring/regions/5.jpg",
     "thumb": "./assets/elden-ring/regions/5-thumb.jpg"
   },
@@ -126,32 +126,32 @@ export const regionArt = {
     "thumb": "./assets/elden-ring/regions/0-thumb.jpg"
   },
   "6": {
-    "source": "https://eldenring.wiki.fextralife.com/Altus+Plateau",
+    "source": "https://eldenring.wiki.gg/wiki/Altus_Plateau",
     "image": "./assets/elden-ring/regions/6.jpg",
     "thumb": "./assets/elden-ring/regions/6-thumb.jpg"
   },
   "23": {
-    "source": "https://eldenring.wiki.fextralife.com/Scadu+Altus",
+    "source": "https://eldenring.wiki.gg/wiki/Scadu_Altus",
     "image": "./assets/elden-ring/regions/23.jpg",
     "thumb": "./assets/elden-ring/regions/23-thumb.jpg"
   },
   "27": {
-    "source": "https://eldenring.wiki.fextralife.com/Ancient+Ruins+of+Rauh",
+    "source": "https://eldenring.wiki.gg/wiki/Ancient_Ruins_of_Rauh",
     "image": "./assets/elden-ring/regions/27.jpg",
     "thumb": "./assets/elden-ring/regions/27-thumb.jpg"
   },
   "28": {
-    "source": "https://eldenring.wiki.fextralife.com/Scaduview",
+    "source": "https://eldenring.wiki.gg/wiki/Scaduview",
     "image": "./assets/elden-ring/regions/28.jpg",
     "thumb": "./assets/elden-ring/regions/28-thumb.jpg"
   },
   "21": {
-    "source": "https://eldenring.wiki.fextralife.com/Leyndell+Ashen+Capital",
+    "source": "https://eldenring.wiki.gg/wiki/Leyndell,_Ashen_Capital",
     "image": "./assets/elden-ring/regions/21.jpg",
     "thumb": "./assets/elden-ring/regions/21-thumb.jpg"
   },
   "24": {
-    "source": "https://eldenring.wiki.fextralife.com/Cerulean+Coast",
+    "source": "https://eldenring.wiki.gg/wiki/Cerulean_Coast",
     "image": "./assets/elden-ring/regions/24.jpg",
     "thumb": "./assets/elden-ring/regions/24-thumb.jpg"
   }
@@ -284,5 +284,86 @@ export const bossArt = {
   "dlc-commander-gaius-shadow-keep-back-gate": "./assets/elden-ring/bosses/75.jpg",
   "omenkiller-village-of-the-albinaurics": "./assets/elden-ring/bosses/20.jpg",
   "cleanrot-knights-abandoned-cave": "./assets/elden-ring/bosses/19.jpg",
-  "mohg-cathedral-of-the-forsaken": "./assets/elden-ring/bosses/46.jpg"
+  "mohg-cathedral-of-the-forsaken": "./assets/elden-ring/bosses/46.jpg",
+  "grave-warden-duelist-murkwater-catacombs": "./assets/elden-ring/bosses/verified-1.jpg",
+  "grave-warden-duelist-auriza-side-tomb": "./assets/elden-ring/bosses/verified-1.jpg",
+  "flying-dragon-agheel-agheel-lake": "./assets/elden-ring/bosses/verified-2.jpg",
+  "guardian-golem-highroad-cave": "./assets/elden-ring/bosses/verified-3.jpg",
+  "patches-murkwater-cave": "./assets/elden-ring/bosses/verified-0.jpg",
+  "margit-stormveil-castle": "./assets/elden-ring/bosses/verified-6.jpg",
+  "miranda-tombsward-cave": "./assets/elden-ring/bosses/verified-7.jpg",
+  "tibia-mariner-summonwater-village": "./assets/elden-ring/bosses/verified-4.jpg",
+  "tibia-mariner-artists-shack": "./assets/elden-ring/bosses/verified-4.jpg",
+  "tibia-mariner-wyndham-ruins": "./assets/elden-ring/bosses/verified-4.jpg",
+  "grafted-scion-chapel-of-anticipation": "./assets/elden-ring/bosses/verified-5.jpg",
+  "glintstone-dragon-adula-moonlight-altar": "./assets/elden-ring/bosses/verified-10.jpg",
+  "bloodhound-knight-lakeside-crystal-cave": "./assets/elden-ring/bosses/verified-9.jpg",
+  "crystalian-raya-lucaria-crystal-tunnel": "./assets/elden-ring/bosses/verified-11.jpg",
+  "ancient-hero-of-zamor-weeping-evergaol": "./assets/elden-ring/bosses/verified-8.jpg",
+  "ancient-hero-of-zamor-sainted-heros-grave": "./assets/elden-ring/bosses/verified-8.jpg",
+  "ancient-hero-of-zamor-giant-conquering-heros-grave": "./assets/elden-ring/bosses/verified-8.jpg",
+  "crystalians-academy-crystal-cave": "./assets/elden-ring/bosses/verified-12.jpg",
+  "red-wolf-of-radagon-raya-lucaria": "./assets/elden-ring/bosses/verified-13.jpg",
+  "spiritcaller-snail-roads-end-catacombs": "./assets/elden-ring/bosses/verified-14.jpg",
+  "royal-revenant-kingsrealm-ruins": "./assets/elden-ring/bosses/verified-15.jpg",
+  "erdtree-burial-watchdogs-minor-erdtree-catacombs": "./assets/elden-ring/bosses/verified-16.jpg",
+  "fallingstar-beast-sellia-crystal-tunnel": "./assets/elden-ring/bosses/verified-18.jpg",
+  "fallingstar-beast-altus-crater": "./assets/elden-ring/bosses/verified-18.jpg",
+  "dlc-fallingstar-beast-fingerstone-hill": "./assets/elden-ring/bosses/verified-18.jpg",
+  "putrid-crystalians-sellia-hideaway": "./assets/elden-ring/bosses/verified-19.jpg",
+  "frenzied-duelist-gaol-cave": "./assets/elden-ring/bosses/verified-17.jpg",
+  "starscourge-radahn-wailing-dunes": "./assets/elden-ring/bosses/verified-23.jpg",
+  "nox-monk-and-swordstress-sellia": "./assets/elden-ring/bosses/verified-20.jpg",
+  "commander-oneil-heart-of-aeonia": "./assets/elden-ring/bosses/verified-21.jpg",
+  "crucible-knight-and-misbegotten-warrior-redmane-castle": "./assets/elden-ring/bosses/verified-22.jpg",
+  "godskin-apostle-divine-tower-of-caelid": "./assets/elden-ring/bosses/verified-24.jpg",
+  "godskin-apostle-dominula": "./assets/elden-ring/bosses/verified-24.jpg",
+  "battlemage-hugues-sellia-evergaol": "./assets/elden-ring/bosses/verified-25.jpg",
+  "perfumer-tricia-and-misbegotten-warrior-unsightly-catacombs": "./assets/elden-ring/bosses/verified-26.jpg",
+  "demi-human-queen-gilika-lux-ruins": "./assets/elden-ring/bosses/verified-27.jpg",
+  "crystalians-altus-tunnel": "./assets/elden-ring/bosses/verified-29.jpg",
+  "sanguine-noble-writheblood-ruins": "./assets/elden-ring/bosses/verified-30.jpg",
+  "elemer-of-the-briar-shaded-castle": "./assets/elden-ring/bosses/verified-31.jpg",
+  "godefroy-golden-lineage-evergaol": "./assets/elden-ring/bosses/verified-28.jpg",
+  "omenkiller-and-miranda-perfumers-grotto": "./assets/elden-ring/bosses/verified-32.jpg",
+  "kindred-of-rot-seethewater-cave": "./assets/elden-ring/bosses/verified-34.jpg",
+  "red-wolf-of-the-champion-gelmir-heros-grave": "./assets/elden-ring/bosses/verified-35.jpg",
+  "crucible-knights-auriza-heros-grave": "./assets/elden-ring/bosses/verified-33.jpg",
+  "spiritcaller-snail-spiritcaller-cave": "./assets/elden-ring/bosses/verified-39.jpg",
+  "godfrey-golden-shade-erdtree-sanctuary": "./assets/elden-ring/bosses/verified-37.jpg",
+  "fell-twins-divine-tower-of-east-altus": "./assets/elden-ring/bosses/verified-38.jpg",
+  "abductor-virgins-subterranean-inquisition-chamber": "./assets/elden-ring/bosses/verified-36.jpg",
+  "stray-mimic-tear-hidden-path-to-the-haligtree": "./assets/elden-ring/bosses/verified-43.jpg",
+  "commander-niall-castle-sol": "./assets/elden-ring/bosses/verified-42.jpg",
+  "roundtable-knight-vyke-lord-contenders-evergaol": "./assets/elden-ring/bosses/verified-41.jpg",
+  "borealis-freezing-lake": "./assets/elden-ring/bosses/verified-40.jpg",
+  "regal-ancestor-spirit-nokron-hallowhorn-grounds": "./assets/elden-ring/bosses/verified-45.jpg",
+  "loretta-haligtree-promenade": "./assets/elden-ring/bosses/verified-44.jpg",
+  "valiant-gargoyles-siofra-aqueduct": "./assets/elden-ring/bosses/verified-46.jpg",
+  "mohg-mohgwyn-dynasty-mausoleum": "./assets/elden-ring/bosses/verified-47.jpg",
+  "lichdragon-fortissax-deathbed-dream": "./assets/elden-ring/bosses/verified-49.jpg",
+  "dragonlord-placidusax-beside-the-great-bridge": "./assets/elden-ring/bosses/verified-50.jpg",
+  "maliketh-beside-the-great-bridge": "./assets/elden-ring/bosses/verified-51.jpg",
+  "dragonkin-soldier-of-nokstella-ainsel-river": "./assets/elden-ring/bosses/verified-48.jpg",
+  "radagon-and-elden-beast-erdtree": "./assets/elden-ring/bosses/verified-53.jpg",
+  "godfrey-hoarah-loux-elden-throne": "./assets/elden-ring/bosses/verified-52.jpg",
+  "dlc-ghostflame-dragon-gravesite-plain": "./assets/elden-ring/bosses/verified-54.jpg",
+  "dlc-ghostflame-dragon-scadu-altus": "./assets/elden-ring/bosses/verified-54.jpg",
+  "dlc-ghostflame-dragon-cerulean-coast": "./assets/elden-ring/bosses/verified-54.jpg",
+  "dlc-knight-of-the-solitary-gaol-western-mausoleum": "./assets/elden-ring/bosses/verified-55.jpg",
+  "dlc-black-knight-garrew-fog-rift-fort": "./assets/elden-ring/bosses/verified-56.jpg",
+  "dlc-dryleaf-dane-moorth-ruins": "./assets/elden-ring/bosses/verified-59.jpg",
+  "dlc-ancient-dragon-man-dragons-pit": "./assets/elden-ring/bosses/verified-58.jpg",
+  "dlc-red-bear-northern-mausoleum": "./assets/elden-ring/bosses/verified-57.jpg",
+  "dlc-black-knight-edredd-fort-of-reprimand": "./assets/elden-ring/bosses/verified-60.jpg",
+  "dlc-ralva-the-great-red-bear-scadu-altus": "./assets/elden-ring/bosses/verified-61.jpg",
+  "dlc-curseblade-labirith-bonny-gaol": "./assets/elden-ring/bosses/verified-62.jpg",
+  "dlc-golden-hippopotamus-shadow-keep": "./assets/elden-ring/bosses/verified-63.jpg",
+  "dlc-tibia-mariner-charos-hidden-grave": "./assets/elden-ring/bosses/verified-67.jpg",
+  "dlc-jori-elder-inquisitor-darklight-catacombs": "./assets/elden-ring/bosses/verified-64.jpg",
+  "dlc-dancer-of-ranah-southern-mausoleum": "./assets/elden-ring/bosses/verified-65.jpg",
+  "dlc-demi-human-queen-marigga-cerulean-coast": "./assets/elden-ring/bosses/verified-66.jpg",
+  "dlc-ancient-dragon-senessax-jagged-peak": "./assets/elden-ring/bosses/verified-70.jpg",
+  "dlc-jagged-peak-drake-dragons-pit-terminus": "./assets/elden-ring/bosses/verified-68.jpg",
+  "dlc-jagged-peak-drakes-duo": "./assets/elden-ring/bosses/verified-69.jpg"
 };
