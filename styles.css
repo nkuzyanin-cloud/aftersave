@@ -1002,54 +1002,6 @@ input[type=checkbox]{accent-color:#b29afe}
 .boss-note strong{font-size:clamp(17px,1.36vw,23px)}
 .boss-note small{font-size:clamp(12px,1.1vw,18px);color:#d5cbe9;white-space:nowrap}
 .boss-note>.progress-track{min-width:0}
-#boss-tracker{display:grid;grid-template-columns:minmax(0,1fr);align-items:start;gap:clamp(12px,1.4vw,24px);padding-bottom:28px}
-.boss-tracker-main{min-width:0}
-.boss-tracker-main>.back-link{display:inline-flex;align-items:center;gap:9px;font-size:clamp(16px,1.35vw,23px);color:#e7dfff;margin:0 0 10px}
-.boss-tracker-main>h2{font-size:clamp(36px,3vw,52px);line-height:1.1;margin:0}
-.boss-subtitle{font-size:clamp(16px,1.34vw,23px);color:#e3d9f1;margin:3px 0 clamp(14px,1.25vw,21px)}
-.boss-metrics{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:clamp(8px,1.08vw,18px);margin-bottom:clamp(12px,1.2vw,20px)}
-.boss-metric{min-width:0;border-radius:14px;border-color:#403952;background:#222137;padding:clamp(11px,1vw,17px) clamp(12px,1.5vw,25px)}
-.boss-metric>div:first-child{display:flex;align-items:baseline;justify-content:space-between;gap:7px;margin-bottom:10px}
-.boss-metric strong{font-size:clamp(17px,1.75vw,30px);line-height:1.2}
-.boss-metric span{font-size:clamp(14px,1.26vw,22px);color:#e8defa}
-.boss-metric .progress-track{height:clamp(8px,1.1vw,18px)}
-.boss-death-total{display:grid;align-content:center;gap:5px}
-.boss-regions{display:grid;gap:12px}
-.boss-region{border:1px solid #484259;border-radius:14px;background:linear-gradient(115deg,#242337,#1d1d30);overflow:hidden}
-.boss-region h3{margin:0}
-.boss-region-toggle{width:100%;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:clamp(9px,1.3vw,22px);padding:clamp(10px,.9vw,16px) clamp(13px,1.55vw,26px);background:transparent;color:inherit;border:0;text-align:left;font:inherit;font-size:clamp(17px,1.9vw,33px);line-height:1.14;cursor:pointer}
-.boss-region-toggle:hover{background:#bda9f40b}
-.boss-region-toggle>span:last-child{color:#ded3f9;font-size:.85em;font-weight:500}
-.boss-area-tabs{display:flex;flex-wrap:wrap;gap:7px;padding:4px clamp(10px,1.55vw,26px) 13px}
-.boss-area-tabs button{background:#222134;color:#eee8f8;border:1px solid #4a435f;border-radius:10px;padding:5px 12px;min-height:36px;font:inherit;font-size:clamp(13px,1.16vw,20px);cursor:pointer}
-.boss-area-tabs button[aria-pressed=true]{background:#4f3d78;border-color:#ae91f0;color:#fff}
-.boss-area-tabs small{font-size:.84em;color:#e0d1f7;margin-left:5px;white-space:nowrap}
-.boss-list{list-style:none;padding:0;margin:0 clamp(10px,1.55vw,26px)}
-.boss-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:clamp(10px,1.3vw,21px);border-top:1px solid #453d56;padding:clamp(10px,.85vw,14px) 0}
-.boss-win{display:grid;place-items:center;width:clamp(35px,2.6vw,44px);aspect-ratio:1;background:#171624;border:1px solid #8f7ab1;border-radius:10px;color:#fff;cursor:pointer}
-.boss-win[aria-checked=true]{background:#a887fb;border-color:#c6aaff;box-shadow:0 0 13px #ad8bff4d}
-.boss-row-copy{display:grid;gap:3px;min-width:0}
-.boss-row-copy strong{font-size:clamp(15px,1.39vw,23px);line-height:1.24}
-.boss-row-copy strong svg{color:#c8abff;vertical-align:-2px}
-.boss-row-copy>span{color:#e1d6f3;font-size:clamp(13px,1.11vw,19px)}
-.boss-row-copy>small,.boss-row-deaths{color:#c7b8db;font-size:clamp(12px,.92vw,15px);line-height:1.42}
-.boss-type{display:inline-block;margin-left:4px;border:1px solid #554670;border-radius:6px;padding:2px 5px;vertical-align:2px;color:#d8c4ff;font-size:.58em;font-weight:650}
-.boss-row-actions{display:flex;justify-content:flex-end;align-items:center;gap:7px;flex-wrap:wrap}
-.boss-row-actions .btn{font-size:clamp(12px,1.05vw,18px);padding:0 clamp(7px,.75vw,14px);min-height:37px;background:#232035;border:1px solid #a296ba;white-space:nowrap}
-.boss-row-actions .btn:hover,.boss-row-actions .btn[aria-pressed=true]{background:#403258;border-color:#d6c0ff;box-shadow:0 0 10px #c6a5ff73}
-.boss-row-deaths{flex:0 0 100%;text-align:right}
-@media(max-width:550px){
-  .boss-note{grid-template-columns:auto minmax(max-content,1fr) minmax(26px,1.1fr) auto}
-  .boss-row{grid-template-columns:auto minmax(0,1fr)}
-  .boss-row-actions{grid-column:2;justify-content:flex-start}
-  .boss-row-deaths{flex:none;text-align:left}
-  .boss-metric>div:first-child{align-items:flex-start}
-  .boss-area-tabs button{padding-inline:8px}
-}
-
-.boss-cleared>summary{cursor:pointer;padding:12px clamp(13px,1.55vw,26px);font-size:clamp(16px,1.6vw,26px);font-weight:700;color:#e4d9f4}
-.boss-cleared>div{display:grid;gap:8px;padding:0 9px 9px}
-
 /* Library rows and achievement cups */
 .shelf-switch button[aria-pressed=true],.game-tabs a[aria-current=page]{box-shadow:none}
 .library-controls{grid-template-columns:minmax(0,1.58fr) minmax(120px,.96fr) minmax(135px,1.04fr)}
@@ -1113,30 +1065,6 @@ input[type=checkbox]{accent-color:#b29afe}
 .status-options button[aria-pressed=true]{background:#3b3154;border-color:#645483}
 .status-options button:hover,.status-options button:focus-visible{background:#4a3b65}
 
-/* Elden Ring map and compact tracker */
-.boss-tracker-main>h2{font-size:clamp(29px,2.45vw,41px)}
-.boss-subtitle,.boss-tracker-main>.back-link{font-size:clamp(14px,1.06vw,18px)}
-.boss-metric strong{font-size:clamp(16px,1.35vw,23px)}
-.boss-metric span{font-size:clamp(13px,1.07vw,18px)}
-.boss-region-toggle{font-size:clamp(16px,1.42vw,24px)}
-.boss-area-tabs button{font-size:clamp(12px,1vw,16px)}
-.boss-row{gap:clamp(8px,1.05vw,17px);padding-block:8px}
-.boss-row-copy strong{font-size:clamp(14px,1.08vw,18px)}
-.boss-row-copy>span{font-size:clamp(12px,.91vw,16px)}
-.boss-row-actions .btn{font-size:clamp(12px,.92vw,15px)}
-#boss-map-dialog{width:min(970px,calc(100vw - 24px));max-height:calc(100dvh - 24px);border-color:#6a5c81}
-#boss-map-dialog::backdrop{background:#0a0817b8;backdrop-filter:none}
-.boss-map-panel{background:#201d31}
-.boss-map-panel>header,.boss-map-panel>footer{display:flex;align-items:center;justify-content:space-between;gap:9px;padding:9px 13px}
-.boss-map-panel h2{font-size:clamp(17px,1.45vw,24px);margin:0;line-height:1.24}
-.boss-map-panel>footer{flex-wrap:wrap;color:#e0d3f1;font-size:clamp(12px,1vw,15px)}
-.boss-map-panel>footer p{margin:0}
-.boss-map-panel>footer a{display:inline-flex;align-items:center;gap:4px;color:#d0b9ff}
-.boss-map-image{display:block;background:#151422}
-.boss-map-image img{display:block;width:100%;height:auto;max-height:calc(100dvh - 195px);object-fit:contain}
-.boss-map-error{margin:12px 14px;color:#dfc8f9}
-.boss-map-panel [hidden]{display:none}
-
 /* Statistics tier board */
 .tier-board{--tier-tile-width:clamp(98px,9.15vw,150px);margin-bottom:16px;padding:6px clamp(6px,1.05vw,17px);border-color:#4a405c}
 .tier-row{display:grid;grid-template-columns:clamp(54px,5vw,81px) minmax(0,1fr);min-height:55px}
@@ -1196,35 +1124,33 @@ input[type=checkbox]{accent-color:#b29afe}
 }
 body{font-size:var(--type-body);line-height:1.45}
 .page h1,.page .game-identity h1{font-size:var(--type-page);font-weight:760;line-height:1.12;letter-spacing:-.04em}
-.panel h2,.empty h2,.dialog-head h2,.boss-map-panel h2,.boss-tracker-main>h2{
+.panel h2,.empty h2,.dialog-head h2,.boss-map-panel h2{
   font-size:var(--type-section);font-weight:710;line-height:1.24;letter-spacing:-.025em
 }
-.boss-tracker-main>h2{font-size:var(--type-page)}
 .panel h3,.card-body h3,.collection-card h2,.game-overview .achievement-list li strong,
-.redesign-achievements li strong,.boss-row-copy strong,.boss-region-toggle,.boss-cleared>summary,.boss-note strong{
+.redesign-achievements li strong,.boss-row-copy strong,.boss-note strong{
   font-size:var(--type-item);font-weight:710;line-height:1.3
 }
 .page p,.panel p,.empty p,.dialog-body>p,.dialog-body .checkbox,.game-identity>p,.game-totals,.game-grade,
-.journal-list li>div,.settings-panel .checkbox,.boss-subtitle,.boss-row-copy>span{
+.journal-list li>div,.settings-panel .checkbox,.boss-row-copy>span{
   font-size:var(--type-body);line-height:1.5
 }
 .violet-nav>a,.shelf-switch button,.game-tabs a{font-size:var(--type-body);font-weight:690;line-height:1.35}
 .violet-brand span{font-size:var(--type-section)}
 .btn,.quiet-link,.dashboard-panel-head .btn,.game-identity .detail-actions .btn,.status-picker>summary,
-.status-options button,.boss-row-actions .btn,.boss-area-tabs button,.game-identity .back-link,.boss-tracker-main>.back-link{
+.status-options button,.boss-row-actions .btn,.boss-area-tabs button,.game-identity .back-link{
   font-size:var(--type-body)
 }
 .library-controls select,.achievement-filters select,.searchbox input,.field input,.field textarea,.field select{font-size:var(--type-body)}
 .eyebrow,.status,.card-meta,.card-progress,.card-title .cup-label,.cup-label,.settings-panel small,.field>span,
-.achievement-overview>div,.redesign-achievements li small,.boss-row-copy>small,.boss-row-deaths,.boss-type,.boss-note small,
+.achievement-overview>div,.redesign-achievements li small,.boss-row-copy>small,.boss-type,.boss-note small,
 .boss-map-panel>footer,.tier-unrated .tier-letter,.tier-empty,.tier-fallback{
   font-size:var(--type-caption)
 }
 .game-overview .achievement-list li p,.redesign-achievements li p,.stats-achievements .stats-coverage{
   font-size:var(--type-caption);line-height:1.45
 }
-.boss-metric strong,.achievement-overview strong{font-size:var(--type-item)}
-.boss-metric span{font-size:var(--type-body)}
+.achievement-overview strong{font-size:var(--type-item)}
 .tier-letter{font-size:var(--type-section)}
 .tier-unrated .tier-letter{font-size:var(--type-caption)}
 @media(max-width:680px){
@@ -1247,4 +1173,99 @@ body{font-size:var(--type-body);line-height:1.45}
 }
 @media(max-width:310px){
   .violet-brand span{display:none}
+}
+
+/* Elden Ring NG+ region rail and map panel */
+#boss-tracker{display:grid;gap:clamp(9px,1.1vw,18px);padding-bottom:22px}
+.boss-tracker-bar{display:grid;grid-template-columns:auto auto minmax(0,1fr) auto;align-items:center;gap:clamp(10px,1.7vw,29px);padding:0 4px 10px;border-bottom:1px solid #3b344c}
+.boss-tracker-bar>.back-link{display:inline-flex;align-items:center;gap:6px;margin:0;color:#d8c8ff;white-space:nowrap}
+.boss-tracker-bar h2{font-size:var(--type-section);padding-inline-start:clamp(8px,1.6vw,26px);border-inline-start:1px solid #5b506e;white-space:nowrap}
+.boss-tracker-progress{display:flex;align-items:center;gap:clamp(7px,1.15vw,20px);font-variant-numeric:tabular-nums}
+.boss-tracker-progress strong,.boss-tracker-progress>span{white-space:nowrap}
+.boss-tracker-progress .progress-track{flex:1;height:8px}
+.boss-death-total{display:flex;align-items:baseline;gap:5px;padding:5px 10px;border:1px solid #534665;border-radius:9px;color:#f0e8fa;font-size:var(--type-body);font-variant-numeric:tabular-nums;white-space:nowrap}
+.boss-death-total small{color:#c7b8db;font-size:var(--type-caption);margin-right:4px}
+.boss-region-picker{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:6px;align-items:center}
+.boss-region-picker>.icon-btn{width:34px;min-width:34px;min-height:34px}
+.boss-region-picker>.icon-btn:disabled,.boss-death-stepper .icon-btn:disabled{cursor:default;opacity:.35}
+.boss-region-rail{position:relative;display:grid;grid-auto-flow:column;grid-auto-columns:calc((100% - 30px) / 4);gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;padding:4px;scrollbar-width:none}
+.boss-region-card{position:relative;isolation:isolate;display:flex;align-items:end;min-width:0;aspect-ratio:2.6;overflow:hidden;scroll-snap-align:start;border:1px solid #5b4f70;border-radius:11px;background:linear-gradient(135deg,#29243b,#19182a);color:#fff;padding:0;text-align:left}
+.boss-region-card::after{content:'';position:absolute;inset:0;z-index:-1;background:linear-gradient(0deg,#12101ded 0%,#14111f55 48%,transparent 78%)}
+.boss-region-card img{position:absolute;inset:0;z-index:-2}
+.boss-region-card:hover{border-color:#c7adff}
+.boss-region-card[aria-pressed=true]{border-color:#bca1ff;outline:2px solid #bca1ff;outline-offset:0}
+.boss-region-card>span{display:flex;align-items:end;justify-content:space-between;gap:7px;width:100%;padding:7px clamp(6px,.7vw,12px)}
+.boss-region-card strong{font-size:var(--type-item);line-height:1.2;overflow-wrap:anywhere}
+.boss-region-card small{display:flex;align-items:center;gap:3px;font-size:var(--type-caption);line-height:1.25;white-space:nowrap;font-variant-numeric:tabular-nums}
+.boss-region-card small svg{color:#d5b7ff}
+.boss-workspace{display:grid;grid-template-columns:minmax(0,1.28fr) minmax(0,1fr);align-items:start;gap:clamp(10px,1.2vw,20px)}
+.boss-visual{position:sticky;top:12px;min-width:0;overflow:hidden;border:1px solid #5a4d6f;border-radius:14px;background:#1c192b;scroll-margin-top:10px}
+.boss-scenery{margin:0}
+.boss-scenery>img,.boss-art-empty{aspect-ratio:1.93;width:100%;height:auto}
+.boss-scenery figcaption{padding:6px 10px;color:#bfb0d5;font-size:var(--type-caption);text-align:right}
+.boss-scenery figcaption a:hover{color:#f0e6ff}
+.boss-art-empty{display:flex;align-items:center;justify-content:center;gap:9px;color:#c0afd9;background:radial-gradient(ellipse at 60% 0%,#362747,#211b30 66%)}
+.boss-map-panel>header,.boss-map-panel>footer{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 11px}
+.boss-map-panel>header h2{font-size:var(--type-section);font-weight:710;line-height:1.2}
+.boss-map-panel>footer{flex-wrap:wrap;color:#e0d3f1;font-size:var(--type-caption)}
+.boss-map-panel>footer p{font-size:var(--type-caption);margin:0}
+.boss-map-panel>footer a{display:inline-flex;align-items:center;gap:4px;color:#d0b9ff}
+.boss-map-image{display:block;background:#151422}
+.boss-map-image img{display:block;width:100%;height:auto;max-height:calc(100dvh - 170px);object-fit:contain}
+.boss-map-error{margin:12px 14px;color:#dfc8f9}
+.boss-region{min-width:0;padding:clamp(9px,1.05vw,18px);border-color:#484259}
+.boss-region-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:8px}
+.boss-region-head h3{font-size:var(--type-section);overflow-wrap:anywhere}
+.boss-region-head>span{color:#d4c6ee;font-variant-numeric:tabular-nums;white-space:nowrap}
+.boss-area-tabs{display:flex;flex-wrap:wrap;gap:5px;margin:0 0 8px}
+.boss-map-panel .boss-area-tabs{margin:0;padding:0 11px 8px}
+.boss-area-tabs button{min-height:32px;border:1px solid #4a435f;border-radius:8px;padding:3px 8px;background:#222134;color:#eee8f8;font-size:var(--type-caption)}
+.boss-area-tabs button[aria-pressed=true]{background:#4f3d78;border-color:#ae91f0;color:#fff}
+.boss-area-tabs small{color:#e0d1f7;margin-left:3px;white-space:nowrap}
+.boss-list{list-style:none;padding:0;margin:0}
+.boss-row{display:grid;grid-template-columns:clamp(54px,6.1vw,102px) 34px minmax(0,1fr) auto;align-items:center;gap:clamp(5px,.65vw,11px);border-top:1px solid #41384e;padding:8px 0}
+.boss-portrait{position:relative;display:grid;place-items:center;aspect-ratio:1.9;border:1px solid #514563;border-radius:6px;overflow:hidden;color:#a995c8;background:linear-gradient(130deg,#392b4f,#1e1b2e)}
+.boss-portrait img{position:absolute;inset:0}
+.boss-win{display:grid;place-items:center;width:34px;height:34px;background:#171624;border:1px solid #8f7ab1;border-radius:7px;color:#fff;cursor:pointer}
+.boss-win[aria-checked=true]{background:#a887fb;border-color:#c6aaff}
+.boss-row-copy{display:grid;gap:2px;min-width:0;overflow-wrap:anywhere}
+.boss-row-copy strong{font-size:var(--type-item);line-height:1.23}
+.boss-row-copy strong svg{color:#c8abff;vertical-align:-2px}
+.boss-row-copy>span,.boss-row-copy>small{color:#d6c9e8;font-size:var(--type-caption);line-height:1.38}
+.boss-type{display:inline-block;margin-left:3px;border:1px solid #554670;border-radius:5px;padding:1px 4px;vertical-align:1px;color:#d8c4ff;font-size:.72em;font-weight:650}
+.boss-row-actions{display:flex;align-items:center;justify-content:flex-end;gap:6px}
+.boss-row-actions .btn{padding:0 7px;min-height:34px;background:#232035;border:1px solid #786b90;white-space:nowrap;font-size:var(--type-caption)}
+.boss-row-actions .btn:hover,.boss-row-actions .btn[aria-pressed=true]{background:#403258;border-color:#d6c0ff}
+.boss-death-stepper{display:inline-flex;align-items:center;gap:3px;border:1px solid #534665;border-radius:8px;padding:0 2px;background:#201c32}
+.boss-death-stepper .icon-btn{width:26px;min-width:26px;min-height:31px;padding:0;border:0;background:transparent;border-radius:6px}
+.boss-death-stepper .icon-btn:not(:disabled):hover{background:#413359}
+.boss-death-stepper .icon-btn svg{width:15px;height:15px}
+.boss-death-stepper span{min-width:1.5ch;text-align:center;font-size:var(--type-caption);font-variant-numeric:tabular-nums}
+@media(max-width:1200px){
+  .boss-workspace{grid-template-columns:minmax(0,1.06fr) minmax(0,1fr)}
+  .boss-row{grid-template-columns:62px 34px minmax(0,1fr)}
+  .boss-row-actions{grid-column:3;justify-content:flex-start;flex-wrap:wrap}
+}
+@media(max-width:860px){
+  .boss-workspace{grid-template-columns:minmax(0,1fr)}
+  .boss-visual{position:static}
+  .boss-region-rail{grid-auto-columns:calc((100% - 16px) / 2.25);gap:8px}
+  .boss-tracker-bar{grid-template-columns:auto 1fr auto;gap:7px}
+  .boss-tracker-bar h2{padding:0;border:0}
+  .boss-tracker-progress{grid-column:1/-1;grid-row:2}
+  .boss-row{grid-template-columns:clamp(50px,18vw,105px) 34px minmax(0,1fr) auto}
+  .boss-row-actions{grid-column:auto;justify-content:flex-end}
+}
+@media(max-width:580px){
+  .boss-region-picker>.icon-btn{width:25px;min-width:25px;min-height:31px}
+  .boss-region-picker>.icon-btn svg{width:15px}
+  .boss-region-picker{gap:3px}
+  .boss-region-rail{grid-auto-columns:calc((100% - 11px) / 1.5)}
+  .boss-region-card{aspect-ratio:2.2}
+  .boss-region-card strong{font-size:var(--type-caption)}
+  .boss-note{grid-template-columns:auto minmax(max-content,1fr) minmax(24px,1fr) auto}
+  .boss-death-total{gap:3px;padding:3px 5px;font-size:var(--type-caption)}
+  .boss-death-total small{margin:0}
+  .boss-row{grid-template-columns:clamp(48px,17vw,90px) 34px minmax(0,1fr)}
+  .boss-row-actions{grid-column:3;justify-content:flex-start;flex-wrap:wrap}
 }
