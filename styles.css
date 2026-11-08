@@ -1456,3 +1456,37 @@ body{background:radial-gradient(ellipse at 50% -25%,#2c2e3b 0%,transparent 48%),
   .game-achievements .redesign-achievements li{padding-inline:0;gap:7px}
   .game-achievements .redesign-achievements .achievement-icon{width:36px;height:36px}
 }
+/* Unified library landing page */
+.page-library{padding-top:calc(clamp(18px,2.2vw,34px) + env(safe-area-inset-top))}
+.page-collections,.page-settings{padding-top:calc(clamp(19px,2.2vw,32px) + env(safe-area-inset-top))}
+.page-game{padding-top:env(safe-area-inset-top)}
+.library-summary{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin:0 0 20px;padding:10px 0;
+  border:1px solid var(--graphite-line);border-radius:8px;background:linear-gradient(105deg,#242832,#1e2128)
+}
+.library-summary>div{display:flex;flex-direction:column;justify-content:center;gap:4px;padding:2px clamp(12px,2vw,29px)}
+.library-summary>div+div{border-left:1px solid #40444f}
+.library-summary dt{color:#bfc3cf;font-size:.84rem;line-height:1.35}
+.library-summary dd{order:-1;margin:0;font-size:clamp(24px,2.6vw,38px);font-weight:800;letter-spacing:-.045em;line-height:1.05;font-variant-numeric:tabular-nums}
+.library-controls-compact{grid-template-columns:minmax(0,1fr) repeat(2,minmax(108px,156px));margin-bottom:11px}
+.library-columns{
+  display:grid;grid-template-columns:clamp(108px,12vw,174px) minmax(0,1fr) minmax(82px,.42fr) minmax(43px,.27fr) minmax(107px,.58fr);
+  gap:clamp(9px,1.45vw,23px);padding:5px 91px 9px 11px;color:var(--graphite-dim);font-size:.81rem;font-weight:720
+}
+.library-columns span:first-child{grid-column:span 2}
+.list-view .card-link{column-gap:clamp(9px,1.45vw,23px)}
+.library-footer{display:flex;justify-content:flex-end;gap:19px;padding-top:17px;font-size:.83rem;color:var(--graphite-dim)}
+.library-footer a:hover{color:var(--text);text-decoration:underline}
+@media(max-width:790px){
+  .library-columns{display:none}
+  .list-view .card-link{column-gap:8px}
+}
+@media(max-width:600px){
+  .library-summary{grid-template-columns:repeat(2,minmax(0,1fr));padding:0;margin-bottom:13px}
+  .library-summary>div{padding:10px 11px}
+  .library-summary>div:nth-child(3){border-left:0}
+  .library-summary>div:nth-child(n+3){border-top:1px solid #40444f}
+  .library-summary dt{font-size:.75rem}
+  .library-controls-compact{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .library-controls-compact .searchbox{grid-column:1/-1}
+}

@@ -13,10 +13,9 @@ import { mergeSteam, fetchLibrary, connect, disconnect, connected, steamCover, s
 const app = document.querySelector('#app');
 const dialog = document.querySelector('#dialog');
 const toast = document.querySelector('#toast');
-const labels = { library: 'Библиотека', collections: 'Коллекции', stats: 'Статистика', settings: 'Настройки', game: 'Игра' };
-const filter = { query: '', status: '', platform: '', tag: '', collection: '', sort: 'recent' };
+const labels = { library: 'Библиотека', collections: 'Коллекции', settings: 'Настройки', game: 'Игра' };
+const filter = { query: '', status: '' };
 const cups = { platinum: 'Платина', silver: 'Серебро', sapphire: 'Сапфир' };
-const grades = [...'SABCDEF'];
 const number = new Intl.NumberFormat('ru', { maximumFractionDigits: 2 });
 const dateFormat = new Intl.DateTimeFormat('ru', { day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -24,10 +23,6 @@ let state;
 let storageError = '';
 try { state = load(); } catch (error) { state = emptyState(); storageError = error.message; }
 let shelfMode = 'all';
-let statsOrder = 'time';
-let statsGrade = '';
-let statsExpanded = false;
-let tierDrag = null;
 let achievementQuery = '';
 let achievementSort = 'rare';
 let revealHidden = false;
@@ -125,19 +120,9 @@ function commit(next, message, options) {
 }
 
 function shell(content) {
-  const active = route.page === 'stats' ? 'stats' : 'library';
-  return `<header class="topbar violet-header">
-    <a class="violet-brand" href="#library" aria-label="AFTERSAVE, библиотека">${icon('ribbon',33)}<span>AFTERSAVE</span></a>
-    <nav class="violet-nav" aria-label="Навигация">
-      <a href="#library" ${active === 'library' ? 'aria-current="page"' : ''}>Библиотека</a>
-      <a href="#stats" ${active === 'stats' ? 'aria-current="page"' : ''}>Статистика</a>
-    </nav>
-    <div class="violet-tools">${iconButton('top-search','Найти игру','search')}
-      <a href="#settings" class="icon-btn settings-link" title="Настройки" aria-label="Настройки" ${route.page === 'settings' ? 'aria-current="page"' : ''}>${icon('gear',24)}</a>
-    </div>
-  </header>
-  <main id="main" tabindex="-1" class="page page-${route.page}">
+  return `<main id="main" tabindex="-1" class="page page-${route.page}">
     ${storageError ? `<div class="alert">${icon('shield',19)}<span>${esc(storageError)}</span><a href="#settings">Восстановить данные</a></div>` : ''}
+    ${route.page === 'settings' || route.page === 'collections' ? `<a class="back-link" href="#library">${icon('back',17)} К играм</a>` : ''}
     ${content}
   </main>`;
 }
@@ -197,25 +182,15 @@ function header(kicker, title, description, actions = '') {
     <p>${description}</p></div>${actions ? `<div class="heading-actions">${actions}</div>` : ''}</div>`;
 }
 
+const byLastPlayed = (a,b) => (b.steam?.lastPlayed ?? 0) - (a.steam?.lastPlayed ?? 0);
+
 function filtered(source) {
   const query = filter.query.trim().toLocaleLowerCase('ru');
-  const result = source.filter(game => {
+  return source.filter(game => {
     const haystack = [game.title, displayName(game), game.genre, game.platform, game.steam?.appid, ...game.tags].join(' ').toLocaleLowerCase('ru');
     return (!query || query.split(/\s+/).every(term => haystack.includes(term))) &&
-      (!filter.status || gameStatus(game) === filter.status) &&
-      (!filter.platform || game.platform === filter.platform) &&
-      (!filter.tag || game.tags.includes(filter.tag)) &&
-      (!filter.collection || game.collectionIds.includes(filter.collection));
-  });
-  const sorts = {
-    title: (a, b) => a.title.localeCompare(b.title, 'ru'),
-    hours: (a, b) => gameHours(b) - gameHours(a),
-    lastPlayed: (a, b) => (b.steam?.lastPlayed ?? 0) - (a.steam?.lastPlayed ?? 0),
-    rating: (a, b) => (b.rating ?? -1) - (a.rating ?? -1),
-    progress: (a, b) => b.progress - a.progress
-  };
-  if (filter.sort === 'recent') return result.sort((a,b) => Math.max(Date.parse(b.updatedAt), (b.steam?.lastPlayed || 0)*1000) - Math.max(Date.parse(a.updatedAt), (a.steam?.lastPlayed || 0)*1000));
-  return sorts[filter.sort] ? result.sort(sorts[filter.sort]) : result;
+      (!filter.status || gameStatus(game) === filter.status);
+  }).sort((a,b) => byLastPlayed(a,b) || displayName(a).localeCompare(displayName(b),'ru'));
 }
 
 function displayName(game, full = false) {
@@ -260,7 +235,7 @@ function gameCard(game) {
 function gameList(source) {
   const result = filtered(source);
   if (!result.length) {
-    const isFiltered = Boolean(filter.query || filter.status || filter.platform || filter.tag || filter.collection || route.trophy);
+    const isFiltered = Boolean(filter.query || filter.status || route.trophy);
     return `<div class="empty"><span class="empty-icon">${icon(isFiltered ? 'search' : 'game', 29)}</span>
       <h2>${isFiltered ? 'Игры не найдены' : 'Здесь пока пусто'}</h2>
       <p>${isFiltered ? 'Попробуйте другой запрос или сбросьте фильтры.' :
@@ -271,7 +246,8 @@ function gameList(source) {
         route.page === 'library' && shelfMode === 'hidden' ? button('shelf', 'Все игры', 'library', 'secondary', 'data-value="all"') :
         route.page === 'collections' ? button('pick-collection','Выбрать игру','plus','primary') : '<a class="btn btn-primary" href="#settings">Настройки Steam</a>'}</div>`;
   }
-  return `<div class="game-grid list-view">${result.slice(0, displayLimit).map(gameCard).join('')}</div>
+  return `<div class="library-columns" aria-hidden="true"><span>Игра</span><span>Статус</span><span>Время</span><span>Достижения</span></div>
+    <div class="game-grid list-view">${result.slice(0, displayLimit).map(gameCard).join('')}</div>
     ${result.length > displayLimit ? `<div class="load-more">${button('more-games', 'Показать ещё игры', 'down')}</div>` : ''}`;
 }
 
@@ -284,11 +260,11 @@ function searchField(id = 'global-search') {
 }
 
 function viewControls() {
-  return `<div class="library-controls">
+  return `<div class="library-controls library-controls-compact">
     ${searchField()}
+    ${route.page === 'library' && !route.trophy ? `<select id="shelf-mode" aria-label="Раздел библиотеки">${[['all','Все игры'],['favorite','Избранное'],['hidden','Скрытые']]
+      .map(([id,label]) => option(id,label,shelfMode)).join('')}</select>` : ''}
     <select id="status-filter" aria-label="Статус игры">${[['','Статус'],...Object.entries(STATUSES)].map(([id,label])=>option(id,label,filter.status)).join('')}</select>
-    <select id="sort" aria-label="Сортировка">${[['recent','По активности'],['lastPlayed','Последний запуск'],['title','По названию'],['hours','По времени'],['rating','По оценке']]
-      .map(([id,label])=>option(id,label,filter.sort)).join('')}</select>
   </div>`;
 }
 
@@ -306,13 +282,23 @@ function gameResults(source) {
 }
 
 function library() {
-  return `<section class="library-section">
-    <div class="library-heading"><h1>Библиотека</h1><a class="quiet-link" href="#collections">${icon('layers',20)} Коллекции</a></div>
-    ${route.trophy ? `<div class="cup-filter">${trophyBadge(route.trophy)} <a class="quiet-link" href="#library">${icon('x',16)} Сбросить кубок</a></div>` :
-      `<div class="shelf-switch" aria-label="Раздел библиотеки">${[['all','Все игры'],['hidden','Скрытые'],['favorite','Избранное']].map(([id,label]) =>
-        `<button type="button" data-action="shelf" data-value="${id}" aria-pressed="${shelfMode === id}">${label}</button>`).join('')}</div>`}
+  return `<section class="library-section" aria-label="Библиотека">
+    ${librarySummary()}
+    ${route.trophy ? `<div class="cup-filter">${trophyBadge(route.trophy)} <a class="quiet-link" href="#library">${icon('x',16)} Сбросить кубок</a></div>` : ''}
     ${viewControls()}${gameResults(sourceForPage())}
+    <footer class="library-footer"><a href="#collections">Коллекции</a><a href="#settings">Настройки</a></footer>
   </section>`;
+}
+
+function librarySummary() {
+  const linked = games().filter(game => game.steam);
+  const hours = linked.reduce((total,game) => total + game.steam.minutes, 0) / 60;
+  const completed = linked.filter(game => gameStatus(game) === 'completed').length;
+  const perfect = linked.filter(game => trophyFor(summaryFor(game)) === 'platinum').length;
+  const metrics = [[numeric(linked.length),'Игр в Steam'],[numeric(Math.round(hours))+' ч','Время в играх'],
+    [numeric(completed),'Пройдено'],[numeric(perfect),'Со всеми достижениями']];
+  return `<dl id="library-summary" class="library-summary" aria-label="Сводка Steam">${metrics.map(([value,label]) =>
+    `<div><dt>${label}</dt><dd>${value}</dd></div>`).join('')}</dl>`;
 }
 
 
@@ -346,98 +332,6 @@ function dateLabel(value) {
 
 function gamePage() { return gameDashboard(); }
 
-function tierBoard() {
-  const groups = new Map([...grades, ''].map(grade => [grade, []]));
-  for (const game of games()) {
-    if (!game.hidden) groups.get(gradeFor(game)).push(game);
-  }
-  return `<section class="panel tier-board" aria-label="Распределение игр по оценкам">
-    ${[...groups].map(([grade, group]) => `<div class="tier-row ${grade ? 'grade-' + grade : 'tier-unrated'}" data-tier="${grade}"
-      role="group" aria-label="${grade ? 'Тир ' + grade : 'Без оценки'}">
-      <span class="tier-letter" aria-hidden="true">${grade || 'Без оценки'}</span>
-      <div class="tier-covers">${group.length ? group.map(game => {
-        const title = esc(displayName(game));
-        return `<div class="tier-card" draggable="true" data-tier-game="${esc(game.id)}">
-          ${wideCover(game)}
-          <button type="button" class="tier-cover-action" data-action="tier-picker" aria-haspopup="dialog"
-            aria-label="Изменить оценку: ${title}" title="${title}"><span class="tier-fallback" aria-hidden="true">${title}</span></button>
-        </div>`;
-      }).join('') : '<span class="tier-empty">Пока пусто</span>'}</div>
-    </div>`).join('')}
-  </section>`;
-}
-
-function statsPage() {
-  const linked = games().filter(game => game.steam);
-  const achievements = totalsFor(linked);
-  const completed = games().filter(game => gameStatus(game) === 'completed').length;
-  const cupTotals = { platinum: 0, silver: 0, sapphire: 0 };
-  for (const { record } of achievements.included) {
-    const tier = trophyFor(record);
-    if (tier) cupTotals[tier]++;
-  }
-  const hours = linked.reduce((sum,game) => sum + game.steam.minutes,0) / 60;
-  return `<div class="stats-dashboard"><h1>Статистика</h1>
-    ${tierBoard()}
-    <div class="stats-metrics panel">${[[numeric(Math.round(hours))+' ч','Время в Steam','clock'],[completed,'Пройдено игр','game'],[cupTotals.platinum,'Игр со всеми достижениями','trophy']].map(([value,label,glyph])=>
-      `<div>${icon(glyph,26)}<div><strong>${value}</strong><span>${label}</span></div></div>`).join('')}</div>
-    <div class="stats-layout">
-      ${statsRanking(linked)}
-      <div class="stats-side">
-        <section class="panel stats-achievements"><div class="stats-heading"><h2>Достижения Steam</h2>
-          ${iconButton(scanningAchievements ? 'achievement-stop' : 'achievement-scan',scanningAchievements ? 'Остановить загрузку' : 'Обновить по всем играм','download')}</div>
-          ${achievements.total ? `<strong>${numeric(achievements.unlocked)} из ${numeric(achievements.total)}</strong>
-            <div class="stats-progress">${progressBar(achievements.percentage)}<span>${achievements.percentage}%</span></div>` :
-            '<p class="dash-empty">Пока нет данных о достижениях.</p>'}
-          <p class="stats-coverage">Данные по ${numeric(achievements.included.length)} из ${numeric(linked.length)} игр</p>
-          ${scanMessage ? `<p class="scan-status" role="status">${esc(scanMessage)}</p>` : ''}
-        </section>
-        <section class="stats-cups panel" aria-labelledby="stats-cup-heading">
-          <h2 id="stats-cup-heading">Кубки</h2>
-          ${Object.entries(cups).map(([tier,label]) => `<a href="#library/cup/${tier}" class="cup-${tier}" aria-label="${label}, игр: ${cupTotals[tier]}">
-            ${icon('trophy',23)}<span>${label}</span><strong>${numeric(cupTotals[tier])}</strong>${icon('right',16)}</a>`).join('')}
-        </section>
-      </div>
-    </div></div>`;
-}
-
-function statsRanking(linked) {
-  const byTime = statsOrder === 'time';
-  const score = game => byTime ? game.steam.minutes : summaryFor(game)?.unlocked || 0;
-  const top = linked.filter(game => score(game) > 0 &&
-    (!statsGrade || gradeFor(game) === (statsGrade === 'unrated' ? '' : statsGrade)))
-    .sort((a,b) => score(b) - score(a)).slice(0,10);
-  return `<section class="panel stats-ranking">
-    <div class="stats-heading"><h2>${byTime ? 'Больше всего времени' : 'Больше всего достижений'}</h2>
-      <div class="stats-filters">
-        <select id="stats-order" aria-label="Показатель рейтинга">${option('time','По времени',statsOrder)}${option('achievements','По достижениям',statsOrder)}</select>
-        <select id="stats-grade" aria-label="Оценка игр в рейтинге">${option('','Все оценки',statsGrade)}
-          ${grades.map(grade => option(grade,grade,statsGrade)).join('')}${option('unrated','Без оценки',statsGrade)}</select>
-      </div></div>
-    ${top.length ? `<div class="stats-rows" id="stats-rows">${top.slice(0,statsExpanded ? 10 : 5).map((game,index) => {
-      const grade = gradeFor(game);
-      const value = score(game);
-      return `<a href="#game/${encodeURIComponent(game.id)}">
-        <span class="stats-rank-number" aria-label="Место ${index + 1}">${String(index + 1).padStart(2,'0')}</span>${wideCover(game)}
-        <div class="stats-rank-game"><div><strong>${esc(displayName(game))}</strong>${grade ? `<span class="stats-rank-grade grade-${grade}" aria-label="Оценка ${grade}">${grade}</span>` : ''}</div>
-        ${progressBar(value / score(top[0]) * 100)}</div>
-        <span class="stats-rank-value">${byTime ? numeric(Math.round(value/60)) + ' ч' : numeric(value)}</span>
-      </a>`;
-    }).join('')}</div>` : '<p class="dash-empty">Для этой выборки пока нет данных.</p>'}
-    ${top.length > 5 ? `<button type="button" class="quiet-link stats-more" data-action="stats-more" aria-expanded="${statsExpanded}" aria-controls="stats-rows">
-      ${statsExpanded ? 'Свернуть список' : 'Показать все ' + top.length} ${icon('right',15)}</button>` : ''}
-  </section>`;
-}
-
-function refreshStatsRanking(focusSelector) {
-  const panel = app.querySelector('.stats-ranking');
-  if (!panel) return;
-  panel.outerHTML = statsRanking(games().filter(game => game.steam));
-  const next = app.querySelector('.stats-ranking');
-  imageFallbacks(next);
-  next.querySelector(focusSelector)?.focus({ preventScroll: true });
-}
-
 function wideCover(game, showFallback = false) {
   const id = game.steam?.appid;
   return id ? `<div class="cover wide-cover" style="--cover-accent:#7363a2">${showFallback ? `<span class="cover-fallback">${icon('game',24)}</span>` : ''}<img src="${esc(steamHeader(id))}" alt="" loading="lazy" data-steam-art="${id}" data-art-kind="cover"></div>` : cover(game,'wide-cover');
@@ -447,7 +341,7 @@ function settingsPage() {
   return `${header('ЛИЧНОЕ', labels.settings, 'Данные библиотеки, резервные копии и установка приложения.')}
     <div class="settings-grid">
       <section class="panel settings-panel"><span class="metric-icon violet">${icon('globe',21)}</span><h2>Облачное сохранение</h2>
-        <p>Статусы, теги, избранное, оценки, коллекции, заметки и ручные сессии на ПК и телефоне.</p>
+        <p>Статусы, теги, избранное, коллекции и заметки на ПК и телефоне.</p>
         <div class="settings-actions">${button('cloud-toggle',cloud.enabled() ? 'Выключить на этом устройстве' : 'Включить облачное сохранение','globe','primary')}
           ${cloud.enabled() ? button('cloud-sync','Синхронизировать','download') : ''}</div>
         ${cloudMessage ? `<p class="cloud-status" role="status">${esc(cloudMessage)}</p>` : ''}
@@ -462,14 +356,16 @@ function settingsPage() {
         <p>На iPhone открой AFTERSAVE в Safari и выбери «Поделиться» → «На экран “Домой”». На компьютере используй пункт установки приложения в браузере, если он доступен.</p>
         <small id="offline-label">${'serviceWorker' in navigator && navigator.serviceWorker.controller ? 'Офлайн-режим готов на этом устройстве.' : 'Офлайн-режим доступен после первой загрузки по HTTPS.'}</small></section>
       <section class="panel settings-panel"><span class="metric-icon amber">${icon('globe', 21)}</span><h2>Игровые аккаунты</h2>
-        <p>Синхронизация библиотеки Steam и достижений.</p>${steamPanel()}</section>
+        <p>Синхронизация библиотеки Steam и достижений.</p>${steamPanel()}
+        ${connected() && games().some(game => game.steam) ? `<div class="settings-actions">${button(scanningAchievements ? 'achievement-stop' : 'achievement-scan',
+          scanningAchievements ? 'Остановить обновление' : 'Обновить достижения всех игр','download')}</div>` : ''}
+        ${scanMessage ? `<p class="scan-status" role="status">${esc(scanMessage)}</p>` : ''}</section>
     </div>`;
 }
 
 function render(focusMain = false) {
-  const views = { library, collections: collectionsPage, stats: statsPage, settings: settingsPage, game: gamePage };
+  const views = { library, collections: collectionsPage, settings: settingsPage, game: gamePage };
   const railOffset = app.querySelector('.boss-region-rail')?.scrollLeft;
-  clearTierDrag();
   app.innerHTML = shell(views[route.page]());
   bindBossTracker(railOffset);
 
@@ -525,7 +421,6 @@ function openGameForm(game = {}, editing = false) {
       ${!gameStatus(game) ? option('', 'Без статуса', '') : ''}
       ${Object.entries(STATUSES).map(([value, label]) => option(value, label, gameStatus(game))).join('')}</select></label>
     ${inputField('Время, ч', 'hours', game.hours ?? 0, 'min="0" max="100000" step="any" required', 'number')}
-    ${inputField('Оценка / 10', 'rating', game.rating, 'min="0" max="10" step="any" placeholder="Без оценки"', 'number')}
     ${inputField('Дата начала', 'startedAt', game.startedAt, '', 'date')}
     ${inputField('Дата завершения', 'finishedAt', game.finishedAt, '', 'date')}
     ${inputField('Жанр', 'genre', game.genre, 'maxlength="80" placeholder="Например, RPG"')}
@@ -569,7 +464,6 @@ function saveGame(form) {
   const value = {
     ...draft.game, title, platform: fields.get('platform'), status: status || draft.game.status || 'planned',
     hours: Number(fields.get('hours')),
-    rating: fields.get('rating') === '' ? null : Number(fields.get('rating')),
     startedAt, finishedAt, shelf: Boolean(status || draft.game.shelf), genre: fields.get('genre'), year: fields.get('year') ? Number(fields.get('year')) : null,
     tags: fields.get('tags').split(',').map(tag => tag.trim()).filter(Boolean), wishlist: fields.has('wishlist'),
     collectionIds: fields.getAll('collection'), cover: coverInput || (coverUrl(draft.game.cover).startsWith('./') ? draft.game.cover : ''),
@@ -587,7 +481,7 @@ function saveGame(form) {
 }
 
 function clearFilters() {
-  Object.assign(filter, { query: '', status: '', platform: '', tag: '', collection: '' });
+  Object.assign(filter, { query: '', status: '' });
   displayLimit = 24;
 }
 
@@ -610,10 +504,6 @@ function dateStamp(now = new Date()) {
 
 
 const actions = {
-  'stats-more': () => {
-    statsExpanded = !statsExpanded;
-    refreshStatsRanking('[data-action="stats-more"]');
-  },
   'boss-region': control => {
     const index = Number(control.dataset.region);
     if (index === bossRegion) return;
@@ -690,9 +580,6 @@ const actions = {
     achievementLimit += 24;
     updateAchievementRows(true);
   },
-  'tier-picker': control => openTierPicker(control.closest('[data-tier-game]').dataset.tierGame),
-  'tier-set': control => moveTierGame(control.dataset.id, control.dataset.value, true),
-  'tier-open-game': () => dialog.close(),
   'shelf': control => { shelfMode = control.dataset.value; displayLimit = 24; render(); },
   'hide-game': control => {
     const game = state.games.find(item => item.id === control.dataset.id) ?? findByRoute(state.games);
@@ -742,7 +629,6 @@ const actions = {
       const next = state.collections.filter(collection => collection.id !== item.id);
       const updated = state.games.map(game => ({ ...game, collectionIds: game.collectionIds.filter(id => id !== item.id) }));
       if (!commit({ ...state, collections: next, games: updated }, 'Коллекция удалена')) return false;
-      if (filter.collection === item.id) filter.collection = '';
       go('collections');
       return true;
     }, true);
@@ -773,56 +659,6 @@ document.addEventListener('keydown', event => {
   }
 });
 
-function clearTierDrag() {
-  if (!tierDrag) return;
-  tierDrag.card.classList.remove('is-dragging');
-  tierDrag.board.classList.remove('is-dragging');
-  tierDrag.target?.classList.remove('is-drop-target');
-  tierDrag = null;
-}
-
-app.addEventListener('dragstart', event => {
-  const card = event.target.closest('[data-tier-game]');
-  if (!card || !event.dataTransfer) return;
-  clearTierDrag();
-  const board = card.closest('.tier-board');
-  tierDrag = { card, board, target: null };
-  event.dataTransfer.effectAllowed = 'move';
-  event.dataTransfer.setData('text/plain', card.dataset.tierGame);
-  card.classList.add('is-dragging');
-  board.classList.add('is-dragging');
-});
-
-app.addEventListener('dragover', event => {
-  const row = event.target.closest('[data-tier]');
-  if (!tierDrag || !row || !tierDrag.board.contains(row)) return;
-  event.preventDefault();
-  event.dataTransfer.dropEffect = 'move';
-  if (row === tierDrag.target) return;
-  tierDrag.target?.classList.remove('is-drop-target');
-  row.classList.add('is-drop-target');
-  tierDrag.target = row;
-});
-
-app.addEventListener('dragleave', event => {
-  const row = tierDrag?.target;
-  if (row && !row.contains(event.relatedTarget)) {
-    row.classList.remove('is-drop-target');
-    tierDrag.target = null;
-  }
-});
-
-app.addEventListener('drop', event => {
-  const row = event.target.closest('[data-tier]');
-  if (!tierDrag || !row || !tierDrag.board.contains(row)) return;
-  event.preventDefault();
-  const id = tierDrag.card.dataset.tierGame;
-  clearTierDrag();
-  moveTierGame(id, row.dataset.tier);
-});
-
-app.addEventListener('dragend', clearTierDrag);
-
 document.addEventListener('input', event => {
   if (event.target.id === 'global-search') {
     filter.query = event.target.value;
@@ -841,16 +677,6 @@ document.addEventListener('input', event => {
 
 app.addEventListener('change', async event => {
   const field = event.target;
-  if (field.id === 'stats-order' || field.id === 'stats-grade') {
-    if (field.id === 'stats-order') statsOrder = field.value;
-    else statsGrade = field.value;
-    statsExpanded = false;
-    refreshStatsRanking('#' + field.id);
-  }
-  if (field.id === 'game-grade') {
-    const game = findByRoute(games());
-    if (game && !saveGrade(game, field.value)) field.value = gradeFor(game);
-  }
   if (field.id === 'achievement-sort') {
     achievementSort = field.value;
     achievementLimit = 24;
@@ -860,11 +686,9 @@ app.addEventListener('change', async event => {
     revealHidden = field.checked;
     updateAchievementRows();
   }
-  const fields = { sort: 'sort', 'status-filter': 'status' };
-  if (Object.hasOwn(fields, field.id)) {
-    filter[fields[field.id]] = field.value;
-
-
+  if (field.id === 'shelf-mode' || field.id === 'status-filter') {
+    if (field.id === 'shelf-mode') shelfMode = field.value;
+    else filter.status = field.value;
     renderResults();
   }
   if (field.id !== 'backup-file' || !field.files.length) return;
@@ -1101,8 +925,10 @@ async function refreshSteamSummaries(repaint = true) {
   if (account !== (state.steam?.account ?? null)) return;
   summaryAccount = account;
   summaries = records;
-  if (repaint && !dialog.open && route.page === 'stats') render();
-  if (repaint && !dialog.open && ['library','collections'].includes(route.page) && records.length) renderResults(true);
+  if (!repaint || dialog.open) return;
+  const summary = app.querySelector('#library-summary');
+  if (summary) summary.outerHTML = librarySummary();
+  if (['library','collections'].includes(route.page)) renderResults(true);
 }
 
 
@@ -1111,7 +937,7 @@ async function scanAchievements() {
   if (scanningAchievements) return;
   if (!connected()) return openSteamLogin();
   const account = state.steam?.account;
-  const linked = state.games.filter(game => game.steam).sort((a, b) => b.steam.lastPlayed - a.steam.lastPlayed);
+  const linked = state.games.filter(game => game.steam).sort(byLastPlayed);
   scanningAchievements = true;
   stopAchievementScan = false;
   let checked = 0;
@@ -1138,6 +964,7 @@ async function scanAchievements() {
   scanningAchievements = false;
   scanMessage = `${interruption ? interruption + ' ' : ''}Проверено ${checked} из ${linked.length} · недоступно ${failed}.`;
   await refreshSteamSummaries();
+  if (route.page === 'settings' && !dialog.open) render();
 }
 
 function updateGame(game, changes, message) {
@@ -1151,7 +978,7 @@ function runsPanel(game) {
     ${game.runs.length ? `<div class="runs-grid">${game.runs.map((run, index) => `<article class="run-card"><div class="steam-section-head">
       <div><small>ПРОХОЖДЕНИЕ ${index + 1}${run.cycle ? ' · ' + esc(run.cycle) : ''}</small><h3>${esc(run.title)}</h3></div>
       ${iconButton('edit-run', 'Редактировать прохождение', 'edit', `data-id="${esc(run.id)}"`)}</div>
-      <p>${dateLabel(run.startedAt)} → ${dateLabel(run.finishedAt)}${run.rating !== null ? ` · ★ ${numeric(run.rating)} / 10` : ''}</p>
+      <p>${dateLabel(run.startedAt)} → ${dateLabel(run.finishedAt)}</p>
       ${run.build || run.difficulty ? `<p>${[run.build, run.difficulty].filter(Boolean).map(esc).join(' · ')}</p>` : ''}
       ${run.notes ? `<p class="notes">${esc(run.notes)}</p>` : ''}</article>`).join('')}</div>` : ''}</section>`;
 }
@@ -1168,7 +995,6 @@ function openRun(id) {
     ${inputField('Дата завершения', 'finishedAt', run?.finishedAt, '', 'date')}
     ${inputField('Билд или персонаж', 'build', run?.build, 'maxlength="150"')}
     ${inputField('Сложность', 'difficulty', run?.difficulty, 'maxlength="80"')}
-    ${inputField('Оценка / 10', 'rating', run?.rating, 'min="0" max="10" step="any"', 'number')}
     <label class="field span-all"><span>Заметки</span><textarea name="notes" rows="4" maxlength="5000">${esc(run?.notes)}</textarea></label>
     ${run ? button('delete-run', 'Удалить прохождение', 'trash', 'danger', `data-id="${esc(run.id)}"`) : ''}${errorLine()}</div>
     ${formFooter('Сохранить')}</form>`);
@@ -1180,7 +1006,7 @@ function saveRun(form) {
   const fields = Object.fromEntries(new FormData(form));
   if (!fields.title.trim()) return formError(form, 'Введите название прохождения.');
   const id = form.dataset.id || crypto.randomUUID();
-  const run = { ...fields, id, rating: fields.rating === '' ? null : Number(fields.rating) };
+  const run = { ...game.runs.find(item => item.id === id), ...fields, id };
   const runs = form.dataset.id ? game.runs.map(item => item.id === id ? run : item) : [...game.runs, run];
   if (updateGame(game, { runs }, 'Прохождение сохранено')) {
     dialog.close();
@@ -1203,18 +1029,6 @@ function summaryFor(game) {
     summaries.find(record => record.appid === game.steam.appid) : undefined;
 }
 
-function totalsFor(source) {
-  const included = source.flatMap(game => {
-    const record = summaryFor(game);
-    return record ? [{ game, record }] : [];
-  });
-  const total = included.reduce((sum, item) => sum + item.record.total, 0);
-  const unlocked = included.reduce((sum, item) => sum + item.record.unlocked, 0);
-  return { included, total, unlocked, percentage: total ? Math.round(unlocked / total * 100) : 0 };
-}
-
-
-
 function steamEntry() {
   if (connected()) return steamSync();
   openSteamLogin();
@@ -1231,47 +1045,11 @@ function journalOrder(items) {
 
 
 
-function gradeFor(game) {
-  if (game.gradeCleared || game.rating === null && !game.grade) return '';
-  return game.grade || grades[Math.min(6, Math.max(0, 9 - Math.floor(game.rating)))];
-}
-
-function saveGrade(game, grade) {
-  return updateGame(game, { grade, gradeCleared: !grade }, grade ? 'Оценка сохранена' : 'Оценка снята');
-}
-
-function openTierPicker(id) {
-  const game = games().find(item => item.id === id && !item.hidden);
-  if (!game) return;
-  const current = gradeFor(game);
-  showDialog(esc(displayName(game)), 'ОЦЕНКА ИГРЫ', `<div class="dialog-body">
-    <div class="tier-picker-grades" role="group" aria-label="Выбрать оценку">
-      ${grades.map(grade => `<button type="button" class="grade grade-${grade}" data-action="tier-set" data-id="${esc(id)}" data-value="${grade}"
-        aria-label="Оценка ${grade}" aria-pressed="${grade === current}" ${grade === current ? 'autofocus' : ''}>${grade}</button>`).join('')}
-    </div>
-  </div><div class="dialog-footer">
-    <a href="#game/${encodeURIComponent(id)}" class="btn btn-secondary" data-action="tier-open-game">Открыть игру ${icon('right',16)}</a>
-    ${button('tier-set', 'Без оценки', '', 'secondary', `data-id="${esc(id)}" data-value="" aria-pressed="${!current}"`)}
-  </div>`, 'tier-picker');
-  dialog.querySelector('[data-action="tier-set"][aria-pressed="true"]').focus();
-}
-
-function moveTierGame(id, grade, fromPicker = false) {
-  const game = games().find(item => item.id === id && !item.hidden);
-  if (!game || route.page !== 'stats' || (grade !== '' && !grades.includes(grade))) return;
-  const changed = grade !== gradeFor(game);
-  if (changed && !saveGrade(game, grade)) return;
-  if (fromPicker) dialog.close();
-  if (changed) render();
-  app.querySelector(`[data-tier-game="${CSS.escape(id)}"] button`)?.focus({ preventScroll: !fromPicker });
-}
-
 function gameDashboard() {
   const game = findByRoute(games());
   if (!game) return `<div class="empty"><h2>Игра не найдена</h2><a class="btn btn-secondary" href="#library">К библиотеке</a></div>`;
   const url = '#game/' + encodeURIComponent(game.id);
   const summary = summaryFor(game);
-  const grade = gradeFor(game);
   const achievementBox = `<section class="panel dash-panel game-achievements" id="steam-achievements" ${game.steam ? `data-appid="${game.steam.appid}"` : ''}>
     ${panelHeading('trophy','Достижения')}<p class="dash-empty">${game.steam ? 'Загружаем достижения…' : 'Для этой игры нет данных Steam.'}</p></section>`;
   const tracking = route.ngPlus && isEldenRing(game);
@@ -1294,9 +1072,6 @@ function gameDashboard() {
           <span id="game-trophy" ${trophy ? '' : 'hidden'}>${trophyBadge(trophy)}</span></div>
         <div class="detail-actions">
           ${statusMenu(game)}
-          <select id="game-grade" aria-label="Моя оценка">
-            ${option('', 'Моя оценка', grade)}${grades.map(letter => option(letter, 'Моя оценка · ' + letter, grade)).join('')}
-          </select>
           ${iconButton('favorite',game.favorite ? 'Убрать из избранного' : 'В избранное','bookmark', `aria-pressed="${game.favorite}"`)}
           ${gameMenu(game,true)}
         </div>`}
