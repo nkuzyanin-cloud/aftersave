@@ -912,21 +912,9 @@ dialog.desk-collection-dialog{width:min(560px,calc(100vw - 24px))}
 .achievement-list li:hover{background:#1c1c25}
 .achievement-icon{position:relative;display:grid;place-items:center;width:68px;height:68px;border-radius:5px;background:#232530;color:#aeb1bd;overflow:hidden}
 .achievement-icon img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
-.achievement-list .rare .achievement-icon,.desk-unlock .rare-achievement,.desk-recent .rare-achievement{
-  overflow:visible;
-  outline:1px solid #efbd70;box-shadow:0 0 5px #ffc36d8c,0 0 14px #f5a63850;color:#ffcf8a
+.achievement-list .rare .achievement-icon,.rare-achievement{
+  outline:1px solid #efbd70;color:#ffcf8a
 }
-.achievement-list .rare .achievement-icon img,.rare-achievement img{border-radius:inherit}
-.achievement-list .rare .achievement-icon::before,.desk-unlock .rare-achievement::before,.desk-recent .rare-achievement::before{
-  content:"";position:absolute;inset:-14%;pointer-events:none;z-index:1;
-  background:center / contain no-repeat url('./assets/rare-achievement-glow.svg');
-}
-.achievement-list .rare .achievement-icon::after,.desk-unlock .rare-achievement::after,.desk-recent .rare-achievement::after{
-  content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
-  box-shadow:inset 0 0 5px #ffc57878,inset 0 1px #fff0bbd9
-}
-.desk-recent .rare-achievement{box-shadow:0 0 5px #ffc36d73}
-.desk-recent .rare-achievement::before{opacity:.8}
 .achievement-list li strong{font-size:1rem;line-height:1.3;overflow-wrap:anywhere}
 .achievement-list li p{font-size:.87rem;margin-top:2px;color:var(--desk-muted);overflow-wrap:anywhere}
 .achievement-list li small{font-size:.78rem}
@@ -1054,7 +1042,6 @@ dialog.desk-sessions-dialog{width:min(485px,100vw - 24px);background:var(--desk-
 }
 @media(prefers-reduced-motion:reduce){
   .desk-library-search{transition:none}
-  .achievement-list .rare .achievement-icon::before,.desk-unlock .rare-achievement::before,.desk-recent .rare-achievement::before{content:none}
   .desk-completed span,.desk-completed span::before,.desk-completed svg,.desk-game-actions .icon-btn{transition:none}
   .desk-completed:active span,.desk-game-actions .icon-btn:active{transform:none}
 }
