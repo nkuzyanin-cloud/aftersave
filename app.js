@@ -934,14 +934,6 @@ const actions = {
     else { searchPending = true; go('library'); }
   },
   'pick-collection': openCollectionPicker,
-  'achievement-state': control => {
-    achievementFilter = control.dataset.value;
-    achievementLimit = 24;
-    for (const button of app.querySelectorAll('[data-action="achievement-state"]')) {
-      button.setAttribute('aria-pressed', String(button === control));
-    }
-    updateAchievementRows();
-  },
   'achievement-more': () => {
     achievementLimit += 24;
     updateAchievementRows(true);
@@ -955,7 +947,11 @@ const actions = {
   'edit-note': control => openJournal(control.dataset.id),
   'delete-journal': control => deleteJournal(control.dataset.id),
   'steam-disconnect': () => { disconnect(); stopAchievementScan = true; render(); },
-  'achievement-reload': () => showAchievements(true),
+  'achievement-reload': control => {
+    control.disabled = true;
+    control.setAttribute('aria-busy','true');
+    showAchievements(true);
+  },
   'achievement-scan': scanAchievements,
   'achievement-stop': () => { stopAchievementScan = true; },
   'new-run': () => openRun(),
@@ -970,15 +966,6 @@ const actions = {
   'edit-game': control => {
     const game = state.games.find(item => item.id === control.dataset.id);
     if (game) openGameForm(game, true);
-  },
-  'delete-game': () => {
-    const game = findByRoute(state.games);
-    if (!game) return;
-    confirmAction('Удалить игру?', `«${esc(game.title)}» и её прогресс будут удалены из библиотеки.`, 'Удалить игру', () => {
-      if (!commit({ ...state, games: state.games.filter(item => item.id !== game.id) }, 'Игра удалена')) return false;
-      go('library');
-      return true;
-    }, true);
   },
 
 
@@ -1008,8 +995,8 @@ const actions = {
 };
 
 document.addEventListener('click', event => {
-  const status = app.querySelector('.status-picker[open]');
-  if (status && !status.contains(event.target)) status.open = false;
+  const menu = app.querySelector('.desk-achievement-menu[open]');
+  if (menu && !menu.contains(event.target)) menu.open = false;
   const control = event.target.closest('[data-action]');
   const action = control?.dataset.action;
   if (Object.hasOwn(actions, action)) actions[action](control);
@@ -1017,10 +1004,10 @@ document.addEventListener('click', event => {
 
 document.addEventListener('keydown', event => {
   if (event.key !== 'Escape') return;
-  const status = app.querySelector('.status-picker[open]');
-  if (status) {
-    status.open = false;
-    status.querySelector('summary').focus({ preventScroll: true });
+  const menu = app.querySelector('.desk-achievement-menu[open]');
+  if (menu) {
+    menu.open = false;
+    menu.querySelector('summary').focus({ preventScroll: true });
   }
 });
 
@@ -1063,6 +1050,11 @@ app.addEventListener('change', async event => {
   }
   if (field.id === 'achievement-sort') {
     achievementSort = field.value;
+    achievementLimit = 24;
+    updateAchievementRows();
+  }
+  if (field.id === 'achievement-state') {
+    achievementFilter = field.value;
     achievementLimit = 24;
     updateAchievementRows();
   }
@@ -1463,8 +1455,8 @@ function gameDashboard() {
   const url = gameHref(game);
   const summary = summaryFor(game);
   const status = completionFor(game,summary);
-  const achievementBox = `<section class="game-achievements" id="steam-achievements">
-    ${panelHeading('trophy','Достижения')}<p class="dash-empty">${game.steam ? 'Загружаем достижения…' : 'Для этой игры нет данных Steam.'}</p></section>`;
+  const achievementBox = `<section class="game-achievements" id="steam-achievements" aria-label="Достижения">
+    <p class="dash-empty" role="status">${game.steam ? 'Загружаем достижения…' : 'Для этой игры нет данных Steam.'}</p></section>`;
   const content = route.tab === 'sessions' ? sessionsPage(game) : route.tab === 'notes'
     ? notesPanel(game) + (game.runs.length ? `<details class="panel saved-runs"><summary>Прохождения · ${game.runs.length}</summary>${runsPanel(game)}</details>` : '')
     : `<div class="desk-game-content">${achievementBox}</div>`;
@@ -1474,7 +1466,12 @@ function gameDashboard() {
       ${hero ? `<img class="desk-hero-art" src="${esc(hero)}" alt="" referrerpolicy="no-referrer" ${game.steam ? `data-steam-art="${game.steam.appid}" data-art-kind="hero"` : ''}>` : ''}
       <div class="desk-game-inner">
         <div class="desk-game-crumb"><a href="#library">${icon('back',17)} Игры</a>
-          <label class="desk-completed"><input type="checkbox" id="game-completed" ${game.status === 'completed' ? 'checked' : ''}> Пройдено</label></div>
+          <div class="desk-game-actions">
+            <label class="desk-completed" title="Игра пройдена"><input type="checkbox" id="game-completed" aria-label="Игра пройдена" ${game.status === 'completed' ? 'checked' : ''}>
+              <span aria-hidden="true">${icon('check',20)}</span></label>
+            ${game.steam && !['sessions','notes'].includes(route.tab) ? iconButton('achievement-reload',connected() ? 'Обновить достижения Steam' : 'Подключить Steam','cloudDownload') : ''}
+          </div>
+        </div>
         <div class="desk-game-heading">${wideCover(game,true)}
           <div class="desk-game-title"><h1>${esc(displayName(game,true))} <span id="game-trophy">${completionBadge(status)}</span></h1>
             <small>${game.steam ? icon('steam',14) + ' Steam' : esc(game.platform)}</small>
@@ -1776,10 +1773,10 @@ let displayedAchievements;
 const iconRefreshes = new Set();
 async function showAchievements(force = false) {
   const game = findByRoute(games());
-  if (!game?.steam) return;
+  const box = document.querySelector('#steam-achievements');
+  if (!game?.steam || !box) return;
   const account = state.steam?.account;
   const id = game.steam.appid;
-  const box = document.querySelector('#steam-achievements');
   const view = ++achievementView;
   const cached = await cachedAchievements(account, id);
   if (view !== achievementView || route.page !== 'game' || findByRoute(games())?.steam?.appid !== id) return;
@@ -1787,22 +1784,32 @@ async function showAchievements(force = false) {
   const repairKey = account + ':' + id;
   const needsIcons = cached?.items.some(item => item.unlocked && !item.icon) && !iconRefreshes.has(repairKey);
   const fresh = cached && Date.now() - cached.fetchedAt < 24 * 60 * 60 * 1000;
-  drawAchievements(box, cached, !active && !cached ? 'Подключи Steam, чтобы загрузить достижения.' : '');
-  if (force && !active) return steamEntry();
-  if (!active || (!force && fresh && !needsIcons) || !box) return;
+  if (!active || (!force && fresh && !needsIcons)) {
+    drawAchievements(box, cached, !active && !cached ? 'Подключи Steam, чтобы загрузить достижения.' : '');
+    if (force && !active) steamEntry();
+    return;
+  }
   if (needsIcons) iconRefreshes.add(repairKey);
-  drawAchievements(box, cached, 'Загружаем достижения…');
+  drawAchievements(box, cached, 'Загружаем достижения…',true);
   try {
     const record = await fetchAchievements(account,id,false,force || needsIcons);
-    if (view === achievementView) drawAchievements(box, record);
+    if (view === achievementView) {
+      drawAchievements(box, record);
+      if (force) notify('Достижения обновлены');
+    }
     await refreshSteamSummaries(false);
   } catch (error) {
     if (view === achievementView) drawAchievements(box, cached, error.message);
   }
 }
 
-function drawAchievements(box, record, message = '') {
+function drawAchievements(box, record, message = '', loading = false) {
   if (!box?.isConnected) return;
+  const refresh = app.querySelector('.desk-game-actions [data-action="achievement-reload"]');
+  if (refresh) {
+    refresh.disabled = loading;
+    refresh.setAttribute('aria-busy',String(loading));
+  }
   const count = document.querySelector('#game-achievement-count');
   if (count && record) {
     count.textContent = record.total ? record.unlocked + ' / ' + record.total : '—';
@@ -1813,26 +1820,33 @@ function drawAchievements(box, record, message = '') {
     }
   }
   displayedAchievements = record;
-  const action = button('achievement-reload', connected() ? 'Обновить' : 'Подключить Steam',
-    'steam', 'secondary', message === 'Загружаем достижения…' ? 'disabled' : '');
-  box.innerHTML = panelHeading('trophy','Достижения',action) +
-    (message ? `<p class="dash-empty" role="status">${esc(message)}</p>` : '') +
+  const menuOpen = box.querySelector('.desk-achievement-menu')?.open;
+  const focusedField = box.contains(document.activeElement) ? document.activeElement.id : '';
+  box.innerHTML = (message ? `<p class="dash-empty" role="status">${esc(message)}</p>` : '') +
     (!record?.total && !message ? `<p class="dash-empty">${record ? 'Steam сообщает, что у игры нет достижений.' : 'Данные пока недоступны.'}</p>` : '') +
-    (record?.total ? `<div class="achievement-toolbar">
-      <div class="achievement-states" role="group" aria-label="Статус достижения">
-        ${[['','Все',record.total],['yes','Получено',record.unlocked],['no','Осталось',record.total - record.unlocked]].map(([id,label,count]) =>
-          `<button type="button" data-action="achievement-state" data-value="${id}" aria-pressed="${achievementFilter === id}">${label} <span>${count}</span></button>`).join('')}
-      </div><div class="achievement-filters">
-      <label class="searchbox">${icon('search',17)}<input type="search" id="achievement-query" aria-label="Поиск по достижениям" placeholder="Найти достижение" value="${esc(achievementQuery)}"></label>
-      <select id="achievement-sort" aria-label="Сортировка достижений">
-        ${option('common','По убыванию',achievementSort)}
-        ${option('rare','Редкие',achievementSort)}
-        ${option('recent','Недавно полученные',achievementSort)}
-      </select>
-    </div></div>${record.items.some(item => item.hidden && !item.unlocked) ?
-      `<div class="achievement-options"><label class="checkbox"><input id="achievement-reveal" type="checkbox" ${revealHidden ? 'checked' : ''}> Показать условия скрытых достижений</label></div>` : ''}` : '') +
-    (record?.total ? '<div id="achievement-rows"></div>' : '');
+    (record?.total ? `<div class="desk-achievement-tools">
+      <label class="searchbox">${icon('search',17)}<input type="search" id="achievement-query" aria-label="Поиск по достижениям" placeholder="Поиск" value="${esc(achievementQuery)}"></label>
+      <div class="desk-achievement-controls">
+        <label class="desk-achievement-reveal" title="Показать условия скрытых достижений"><input id="achievement-reveal" type="checkbox" ${revealHidden ? 'checked' : ''}> Показывать секретные</label>
+        <select id="achievement-state" aria-label="Статус достижения">
+          ${option('','Все достижения',achievementFilter)}
+          ${option('yes','Получено · '+record.unlocked,achievementFilter)}
+          ${option('no','Не получено · '+(record.total-record.unlocked),achievementFilter)}
+        </select>
+        <details class="desk-achievement-menu"${menuOpen ? ' open' : ''}>
+          <summary>${icon('filter',17)} Фильтры</summary>
+          <label class="desk-achievement-sort">Сортировка
+            <select id="achievement-sort">
+              ${option('common','По убыванию',achievementSort)}
+              ${option('rare','Редкие',achievementSort)}
+              ${option('recent','Недавно полученные',achievementSort)}
+            </select>
+          </label>
+        </details>
+      </div>
+    </div><div id="achievement-rows"></div>` : '');
   updateAchievementRows();
+  if (focusedField) document.getElementById(focusedField)?.focus({preventScroll:true});
 }
 
 const isRare = item => Number.isFinite(item.percent) && item.percent < 10;
@@ -1849,12 +1863,13 @@ function updateAchievementRows(more = false) {
     items.sort((a,b) => key(a)-key(b));
   }
   if (achievementSort === 'recent') items.sort((a,b) => Number(b.unlocked) - Number(a.unlocked) || b.time - a.time);
-  target.innerHTML = items.length ? `<ul class="achievement-list redesign-achievements">${items.slice(0, achievementLimit).map(item => {
+  target.innerHTML = items.length ? `<ul class="achievement-list">${items.slice(0, achievementLimit).map(item => {
     const concealed = item.hidden && !item.unlocked && !revealHidden;
     return `<li class="${item.unlocked ? (isRare(item) ? 'unlocked rare' : 'unlocked') : ''}">
     <span class="achievement-icon">${icon(item.unlocked ? 'trophy' : 'shield',22)}${item.icon && !concealed ? `<img src="${esc(item.icon)}" data-achievement-icon data-fallback-icon="${esc(item.fallbackIcon)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ''}</span>
-    <div><strong>${esc(item.name)}</strong>${concealed ? '<p>Скрытое условие</p>' : item.description ? `<p>${esc(item.description)}</p>` : ''}</div>
-    <small>${Number.isFinite(item.percent) ? `<b>${numeric(item.percent)}%</b>` : ''}${item.unlocked ? item.time ? steamDate(item.time) : 'Получено' : 'Не получено'}</small>
+    <div><strong>${esc(item.name)}</strong>${concealed ? '<p>Скрытое условие</p>' : item.description ? `<p>${esc(item.description)}</p>` : ''}
+      ${Number.isFinite(item.percent) ? `<small class="desk-achievement-rarity" title="Доля игроков Steam">${icon('user',13)} ${numeric(item.percent)}%</small>` : ''}</div>
+    <small class="desk-achievement-date">${item.unlocked ? `${icon('trophy',14)} Получено${item.time ? ` <time datetime="${new Date(item.time*1000).toISOString()}">${fullMoment.format(item.time*1000)}</time>` : ''}` : 'Не получено'}</small>
   </li>`;
   }).join('')}</ul>
   ${items.length > achievementLimit ? `<div class="load-more">${button('achievement-more', 'Показать ещё · ' + (items.length - achievementLimit), 'down')}</div>` : ''}` :
