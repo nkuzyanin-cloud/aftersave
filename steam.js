@@ -201,8 +201,9 @@ export function mergeSteam(state, { account, entries, activity }, lastSync = new
       !KNOWN.has(games[index].catalogId) || KNOWN.get(games[index].catalogId) === entry.appid) : [];
     const candidates = (exact.length ? exact : byName).filter(index => !games[index].steam);
     const index = linked.get(entry.appid) ?? (candidates.length === 1 ? candidates[0] : undefined);
-    const steam = { appid: entry.appid, minutes: nonnegative(entry.playtime_forever),
-      lastPlayed: Math.min(nonnegative(entry.rtime_last_played), 253402300799) };
+    const previous = games[index]?.steam;
+    const steam = { appid: entry.appid, minutes: nonnegative(entry.playtime_forever ?? previous?.minutes),
+      lastPlayed: Math.min(nonnegative(entry.rtime_last_played ?? previous?.lastPlayed), 253402300799) };
     if (index !== undefined) {
       const game = games[index];
       games[index] = { ...game, steam };
@@ -216,7 +217,7 @@ export function mergeSteam(state, { account, entries, activity }, lastSync = new
     }
   }
   return { state: { ...state, games, showDemo: false,
-    steam: { account, lastSync, activity: activity ?? state.steam?.activity } }, added, updated };
+    steam: { account, lastSync, activity: activity ?? state.steam?.activity, localSessions: state.steam?.localSessions } }, added, updated };
 }
 
 const TTL = 24 * 60 * 60 * 1000;
@@ -319,17 +320,21 @@ export async function fetchAchievements(account, id, legacy, force = false) {
     }
     const oldIcons = new Map((cached?.items ?? []).map(item => [item.id, item]));
     const items = [...new Map(stats.achievements.filter(item => typeof item?.apiname === 'string')
-      .map(item => [item.apiname, {
-        id: item.apiname,
-        name: String(item.name || item.apiname).slice(0, 300),
-        description: String(item.description || '').slice(0, 1000),
-        hidden: item.hidden === true || item.hidden === 1,
-        percent: Number.isFinite(item.percent) && item.percent >= 0 && item.percent <= 100 ? item.percent : null,
-        unlocked: item.achieved === 1 || item.achieved === true,
-        time: Math.min(nonnegative(item.unlocktime), 253402300799),
-        icon: typeof item.icon === 'string' && /^https:\/\/[a-z0-9.-]+\//i.test(item.icon) ? item.icon :
-          oldIcons.get(item.apiname)?.unlocked === (item.achieved === 1 || item.achieved === true) ? oldIcons.get(item.apiname).icon : ''
-      }])).values()];
+      .map(item => {
+        const unlocked = item.achieved === 1 || item.achieved === true;
+        const previous = oldIcons.get(item.apiname);
+        return [item.apiname, {
+          id: item.apiname,
+          name: String(item.name || item.apiname).slice(0, 300),
+          description: String(item.description || '').slice(0, 1000),
+          hidden: item.hidden === true || item.hidden === 1,
+          percent: Number.isFinite(item.percent) && item.percent >= 0 && item.percent <= 100 ? item.percent : null,
+          unlocked,
+          time: unlocked ? Math.min(nonnegative(item.unlocktime) || nonnegative(previous?.unlocked ? previous.time : 0), 253402300799) : 0,
+          icon: typeof item.icon === 'string' && /^https:\/\/[a-z0-9.-]+\//i.test(item.icon) ? item.icon :
+            previous?.unlocked === unlocked ? previous.icon : ''
+        }];
+      })).values()];
     const record = { key, account, appid: id, fetchedAt: Date.now(), items,
       total: items.length, unlocked: items.filter(item => item.unlocked).length };
     memory.set(key, record);

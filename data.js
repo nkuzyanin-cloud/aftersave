@@ -348,7 +348,16 @@ function normalizeSteam(value) {
   if (value == null) return null;
   const steam = object(value, 'Профиль Steam');
   if (typeof steam.account !== 'string' || !/^7656\d{13}$/.test(steam.account)) throw new Error('Неверный SteamID.');
-  return { account: steam.account, lastSync: stamp(steam.lastSync, EPOCH), activity: normalizeActivity(steam.activity) };
+  const localSessions = list(steam.localSessions ?? [], 'Локальные сессии Steam', 10000).map(value => {
+    const session = object(value,'Локальная сессия Steam');
+    const appid = number(session.appid,'AppID',1,4294967295,null,true);
+    const startedAt = number(session.startedAt,'Начало сессии',1,253402300799999,null,true);
+    const endedAt = number(session.endedAt,'Конец сессии',1,253402300799999,null,true);
+    if (!appid || !startedAt || !endedAt || endedAt <= startedAt) throw new Error('Некорректная локальная сессия Steam.');
+    return { appid, startedAt, endedAt };
+  });
+  return { account: steam.account, lastSync: stamp(steam.lastSync, EPOCH), activity: normalizeActivity(steam.activity),
+    ...(localSessions.length ? {localSessions} : {}) };
 }
 
 function normalizeActivity(value) {

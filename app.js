@@ -9,7 +9,8 @@ import { bossRegions, bossById } from './elden-ring.js';
 import { bossArt } from './elden-ring-art.js';
 import { mergeSteam, fetchLibrary, connect, disconnect, connected, steamCover, steamHeader, steamHero, fetchSteamArtwork,
   fetchAchievements, cachedAchievements, achievementRecords, achievementIconAlternatives } from './steam.js';
-import { dayNumber, calendarDate, completionItems, steamStatus, aggregateSessions, addDaily, streaks } from './activity-view.js';
+import { dayNumber, calendarDate, completionItems, steamStatus, addDaily, streaks,
+  parseSteamProcessLog, sessionsWithLocalHistory, addSessionDays } from './activity-view.js';
 
 const app = document.querySelector('#app');
 const dialog = document.querySelector('#dialog');
@@ -43,6 +44,7 @@ let summaries = new Map();
 let summaryAccount = null;
 let feedLimit = 24;
 let lockedFeed = false;
+let achievementYear = '';
 let scanningAchievements = false;
 let stopAchievementScan = false;
 let scanMessage = '';
@@ -177,7 +179,7 @@ function filtered(source) {
   return source.filter(game => {
     const haystack = [game.title, displayName(game), game.genre, game.platform, game.steam?.appid, ...game.tags].join(' ').toLocaleLowerCase('ru');
     return (!query || query.split(/\s+/).every(term => haystack.includes(term))) &&
-      (!filter.status || steamStatus(summaryFor(game)) === filter.status);
+      (!filter.status || completionFor(game) === filter.status);
   }).sort((a,b) => byLastPlayed(a,b) || displayName(a).localeCompare(displayName(b),'ru'));
 }
 
@@ -199,14 +201,14 @@ function gameMenu(game, edit = false) {
 function gameCard(game) {
   const total = summaryFor(game);
   const achieved = total?.total ? achievementPercent(total) : null;
-  const status = steamStatus(total);
+  const status = completionFor(game,total);
   const recent = recentUnlocks(total);
   return `<article class="game-card desk-game ${status}">
     <a href="#game/${encodeURIComponent(game.id)}" class="card-link" aria-label="Открыть ${esc(displayName(game))}">
-      <div class="desk-identity"><div class="card-art">${cover(game)}</div><div><h3>${esc(displayName(game))} ${completionBadge(status)}</h3>
+      <div class="desk-identity"><div class="card-art">${cover(game)}</div><div><h3>${esc(displayName(game))} ${completionBadge(status,status === 'beaten' && !steamStatus(total))}</h3>
         <small>${game.steam ? icon('steam',13) + ' Steam' : esc(game.platform)}</small></div></div>
       <div class="desk-progress">${achieved === null ? '—' : progressBar(achieved) + '<span>' + icon('trophy',13) + ' ' + total.unlocked + ' / ' + total.total + '</span>'}</div>
-      <div class="desk-recent">${recent.length ? `<div>${recent.slice(0,5).map(trophyIcon).join('')}${recent.length > 5 ? `<small>+${recent.length-5}</small>` : ''}</div>
+      <div class="desk-recent">${recent.length ? `<div>${recent.slice(0,5).map(item => trophyIcon(item)).join('')}${recent.length > 5 ? `<small>+${recent.length-5}</small>` : ''}</div>
         ${recent[0].time ? `<small>Последнее ${relativeDate(recent[0].time * 1000)}</small>` : ''}` : '—'}</div>
       <div class="desk-activity"><strong>${icon('clock',14)} ${duration(game.steam?.minutes ?? Math.round(gameHours(game)*60))}</strong><small>${game.steam?.lastPlayed ? relativeDate(game.steam.lastPlayed*1000) : '—'}</small></div>
     </a>
@@ -306,8 +308,12 @@ function recentUnlocks(record) {
   return (record?.items ?? []).filter(item => item.unlocked).sort((a,b) => b.time-a.time);
 }
 
-function completionBadge(status) {
-  return status ? `<span class="desk-badge ${status}">${icon(status === 'perfect' ? 'trophy' : 'check',13)} ${status === 'perfect' ? 'Идеально' : 'Пройдено'}</span>` : '';
+function completionFor(game, record = summaryFor(game)) {
+  return steamStatus(record) || (game.shelf && game.status === 'completed' ? 'beaten' : '');
+}
+
+function completionBadge(status, manual = false) {
+  return status ? `<span class="desk-badge ${status}"${manual ? ' title="Сохранённая ручная отметка"' : ''}>${icon(status === 'perfect' ? 'trophy' : 'check',13)} ${status === 'perfect' ? 'Идеально' : 'Пройдено'}</span>` : '';
 }
 
 function trophyIcon(item, concealed = false) {
@@ -347,7 +353,7 @@ function heatmap(days, today, firstKnown = -Infinity, count = 147, time = false)
   return `<div class="desk-heatmap" style="--weeks:${Math.ceil(count / 7)}" aria-label="Тепловая карта активности">${Array.from({length:count},(_,i) => {
     const day = today-count+1+i, amount = days.get(day) ?? 0;
     const level = day < firstKnown ? 'unknown' : amount > 0 ? 1 + thresholds.filter(min => amount >= min).length : 0;
-    return `<span class="heat-${level}" title="${shortDay.format(calendarDate(day))} · ${day < firstKnown ? 'нет данных' : time ? duration(amount) : numeric(amount)}"></span>`;
+    return `<span class="heat-${level}" title="${shortDay.format(calendarDate(day))} · ${day < firstKnown ? 'нет данных' : time ? duration(Math.round(amount)) : numeric(amount)}"></span>`;
   }).join('')}</div>`;
 }
 
@@ -373,13 +379,20 @@ function achievementsPage() {
   const entries = achievementEntries();
   const earned = entries.filter(({item}) => item.unlocked && item.time).sort((a,b) => b.item.time - a.item.time);
   const locked = entries.filter(({item}) => !item.unlocked);
-  const visible = lockedFeed ? locked : earned;
+  const years = [...new Set(earned.map(({item}) => new Date(item.time*1000).getFullYear()))];
+  const visible = lockedFeed ? locked : achievementYear ? earned.filter(({item}) => String(new Date(item.time*1000).getFullYear()) === achievementYear) : earned;
+  const oldest = earned.at(-1)?.item.time;
   const days = new Map(), today = dayNumber(Date.now());
   for (const {item} of earned) addDaily(days,dayNumber(item.time*1000),1);
   const year = [...days].reduce((total,[day,n]) => total + (day >= today-364 && day <= today ? n : 0),0);
   return `<div id="desk-feed" class="desk-split"><div>
-    <div class="desk-feed-head"><h1>${lockedFeed ? 'Заблокированные достижения' : 'Последние достижения'}</h1>
-      ${lockedFeed ? button('desk-locked','К полученным','back','quiet') : ''}</div>
+    <div class="desk-feed-head"><h1>${lockedFeed ? 'Заблокированные достижения' : 'Последние достижения'}</h1><div class="desk-feed-actions">
+      ${lockedFeed ? button('desk-locked','К полученным','back','quiet') : years.length ? `<select id="desk-unlock-year" aria-label="Год получения">
+      ${option('','Все годы',achievementYear)}${years.map(year => option(year,year,achievementYear)).join('')}</select>` : ''}
+      ${button(scanningAchievements ? 'achievement-stop' : 'achievement-scan',scanningAchievements ? 'Остановить' : 'Обновить всю историю','download','quiet')}
+    </div></div>
+    ${scanMessage ? `<p class="scan-status desk-muted" role="status">${esc(scanMessage)}</p>` : ''}
+    ${oldest ? `<p class="desk-muted desk-history-start">Самое раннее полученное достижение · ${steamDate(oldest)}</p>` : ''}
     ${visible.length ? visible.slice(0,feedLimit).map(({game,item}) => `<article class="desk-panel desk-unlock">
       <div>${trophyIcon(item,item.hidden&&!item.unlocked)}<div><strong>${esc(item.name)}</strong>
       <p>${esc(item.hidden&&!item.unlocked ? 'Скрытое условие' : item.description)}</p>
@@ -394,45 +407,113 @@ function achievementsPage() {
   </aside></div>`;
 }
 
-function sessionsPage(game) {
+
+function sessionContext(game) {
   const linked = new Map((game ? [game] : games().filter(item => !item.hidden)).filter(item => item.steam).map(item => [item.steam.appid,item]));
   const activity = state.steam?.activity;
-  const events = aggregateSessions(activity?.windows,linked);
-  const days = new Map(), unlocks = new Map(), today = dayNumber(Date.now());
+  const events = sessionsWithLocalHistory(activity?.windows,state.steam?.localSessions,linked);
+  const launches = [...linked.values()].filter(item => item.steam.lastPlayed).sort(byLastPlayed);
+  const unlocks = new Map();
   for (const {item,game:owner} of achievementEntries(game)) {
     if (!item.unlocked || !item.time || !owner.steam) continue;
-    const key = owner.steam.appid + ':' + dayNumber(item.time*1000);
+    const key = owner.steam.appid;
     const items = unlocks.get(key) ?? [];
     items.push(item);
     unlocks.set(key,items);
   }
-  for (const {from,to,minutes} of events) if (from === to) addDaily(days,to,minutes);
-  const first = activity?.startedAt ? Math.max(today-89,dayNumber(activity.startedAt)) : Infinity;
-  const observedMinutes = events.reduce((sum,event) => sum + (event.from >= today-364 && event.to <= today ? event.minutes : 0),0);
-  const launches = [...linked.values()].filter(item => item.steam.lastPlayed).sort(byLastPlayed);
+  return { events, launches, unlocks };
+}
+
+function sessionRows({events,launches,unlocks}, limit, modal = false) {
+  if (!events.length) return `<p class="desk-panel desk-muted">${launches.length ? 'Steam передал дату последнего запуска. Длительность сессии пока неизвестна.' :
+    'Пока нет данных о запусках этой игры.'}</p>
+    ${launches.slice(0,limit).map(item => `<article class="desk-panel desk-session"><div>${cover(item)}<a href="${gameHref(item)}">${esc(displayName(item))}</a>
+    <time>${steamDate(item.steam.lastPlayed)}</time></div></article>`).join('')}`;
+  return events.slice(0,limit).map(({game,minutes,from,to,startedAt,endedAt}) => {
+    const earned = (unlocks.get(game.steam.appid) ?? []).filter(item => {
+      const time = item.time*1000;
+      return startedAt ? time >= startedAt && time <= endedAt : from === to && dayNumber(time) === to;
+    });
+    const date = (from === to ? '' : shortDay.format(calendarDate(from))+' — ')+shortDay.format(calendarDate(to));
+    const label = minutes ? duration(minutes) : 'меньше минуты';
+    return `<article class="desk-panel desk-session"><div>${cover(game)}<p>${startedAt || from === to ? 'Играл' : 'Учтено'} <strong>${label}</strong>
+      ${modal ? '' : ` в <a href="${gameHref(game)}">${esc(displayName(game))}</a>`}
+      <small>${startedAt ? 'Журнал Steam на ПК' : 'По замерам Steam'}</small>
+      ${earned.length ? `<small>Достижений ${startedAt ? 'за сессию' : 'за день'} · ${earned.length}</small>` : ''}</p><time${startedAt ? ` title="${fullMoment.format(startedAt)} — ${fullMoment.format(endedAt)}"` : ''}>${date}</time></div>
+      ${earned.length ? `<footer>${earned.slice(0,modal ? 12 : 6).map(item => trophyIcon(item)).join('')}${earned.length > (modal ? 12 : 6) ? `<small>ещё ${earned.length-(modal ? 12 : 6)}</small>` : ''}</footer>` : ''}</article>`;
+  }).join('');
+}
+
+function openGameSessions(game, control, limit = 15) {
+  if (!game?.steam) return;
+  const context = sessionContext(game);
+  control?.focus({preventScroll:true});
+  const content = `<div class="dialog-body desk-session-modal">
+    ${sessionRows(context,limit,true)}
+    ${context.events.length > limit ? button('desk-game-sessions-more','Показать ещё','down','quiet',`data-limit="${limit+15}"`) : ''}
+  </div>`;
+  if (dialog.open && dialog.matches('.desk-sessions-dialog')) {
+    const current = dialog.querySelector('.desk-session-modal');
+    const scroll = current.scrollTop;
+    current.outerHTML = content;
+    const panel = dialog.querySelector('.desk-session-modal');
+    panel.scrollTop = scroll;
+    (panel.querySelector('[data-action="desk-game-sessions-more"]') ?? dialog.querySelector('[data-action="close-dialog"]')).focus({preventScroll:true});
+  } else {
+    showDialog('Игровые сессии',esc(displayName(game,true)),content,'desk-sessions-dialog');
+  }
+  imageFallbacks(dialog);
+}
+
+function sessionsPage(game) {
+  const context = sessionContext(game);
+  const {events,launches} = context;
+  const activity = state.steam?.activity;
+  const now = Date.now(), today = dayNumber(now), days = new Map();
+  const earliest = new Date(now);
+  earliest.setHours(0,0,0,0);
+  earliest.setDate(earliest.getDate()-364);
+  for (const event of events) addSessionDays(days,event,earliest.getTime(),now);
+  const observed = activity?.startedAt ? Math.max(today-89,dayNumber(activity.startedAt)) : Infinity;
+  const first = events.reduce((value,event) => event.startedAt ? Math.min(value,event.from) : value,observed);
+  const dailyMinutes = [...days.values()].reduce((sum,minutes) => sum+minutes,0);
+  const acrossDays = events.reduce((sum,event) => sum +
+    (!event.startedAt && event.from !== event.to && event.from >= today-364 && event.to <= today ? event.minutes : 0),0);
   return `<div id="desk-feed" class="desk-split"><div>
-    <div class="desk-feed-head"><h1>Игровые сессии</h1>${button('steam-sync','Обновить','download','quiet',syncingSteam ? 'disabled' : '')}</div>
+    <div class="desk-feed-head"><h1>Игровые сессии</h1><div class="desk-feed-actions">
+      ${button('steam-sync','Обновить','download','quiet',syncingSteam ? 'disabled' : '')}
+      ${state.steam ? `<label class="btn btn-quiet desk-log-import">${icon('upload',16)} Импорт журнала Steam<input type="file" accept=".txt,text/plain" id="steam-log-file" aria-label="Импорт журнала Steam"></label>` : ''}
+    </div></div>
     ${steamMessage ? `<p class="steam-message desk-muted" role="status">${esc(steamMessage)}</p>` : ''}
-    ${events.length ? events.slice(0,feedLimit).map(({game,minutes,from,to}) => {
-      const earned = from === to ? unlocks.get(game.steam.appid+':'+to) ?? [] : [];
-      const date = (from === to ? '' : shortDay.format(calendarDate(from))+' — ')+shortDay.format(calendarDate(to));
-      return `<article class="desk-panel desk-session"><div>${cover(game)}<p>${from === to ? 'Играл' : 'Учтено'} <strong>${duration(minutes)}</strong> в <a href="${gameHref(game)}">${esc(displayName(game))}</a>
-      ${earned.length ? `<small>Достижений за день: ${earned.length}</small>` : ''}</p><time>${date}</time></div>
-      ${earned.length ? `<footer>${earned.slice(0,6).map(item => trophyIcon(item)).join('')}${earned.length > 6 ? `<small>ещё ${earned.length-6}</small>` : ''}</footer>` : ''}</article>`;
-    }).join('') : `<p class="desk-panel desk-muted">Пока нет наблюдений игрового времени. Ниже даты последних запусков, полученные от Steam.</p>
-      ${launches.slice(0,feedLimit).map(item => `<article class="desk-panel desk-session"><div>${cover(item)}<a href="${gameHref(item)}">${esc(displayName(item))}</a>
-      <time>${steamDate(item.steam.lastPlayed)}</time></div></article>`).join('')}`}
-    ${feedMore(events.length || launches.length)}
-  </div><aside>${streakPanel(days,today,first,duration(observedMinutes),'Учтённое время',true)}
-    <p class="desk-muted">Серия считается по дням с подтверждённым приростом времени. Даты начала и окончания отдельной сессии Steam не передаёт.</p>
+    ${sessionRows(context,feedLimit)}${feedMore(events.length || launches.length)}
+  </div><aside>${streakPanel(days,today,first,duration(Math.round(dailyMinutes+acrossDays)),'Учтённое время',true)}
+    <p class="desk-muted">Лента объединяет замеры Worker и импортированный журнал клиента Steam. Пересекающиеся замеры не дублируются.</p>
+    ${state.steam ? '<p class="desk-muted">Для импорта выбери файл <code>logs/gameprocess_log.txt</code> из папки Steam. Файл обрабатывается в браузере.</p>' : ''}
   </aside></div>`;
+}
+
+async function importSteamLog(file) {
+  const account = state.steam?.account;
+  if (!account) return;
+  if (file.size > 20 * 1024 * 1024) return notify('Журнал Steam превышает 20 МБ.',true);
+  try {
+    const sessions = parseSteamProcessLog(await file.text());
+    if (!sessions.length) return notify('Не найдены завершённые сессии. Выбери gameprocess_log.txt.',true);
+    if (account !== state.steam?.account) return;
+    const old = state.steam.localSessions ?? [];
+    const unique = new Map([...old,...sessions].map(item => [[item.appid,item.startedAt,item.endedAt].join(':'),item]));
+    const localSessions = [...unique.values()].sort((a,b)=>b.endedAt-a.endedAt).slice(0,10000);
+    const library = new Set(state.games.map(game => game.steam?.appid));
+    const matched = localSessions.filter(item => library.has(item.appid)).length;
+    if (commit({...state,steam:{...state.steam,localSessions}}, `Сессий из журнала по играм библиотеки · ${numeric(matched)}`)) refreshDeskFeed();
+  } catch (error) { notify(error.message || 'Не удалось прочитать журнал Steam.',true); }
 }
 
 function statsPage() {
   const linked = games().filter(game => game.steam && !game.hidden);
   const known = linked.map(game => summaryFor(game)).filter(record => record?.total);
   const perfect = known.filter(record => steamStatus(record) === 'perfect').length;
-  const beaten = known.filter(record => steamStatus(record) === 'beaten').length;
+  const beaten = linked.filter(game => completionFor(game) === 'beaten').length;
   const other = Math.max(0, linked.length-perfect-beaten);
   const totals = collectionTotals(linked);
   const earned = achievementEntries().filter(({item}) => item.unlocked);
@@ -696,6 +777,8 @@ function dateStamp(now = new Date()) {
 const actions = {
   'desk-feed-more': () => { feedLimit += 24; refreshDeskFeed(); },
   'desk-locked': () => { lockedFeed = !lockedFeed; feedLimit = 24; refreshDeskFeed(); },
+  'desk-game-sessions': control => openGameSessions(findByRoute(games()),control),
+  'desk-game-sessions-more': control => openGameSessions(findByRoute(games()),null,Number(control.dataset.limit)),
   'boss-region': control => {
     const index = Number(control.dataset.region);
     if (index === bossRegion) return;
@@ -840,6 +923,16 @@ document.addEventListener('input', event => {
 
 app.addEventListener('change', async event => {
   const field = event.target;
+  if (field.id === 'steam-log-file') {
+    if (field.files.length) await importSteamLog(field.files[0]);
+    return;
+  }
+  if (field.id === 'desk-unlock-year') {
+    achievementYear = field.value;
+    feedLimit = 24;
+    refreshDeskFeed();
+    app.querySelector('#desk-unlock-year')?.focus({preventScroll:true});
+  }
   if (field.id === 'achievement-sort') {
     achievementSort = field.value;
     achievementLimit = 24;
@@ -919,6 +1012,7 @@ window.addEventListener('hashchange', () => {
   displayLimit = 24;
   feedLimit = 24;
   lockedFeed = false;
+  achievementYear = '';
   achievementFilter = '';
   achievementQuery = '';
   achievementLimit = 24;
@@ -1134,10 +1228,10 @@ async function scanAchievements() {
   render();
   for (const game of linked) {
     if (stopAchievementScan || state.steam?.account !== account || !(connected())) break;
-    try { await fetchAchievements(account, game.steam.appid, false); }
+    try { await fetchAchievements(account, game.steam.appid, false, true); }
     catch (error) {
       failed++;
-      if (/ограничил запросы|Worker недоступен|Требуется вход/.test(error.message)) {
+      if (/ограничил запросы|с Cloudflare недоступна|Worker недоступен|Войди в Steam|продлить вход/i.test(error.message)) {
         interruption = error.message;
         break;
       }
@@ -1250,7 +1344,7 @@ function gameDashboard() {
   if (route.ngPlus && isEldenRing(game)) return bossTracker(game);
   const url = gameHref(game);
   const summary = summaryFor(game);
-  const status = steamStatus(summary);
+  const status = completionFor(game,summary);
   const achievementBox = `<section class="game-achievements" id="steam-achievements">
     ${panelHeading('trophy','Достижения')}<p class="dash-empty">${game.steam ? 'Загружаем достижения…' : 'Для этой игры нет данных Steam.'}</p></section>`;
   const content = route.tab === 'sessions' ? sessionsPage(game) : route.tab === 'notes'
@@ -1265,11 +1359,11 @@ function gameDashboard() {
           ${iconButton('favorite',game.favorite ? 'Убрать из избранного' : 'В избранное','bookmark', `aria-pressed="${game.favorite}"`)}
           ${gameMenu(game,true)}</div></div>
         <div class="desk-game-heading">${wideCover(game,true)}
-          <div class="desk-game-title"><h1>${esc(displayName(game,true))} <span id="game-trophy">${completionBadge(status)}</span></h1>
+          <div class="desk-game-title"><h1>${esc(displayName(game,true))} <span id="game-trophy">${completionBadge(status,status === 'beaten' && !steamStatus(summary))}</span></h1>
             <small>${game.steam ? icon('steam',14) + ' Steam' : esc(game.platform)}</small>
             <div class="desk-game-links">
             ${game.steam ? `<a href="https://store.steampowered.com/app/${game.steam.appid}/" target="_blank" rel="noopener">${icon('upRight',14)} Страница игры</a>
-              <a href="${url}/sessions">${icon('clock',14)} Игровые сессии</a>` : ''}
+              <button type="button" data-action="desk-game-sessions" aria-haspopup="dialog">${icon('clock',14)} Игровые сессии</button>` : ''}
             ${isEldenRing(game) ? `<a class="desk-ng-link" href="${url}/notes/ng-plus">${icon('checklist',16)} NG+</a>` : ''}
             </div>
           </div>
@@ -1595,7 +1689,11 @@ function drawAchievements(box, record, message = '') {
   if (count && record?.total) {
     count.textContent = record.unlocked + ' / ' + record.total;
     const badge = document.querySelector('#game-trophy');
-    if (badge) badge.innerHTML = completionBadge(steamStatus(record));
+    if (badge) {
+      const game = findByRoute(games());
+      const status = completionFor(game,record);
+      badge.innerHTML = completionBadge(status,status === 'beaten' && !steamStatus(record));
+    }
   }
   const story = document.querySelector('#game-story');
   if (story) {

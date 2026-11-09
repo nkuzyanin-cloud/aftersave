@@ -1662,6 +1662,45 @@ body{background:var(--desk-bg)}
   background:var(--desk-card);border:1px solid var(--desk-border);border-radius:7px;padding:9px;min-height:65px
 }
 .desk-game-content .redesign-achievements .achievement-icon{width:45px;height:45px}
+.desk-game-links button{display:inline-flex;align-items:center;gap:4px;padding:0;border:0;background:none;color:var(--desk-muted);font:inherit;font-size:.75rem}
+.desk-game-links button:hover{color:#b5beff}
+.desk-feed-actions{display:flex;justify-content:flex-end;align-items:center;flex-wrap:wrap;gap:6px}
+.desk-feed-actions select{width:auto;min-height:32px;padding:4px 8px;border-color:var(--desk-border);background:var(--desk-card);font-size:.78rem}
+.desk-history-start{margin:0 0 10px}
+.desk-log-import{position:relative;cursor:pointer;color:#a6afff}
+.desk-log-import input{position:absolute;inset:0;width:100%;opacity:0;cursor:pointer}
+.desk-log-import:focus-within{outline:2px solid var(--desk-blue);outline-offset:2px}
+dialog.desk-sessions-dialog{width:min(485px,100vw - 24px);background:var(--desk-card);border-color:#343440}
+.desk-sessions-dialog .dialog-head{background:var(--desk-card);border-color:var(--desk-border)}
+.desk-session-modal{padding:12px;max-height:65dvh;overflow:auto}
+.desk-session-modal .desk-session{background:#1c1c25}
+.desk-session footer{flex-wrap:wrap}
+@media(min-width:681px){
+  .page.desk-workspace,.desk-game-inner{width:min(1280px,100% - 50px)}
+  .desk-brand,.desk-overview .library-summary dd{font-size:1.3rem}
+  .desk-overview .library-summary dt,.desk-columns{font-size:.75rem}
+  .desk-tabs>a{font-size:.87rem}
+  .desk-workspace .library-controls{grid-template-columns:minmax(0,1fr) 145px 145px}
+  .desk-workspace .library-controls .searchbox,.desk-workspace .library-controls select{height:38px;font-size:.84rem}
+  .desk-workspace .library-controls .searchbox input{height:36px;font-size:.86rem}
+  .list-view .desk-game .card-link{min-height:68px}
+  .list-view .desk-game .card-art{width:47px}
+  .desk-identity h3,.desk-activity strong{font-size:.9rem}
+  .desk-identity small,.desk-recent>small,.desk-activity small,.desk-progress{font-size:.75rem}
+  .desk-trophy-icon{width:22px}
+  .desk-badge{font-size:.69rem}
+  .desk-panel h2{font-size:1.03rem}
+  .desk-panel p,.desk-muted,.desk-split>aside>.desk-muted{font-size:.85rem}
+  .desk-panel small,.desk-panel time,.desk-unlock footer,.desk-session footer{font-size:.77rem}
+  .desk-feed-head h1{font-size:1.2rem}
+  .desk-unlock strong,.desk-session strong,.desk-session a{font-size:.96rem}
+  .desk-game-title h1{font-size:1.35rem}
+  .desk-game-title>small,.desk-game-links a,.desk-game-links button,.desk-game-metrics dt{font-size:.84rem}
+  .desk-game-metrics dd{font-size:1rem}
+}
+@media(min-width:851px){
+  .desk-game-heading{grid-template-columns:195px minmax(0,1fr) auto}
+}
 @media(max-width:850px){
   .desk-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .desk-game-heading{grid-template-columns:130px minmax(0,1fr)}
@@ -1684,4 +1723,6 @@ body{background:var(--desk-bg)}
   .desk-progress{font-size:.62rem}
   .desk-activity{font-size:.63rem}
   .desk-game-heading{grid-template-columns:82px minmax(0,1fr)}
+  .desk-feed-head{flex-wrap:wrap}
+  .desk-feed-actions{justify-content:flex-start}
 }
