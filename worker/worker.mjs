@@ -1,6 +1,7 @@
 
 import { readActivity, recordSnapshot } from './activity.mjs';
 import { requestJson, rememberDevice, renewDevice, forgetDevice, readPersonal, savePersonal, MAX_SNAPSHOT } from './cloud.mjs';
+import { readSteamFeed, refreshSteamFeeds } from './feeds.mjs';
 
 const ORIGIN = 'https://nkuzyanin-cloud.github.io';
 const STEAM = 'https://api.steampowered.com/';
@@ -260,14 +261,19 @@ async function achievements(url, id, env, ctx) {
 export default {
   async scheduled(event, env) {
     if (!env.STEAM_ACTIVITY || !env.STEAM_API_KEY || !validAccount(env.STEAM_ID)) return;
-    await recordSnapshot(env.STEAM_ACTIVITY, env.STEAM_ID, event.scheduledTime, await readLibrary(env));
+    const library = await readLibrary(env).catch(error => { console.error(error); return null; });
+    const tasks = await Promise.allSettled([
+      library && recordSnapshot(env.STEAM_ACTIVITY, env.STEAM_ID, event.scheduledTime, library),
+      refreshSteamFeeds(env.STEAM_ACTIVITY, env.STEAM_ID, library, event.scheduledTime)
+    ]);
+    for (const result of tasks) if (result.status === 'rejected') console.error(result.reason);
   },
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const cors = allowedOrigin(request);
-    if (url.pathname === '/health' && request.method === 'GET') return reply({ ok: true, version: 7 }, 200, cors);
+    if (url.pathname === '/health' && request.method === 'GET') return reply({ ok: true, version: 8 }, 200, cors);
     const route = url.pathname;
-    if (!['/session', '/session/refresh', '/session/forget', '/personal', '/profile', '/library', '/achievements', '/artwork'].includes(route)) return reply({ error: 'not_found' }, 404, cors);
+    if (!['/session', '/session/refresh', '/session/forget', '/personal', '/profile', '/library', '/achievements', '/artwork', '/wishlist', '/news'].includes(route)) return reply({ error: 'not_found' }, 404, cors);
     if (!cors) return reply({ error: 'origin' }, 403, false);
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: {
@@ -311,6 +317,10 @@ export default {
       await authorize(request, env);
       const { success } = await env.API_LIMIT.limit({ key: env.STEAM_ID });
       if (!success) throw new RequestError(429, 'rate_limit');
+      if (route === '/wishlist' || route === '/news') {
+        if (url.search || !env.STEAM_ACTIVITY) throw new RequestError(400, 'invalid_request');
+        return reply({account:env.STEAM_ID,...await readSteamFeed(env.STEAM_ACTIVITY,env.STEAM_ID,route.slice(1))},200,true);
+      }
       if (route === '/profile') {
         if (url.search) throw new RequestError(400, 'invalid_request');
         return reply(await cached(url, env.STEAM_ID + '/profile-v1', 600, ctx, () => playerProfile(env)), 200, true);
