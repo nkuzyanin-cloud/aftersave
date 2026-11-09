@@ -282,10 +282,10 @@ function librarySummary() {
   const hours = linked.reduce((total,game) => total + game.steam.minutes, 0) / 60;
   const earned = linked.reduce((total,game) => total + (summaryFor(game)?.unlocked ?? 0), 0);
   const perfect = linked.filter(game => trophyFor(summaryFor(game)) === 'platinum').length;
-  const metrics = [[numeric(linked.length),'Игр в Steam'],[numeric(Math.round(hours))+' ч','Время в играх'],
-    [numeric(earned),'Получено достижений'],[numeric(perfect),'Идеально']];
-  return `<dl id="library-summary" class="library-summary" aria-label="Сводка Steam">${metrics.map(([value,label]) =>
-    `<div><dt>${label}</dt><dd>${value}</dd></div>`).join('')}</dl>`;
+  const metrics = [[numeric(linked.length),'Игр в Steam','game'],[numeric(Math.round(hours))+' ч','Время в играх','clock'],
+    [numeric(earned),'Получено достижений','trophy'],[numeric(perfect),'Идеально','crown']];
+  return `<dl id="library-summary" class="library-summary" aria-label="Сводка Steam">${metrics.map(([value,label,glyph]) =>
+    `<div><dt>${label}</dt><dd class="desk-metric" data-glyph="${glyph}">${icon(glyph,17)}${value}</dd></div>`).join('')}</dl>`;
 }
 
 
@@ -413,13 +413,14 @@ function heatmap(days, today, firstKnown, count, unlocks) {
 
 function streakPanel(days, today, firstKnown, total, label, unlocks) {
   const series = streaks(days,today);
-  return `<section class="desk-panel desk-streak"><div><small>Текущая серия</small><strong>${series.current} <small>дн.</small></strong></div>
+  return `<section class="desk-panel desk-streak"><div><small>Текущая серия</small><strong class="desk-metric" data-glyph="flame">${icon('flame',17)}${series.current} дн.</strong></div>
     <div class="desk-week">${Array.from({length:7},(_,i) => {
       const day = today - 6 + i;
       return `<span class="${days.has(day) ? 'active' : ''}" title="${shortDay.format(calendarDate(day))}">${calendarDate(day).getUTCDate()}</span>`;
     }).join('')}</div></section>
-    <section class="desk-panel desk-year"><h2>За последний год</h2><div class="desk-year-values">
-      <div><small>Самая длинная серия</small><strong>${series.best} дн.</strong></div><div><small>${label}</small><strong>${total}</strong></div>
+    <section class="desk-panel desk-year"><h2 class="desk-heading">${icon('calendar',18)}За последний год</h2><div class="desk-year-values">
+      <div><small>Самая длинная серия</small><strong class="desk-metric" data-glyph="flame">${icon('flame',16)}${series.best} дн.</strong></div>
+      <div><small>${label}</small><strong class="desk-metric">${icon(unlocks ? 'clock' : 'trophy',16)}${total}</strong></div>
     </div>${heatmap(days,today,firstKnown,147,unlocks)}
     <details><summary>Открыть годовую карту</summary>${heatmap(days,today,firstKnown,365,unlocks)}</details>
     ${unlocks ? '<output class="desk-heat-readout">Выбери день на карте</output>' : ''}
@@ -441,7 +442,7 @@ function achievementsPage() {
   for (const {item} of earned) addDaily(days,dayNumber(item.time*1000),1);
   const year = [...days].reduce((total,[day,n]) => total + (day >= today-364 && day <= today ? n : 0),0);
   return `<div id="desk-feed" class="desk-split"><div>
-    <div class="desk-feed-head"><h1>${lockedFeed ? 'Заблокированные достижения' : 'Последние достижения'}</h1><div class="desk-feed-actions">
+    <div class="desk-feed-head"><h1 class="desk-heading">${icon(lockedFeed ? 'lock' : 'trophy',20)}${lockedFeed ? 'Заблокированные достижения' : 'Последние достижения'}</h1><div class="desk-feed-actions">
       ${lockedFeed ? button('desk-locked','К полученным','back','quiet') : years.length ? `<select id="desk-unlock-year" aria-label="Год получения">
       ${option('','Все годы',achievementYear)}${years.map(year => option(year,year,achievementYear)).join('')}</select>` : ''}
       ${button(scanningAchievements ? 'achievement-stop' : 'achievement-scan',scanningAchievements ? 'Остановить' : 'Обновить всю историю','download','quiet')}
@@ -451,14 +452,14 @@ function achievementsPage() {
     ${visible.length ? visible.slice(0,feedLimit).map(({game,item}) => `<article class="desk-panel desk-unlock">
       <div>${trophyIcon(item,item.hidden&&!item.unlocked)}<div><strong>${esc(item.name)}</strong>
       <p>${esc(item.hidden&&!item.unlocked ? 'Скрытое условие' : item.description)}</p>
-      ${Number.isFinite(item.percent) ? `<small>${numeric(item.percent)}% игроков Steam</small>` : ''}</div></div>
+      ${Number.isFinite(item.percent) ? `<small class="desk-icon-text">${icon('user',14)}${numeric(item.percent)}% игроков Steam</small>` : ''}</div></div>
       <footer><a href="${gameHref(game,'achievements')}">${icon('steam',14)} ${esc(displayName(game))}</a>
-      ${item.time ? `<time>${fullMoment.format(item.time*1000)}</time>` : ''}</footer></article>`).join('') :
+      ${item.time ? `<time class="desk-icon-text">${icon('calendar',14)}${fullMoment.format(item.time*1000)}</time>` : ''}</footer></article>`).join('') :
       `<p class="desk-panel desk-muted">${lockedFeed ? 'Нет заблокированных достижений в загруженных данных.' : 'Пока нет загруженных достижений с датой. Обнови достижения Steam в настройках.'}</p>`}
     ${feedMore(visible.length)}
   </div><aside>${streakPanel(days,today,-Infinity,numeric(year),'Получено достижений')}
-    <section class="desk-panel"><h2>Что дальше</h2><p class="desk-muted">По играм с загруженными данными Steam.</p>
-    ${button('desk-locked', (lockedFeed ? 'К полученным достижениям' : 'Заблокированные · ' + numeric(locked.length)), 'right','quiet')}</section>
+    <section class="desk-panel"><h2 class="desk-heading">${icon('checklist',18)}Что дальше</h2><p class="desk-muted">По играм с загруженными данными Steam.</p>
+    ${button('desk-locked', (lockedFeed ? 'К полученным достижениям' : 'Заблокированные · ' + numeric(locked.length)), lockedFeed ? 'back' : 'lock','quiet')}</section>
   </aside></div>`;
 }
 
@@ -486,7 +487,7 @@ function sessionRows({events,launches,unlocks}, limit, modal = false) {
   if (!events.length) return `<p class="desk-panel desk-muted">${launches.length ? 'Steam передал дату последнего запуска. Длительность сессии пока неизвестна.' :
     'Пока нет данных о запусках этой игры.'}</p>
     ${launches.slice(0,limit).map(item => `<article class="desk-panel desk-session"><div>${cover(item)}<a href="${gameHref(item)}">${esc(displayName(item))}</a>
-    <time>${steamDate(item.steam.lastPlayed)}</time></div></article>`).join('')}`;
+    <time class="desk-icon-text">${icon('calendar',14)}${steamDate(item.steam.lastPlayed)}</time></div></article>`).join('')}`;
   return events.slice(0,limit).map(({game,minutes,day,local,estimated,uncertain}) => {
     const earned = unlocks.get(game.steam.appid+':'+day) ?? [];
     const date = shortDay.format(calendarDate(day));
@@ -496,7 +497,7 @@ function sessionRows({events,launches,unlocks}, limit, modal = false) {
     return `<article class="desk-panel desk-session"><div>${cover(game)}<p>Играл <strong>${label}</strong>
       ${modal ? '' : ` в <a href="${gameHref(game)}">${esc(displayName(game))}</a>`}
       <small>${source}${uncertain ? ' · Время учтено по дате замера' : ''}</small>
-      ${earned.length ? `<small>Достижений за день · ${earned.length}</small>` : ''}</p><time>${date}</time></div>
+      ${earned.length ? `<small class="desk-icon-text">${icon('trophy',14)}Достижений за день · ${earned.length}</small>` : ''}</p><time class="desk-icon-text">${icon('calendar',14)}${date}</time></div>
       ${earned.length ? `<footer>${earned.slice(0,modal ? 12 : 6).map(item => trophyIcon(item)).join('')}${earned.length > (modal ? 12 : 6) ? `<small>ещё ${earned.length-(modal ? 12 : 6)}</small>` : ''}</footer>` : ''}</article>`;
   }).join('');
 }
@@ -532,7 +533,7 @@ function sessionsPage(game) {
   const first = events.reduce((value,event) => Math.min(value,event.day),observed);
   const dailyMinutes = [...days.values()].reduce((sum,minutes) => sum+minutes,0);
   return `<div id="desk-feed" class="desk-split"><div>
-    <div class="desk-feed-head"><h1>Игровые сессии</h1><div class="desk-feed-actions">
+    <div class="desk-feed-head"><h1 class="desk-heading">${icon('clock',20)}Игровые сессии</h1><div class="desk-feed-actions">
       ${button('steam-sync','Обновить','download','quiet',syncingSteam ? 'disabled' : '')}
       ${state.steam ? `<label class="btn btn-quiet desk-log-import">${icon('upload',16)} Импорт журнала Steam<input type="file" accept=".txt,text/plain" id="steam-log-file" aria-label="Импорт журнала Steam"></label>` : ''}
     </div></div>
@@ -585,21 +586,21 @@ function statsPage() {
   const bestDay = [...days].sort((a,b) => b[1]-a[1])[0];
   const bestMonth = [...months].sort((a,b) => b[1]-a[1])[0];
   return `<div id="desk-feed" class="desk-stat-grid">
-    <section class="desk-panel"><h2>Обзор библиотеки</h2><small>Количество игр</small><strong class="desk-stat-value">${numeric(linked.length)}</strong>
+    <section class="desk-panel"><h2 class="desk-heading">${icon('library',19)}Обзор библиотеки</h2><small>Количество игр</small><strong class="desk-stat-value">${numeric(linked.length)}</strong>
     <div class="desk-donut" style="--perfect:${perfect/Math.max(1,linked.length)*100}%;--beaten:${(perfect+beaten)/Math.max(1,linked.length)*100}%" role="img" aria-label="Распределение по прохождению"></div>
     <div class="desk-legend"><span><i></i>${perfect} Идеально</span><span><i></i>${beaten} Пройдено</span><span><i></i>${other} Без отметки</span></div></section>
-    <section class="desk-panel"><h2>Прохождение игр</h2><small>Средний прогресс по играм с данными</small>
+    <section class="desk-panel"><h2 class="desk-heading">${icon('chart',19)}Прохождение игр</h2><small>Средний прогресс по играм с данными</small>
     <strong class="desk-stat-value">${known.length ? numeric(known.reduce((n,r) => n+achievementPercent(r),0)/known.length)+'%' : '—'}</strong>
     <div class="desk-bars">${buckets.map((n,i) => `<div><span>${n}</span><i style="--bar:${n/maxBucket*100}%"></i><small>${['0%','до 25%','25–50%','50–75%','75–99%','100%'][i]}</small></div>`).join('')}</div></section>
-    <section class="desk-panel"><h2>Самые редкие достижения</h2>${rare.length ? rare.map(({game,item}) => `<a class="desk-rare" href="${gameHref(game,'achievements')}">${trophyIcon(item)}
+    <section class="desk-panel"><h2 class="desk-heading">${icon('gem',19)}Самые редкие достижения</h2>${rare.length ? rare.map(({game,item}) => `<a class="desk-rare" href="${gameHref(game,'achievements')}">${trophyIcon(item)}
     <span><strong>${esc(item.name)}</strong><small>${esc(displayName(game))}</small></span><b>${numeric(item.percent)}%</b></a>`).join('') : '<p class="desk-muted">Пока нет данных о редкости.</p>'}</section>
-    <section class="desk-panel desk-history"><h2>Общий прогресс достижений</h2><div class="desk-year-values"><div><small>Получено</small><strong>${numeric(totals.unlocked)}</strong></div>
-    <div><small>Заблокировано</small><strong>${numeric(totals.total-totals.unlocked)}</strong></div>
-    <div><small>Максимум за день</small><strong>${bestDay ? numeric(bestDay[1]) : '—'}</strong></div>
-    <div><small>Максимум за месяц</small><strong>${bestMonth ? numeric(bestMonth[1]) : '—'}</strong></div></div>
+    <section class="desk-panel desk-history"><h2 class="desk-heading">${icon('trend',19)}Общий прогресс достижений</h2><div class="desk-year-values">
+    ${[[numeric(totals.unlocked),'Получено','trophy'],[numeric(totals.total-totals.unlocked),'Заблокировано','lock'],
+      [bestDay ? numeric(bestDay[1]) : '—','Максимум за день','flame'],[bestMonth ? numeric(bestMonth[1]) : '—','Максимум за месяц','calendar']].map(([value,label,glyph]) =>
+      `<div><small>${label}</small><strong class="desk-metric" data-glyph="${glyph}">${icon(glyph,16)}${value}</strong></div>`).join('')}</div>
     <small>Данные по ${known.length} из ${linked.length} игр</small>
     ${achievementTimeline(months)}</section>
-    <section class="desk-panel"><h2>Больше всего времени</h2>${[...linked].sort((a,b)=>b.steam.minutes-a.steam.minutes).slice(0,5).map(game =>
+    <section class="desk-panel"><h2 class="desk-heading">${icon('clock',19)}Больше всего времени</h2>${[...linked].sort((a,b)=>b.steam.minutes-a.steam.minutes).slice(0,5).map(game =>
       `<a class="desk-rare" href="${gameHref(game)}">${cover(game)}<strong>${esc(displayName(game))}</strong><b>${duration(game.steam.minutes)}</b></a>`).join('')}</section>
   </div>`;
 }
@@ -709,7 +710,8 @@ function collectionsPage() {
       const {minutes,unlocked,total} = collectionTotals(grouped);
       return `<a href="#collections/${encodeURIComponent(item.id)}" class="desk-panel desk-collection">
         <h2>${esc(item.name)}</h2><div class="desk-collection-covers">${grouped.slice(0,5).map(game => cover(game)).join('')}${grouped.length > 5 ? `<span>+${grouped.length-5}</span>` : ''}</div>
-        <footer><small>${grouped.length} игр</small><small>${duration(minutes)}</small>${total ? `<small>${unlocked} / ${total}</small>${progressBar(unlocked/total*100)}` : ''}</footer></a>`;
+        <footer><small class="desk-icon-text">${icon('game',15)}${grouped.length} игр</small><small class="desk-icon-text">${icon('clock',15)}${duration(minutes)}</small>
+          ${total ? `<small class="desk-icon-text">${icon('trophy',15)}${unlocked} / ${total}</small>${progressBar(unlocked/total*100)}` : ''}</footer></a>`;
     }).join('') : '<p class="desk-panel desk-muted">Здесь появятся твои коллекции и их прогресс.</p>'}</div></div>`;
 }
 
@@ -1482,9 +1484,9 @@ function gameDashboard() {
             </div>
           </div>
           <dl class="desk-game-metrics">
-            <div><dt>Достижения</dt><dd id="game-achievement-count">${summary?.total ? summary.unlocked+' / '+summary.total : '—'}</dd></div>
-            <div><dt>Время игры</dt><dd>${duration(game.steam?.minutes ?? Math.round(game.hours*60))}</dd></div>
-            <div><dt>Последний запуск</dt><dd>${steamDate(game.steam?.lastPlayed)}</dd></div>
+            <div><dt class="desk-icon-text">${icon('trophy',15)}Достижения</dt><dd id="game-achievement-count">${summary?.total ? summary.unlocked+' / '+summary.total : '—'}</dd></div>
+            <div><dt class="desk-icon-text">${icon('clock',15)}Время игры</dt><dd>${duration(game.steam?.minutes ?? Math.round(game.hours*60))}</dd></div>
+            <div><dt class="desk-icon-text">${icon('calendar',15)}Последний запуск</dt><dd>${steamDate(game.steam?.lastPlayed)}</dd></div>
           </dl>
         </div>
         ${route.tab === 'sessions' || route.tab === 'notes' ? `<a class="quiet-link" href="${url}">${icon('back',15)} К достижениям</a>` : ''}

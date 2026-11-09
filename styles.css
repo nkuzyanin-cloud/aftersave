@@ -671,9 +671,12 @@ dialog.boss-map-panel{width:min(970px,100vw - 24px);background:#1b1e23;border-co
   .boss-region-choice.just-cleared,.boss-list-empty.just-cleared{animation:none}
 }
 /* Desktop Steam library and activity */
-:root{--desk-bg:#111116;--desk-card:#18181f;--desk-border:#272730;--desk-text:#eeeeF4;--desk-muted:#a2a6b6;--desk-blue:#7482ff}
+:root{
+  --desk-bg:#111116;--desk-card:#18181f;--desk-border:#272730;--desk-text:#eeeeF4;--desk-muted:#a2a6b6;--desk-blue:#7482ff;
+  --desk-width:1320px;--desk-caption:.76rem;--desk-copy:.86rem;--desk-item:.94rem;--desk-heading-size:1rem;--desk-value:1.18rem
+}
 body{background:var(--desk-bg)}
-.page.page-settings{width:min(1280px,100% - 50px);padding-inline:0}
+.page.page-settings{width:min(var(--desk-width),100% - 50px);padding-inline:0}
 .page-settings .settings-panel,.journal-panel,.saved-runs,.desk-workspace .empty{
   background:var(--desk-card);border-color:var(--desk-border);box-shadow:none
 }
@@ -710,6 +713,14 @@ dialog .field input,dialog .field textarea,dialog .field select,.collection-choi
 .desk-overview .library-summary>div{border:0;padding:0;gap:4px}
 .desk-overview .library-summary dt{color:var(--desk-muted);font-size:.68rem;white-space:nowrap}
 .desk-overview .library-summary dd{order:0;font-size:1.16rem;letter-spacing:-.02em}
+.desk-heading,.desk-icon-text,.desk-metric,.desk-year-values .desk-metric,.desk-streak .desk-metric,.desk-session p .desk-icon-text{
+  display:flex;align-items:center;gap:.42em
+}
+.desk-heading svg,.desk-icon-text svg,.desk-metric svg{flex:none}
+.desk-heading svg,.desk-metric svg{color:#a2adff}
+.desk-metric[data-glyph=crown] svg,.desk-metric[data-glyph=flame] svg{color:#e7ae75}
+.desk-metric[data-glyph=lock] svg{color:var(--desk-muted)}
+.desk-metric,.desk-stat-value{font-variant-numeric:tabular-nums}
 .desk-tabs{display:flex;align-items:stretch;gap:14px;min-height:45px;border-bottom:1px solid var(--desk-border);margin-bottom:18px}
 .desk-tabs>a{display:inline-flex;align-items:center;gap:5px;padding:7px 8px;border-bottom:2px solid transparent;color:var(--desk-muted);font-weight:700;font-size:.78rem;white-space:nowrap}
 .desk-tabs>a:hover,.desk-tabs>a[aria-current=page]{color:var(--desk-text)}
@@ -752,21 +763,21 @@ dialog .field input,dialog .field textarea,dialog .field select,.collection-choi
 .list-view .desk-game .card-tools .icon-btn,.list-view .desk-game .game-menu>summary{width:28px;min-width:28px;min-height:28px;background:#21212a;border-color:#2a2a34}
 .list-view .desk-game .card-tools svg{width:15px;height:15px}
 .desk-panel{background:var(--desk-card);border:1px solid var(--desk-border);border-radius:7px;padding:13px;min-width:0}
-.desk-panel h2{font-size:.92rem;line-height:1.35;margin:0 0 11px}
-.desk-panel p,.desk-muted{color:var(--desk-muted);font-size:.76rem;line-height:1.55}
-.desk-panel small,.desk-panel time{color:var(--desk-muted);font-size:.68rem}
+.desk-panel h2{font-size:var(--desk-heading-size);line-height:1.35;margin:0 0 11px}
+.desk-panel p,.desk-muted{color:var(--desk-muted);font-size:var(--desk-copy);line-height:1.55}
+.desk-panel small,.desk-panel time{color:var(--desk-muted);font-size:var(--desk-caption)}
 .desk-panel .btn-quiet{color:#a6afff}
 .desk-split{display:grid;grid-template-columns:minmax(0,2.18fr) minmax(255px,1fr);align-items:start;gap:15px}
 .desk-split>aside{display:grid;gap:11px}
-.desk-split>aside>.desk-muted{font-size:.75rem}
+.desk-split>aside>.desk-muted{font-size:var(--desk-caption)}
 .desk-feed-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
 .desk-feed-head h1{font-size:1.02rem;letter-spacing:0}
 .desk-unlock,.desk-session{margin-bottom:9px;padding:0}
 .desk-unlock>div,.desk-session>div{display:flex;align-items:flex-start;gap:10px;padding:11px}
 .desk-unlock .desk-trophy-icon{width:44px}
-.desk-unlock strong,.desk-session strong,.desk-session a{font-size:.86rem;color:var(--desk-text)}
+.desk-unlock strong,.desk-session strong,.desk-session a{font-size:var(--desk-item);color:var(--desk-text)}
 .desk-unlock p{margin:2px 0}
-.desk-unlock footer,.desk-session footer{display:flex;justify-content:space-between;align-items:center;gap:7px;padding:7px 11px;border-top:1px solid var(--desk-border);color:var(--desk-muted);font-size:.72rem}
+.desk-unlock footer,.desk-session footer{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:7px;padding:7px 11px;border-top:1px solid var(--desk-border);color:var(--desk-muted);font-size:var(--desk-caption)}
 .desk-unlock footer a{display:flex;align-items:center;gap:5px}
 .desk-session>div{align-items:center}
 .desk-session>div .cover,.desk-rare .cover{width:40px;aspect-ratio:1;flex:none;border-radius:4px}
@@ -776,7 +787,8 @@ dialog .field input,dialog .field textarea,dialog .field select,.collection-choi
 .desk-session p small{display:block}
 .desk-session footer{justify-content:flex-start}
 .desk-streak,.desk-year-values{display:flex;justify-content:space-between;align-items:center;gap:7px}
-.desk-streak strong,.desk-year-values strong{display:block;margin-top:2px;font-size:.91rem}
+.desk-streak{flex-wrap:wrap}
+.desk-streak strong,.desk-year-values strong{margin-top:2px;font-size:var(--desk-value);line-height:1.3}
 .desk-week{display:flex;gap:3px}
 .desk-week span{display:grid;place-items:center;width:20px;aspect-ratio:1;background:#262630;border-radius:50%;color:var(--desk-muted);font-size:.61rem}
 .desk-week span.active{background:#3f4180;color:#ececff}
@@ -785,7 +797,7 @@ dialog .field input,dialog .field textarea,dialog .field select,.collection-choi
 .desk-heatmap span{aspect-ratio:1;background:#292935;border-radius:2px}
 .desk-heatmap .heat-unknown{background:#1d1d25}
 .desk-heatmap .heat-1{background:#373a6d}.desk-heatmap .heat-2{background:#494d9a}.desk-heatmap .heat-3{background:#5962c2}.desk-heatmap .heat-4{background:#7886fa}
-.desk-year details{margin-top:10px;font-size:.72rem;color:#b7bcff}.desk-year summary{cursor:pointer}
+.desk-year details{margin-top:10px;font-size:var(--desk-caption);color:#b7bcff}.desk-year summary{cursor:pointer}
 .desk-collections{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start}
 .desk-collections .section-heading{display:block;margin-top:30px}
 .desk-collections .section-heading h1{font-size:1.55rem}
@@ -796,10 +808,10 @@ dialog .field input,dialog .field textarea,dialog .field select,.collection-choi
 .desk-collection-covers{display:flex;gap:6px;align-items:center;min-width:0}
 .desk-collection-covers>*{width:min(15%,73px);aspect-ratio:2/3;flex:none;border-radius:5px}
 .desk-collection-covers>span{display:grid;place-items:center;background:#252631;color:#b9bdd0}
-.desk-collection footer{display:flex;align-items:center;gap:9px;margin-top:10px;white-space:nowrap}
-.desk-collection footer .progress-track{height:4px;flex:1}
+.desk-collection footer{display:flex;align-items:center;flex-wrap:wrap;gap:9px;margin-top:10px;white-space:nowrap}
+.desk-collection footer .progress-track{height:4px;flex:1;min-width:40px}
 .desk-stat-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}
-.desk-stat-value{display:block;margin-top:4px}
+.desk-stat-value{display:block;margin-top:4px;font-size:var(--desk-value);line-height:1.3}
 .desk-history{grid-column:span 2}
 .desk-timeline{position:relative;margin:12px 5px 0;touch-action:pan-y}
 .desk-timeline svg{display:block;width:100%;height:155px;overflow:visible}
@@ -807,8 +819,8 @@ dialog .field input,dialog .field textarea,dialog .field select,.collection-choi
 .desk-timeline:focus-within{outline:1px solid var(--desk-blue);outline-offset:4px}
 .desk-timeline circle{fill:var(--desk-blue);stroke:var(--desk-card);stroke-width:1;vector-effect:non-scaling-stroke}
 .desk-timeline-guide{stroke:#6670ab;stroke-width:1;stroke-dasharray:3 3;vector-effect:non-scaling-stroke}
-.desk-timeline-tooltip{position:absolute;top:0;left:clamp(min(87px,50%),var(--point-x),max(50%,100% - 87px));transform:translateX(-50%);display:grid;gap:3px;width:min(174px,100%);padding:7px 9px;border:1px solid #3a3a50;border-radius:6px;background:#212232;pointer-events:none;font-size:.78rem}
-.desk-timeline-tooltip span,.desk-heat-readout{color:var(--desk-muted);font-size:.74rem}
+.desk-timeline-tooltip{position:absolute;top:0;left:clamp(min(105px,50%),var(--point-x),max(50%,100% - 105px));transform:translateX(-50%);display:grid;gap:3px;width:min(210px,100%);padding:8px 10px;border:1px solid #3a3a50;border-radius:6px;background:#212232;pointer-events:none;font-size:var(--desk-copy)}
+.desk-timeline-tooltip span,.desk-heat-readout{color:var(--desk-muted);font-size:var(--desk-caption)}
 .desk-chart-years{position:relative;height:1.1rem;margin-inline:5px}
 .desk-chart-years small{position:absolute;transform:translateX(-50%)}
 .desk-chart-years small:first-child{transform:none}
@@ -816,18 +828,18 @@ dialog .field input,dialog .field textarea,dialog .field select,.collection-choi
 .desk-heat-readout{display:block;margin-top:7px;line-height:1.35}
 .desk-donut{width:min(60%,144px);aspect-ratio:1;margin:16px auto;border-radius:50%;position:relative;background:conic-gradient(#f0bc7b var(--perfect),#6bbdeb var(--perfect) var(--beaten),#3d3e4b var(--beaten))}
 .desk-donut::after{content:'';position:absolute;inset:14%;background:var(--desk-card);border-radius:50%}
-.desk-legend{display:flex;flex-wrap:wrap;gap:6px 11px;font-size:.68rem;color:var(--desk-muted)}
+.desk-legend{display:flex;flex-wrap:wrap;gap:6px 11px;font-size:var(--desk-caption);color:var(--desk-muted)}
 .desk-legend span{display:flex;gap:4px;align-items:center}
 .desk-legend i{width:7px;height:7px;border-radius:2px;background:#f0bc7b}.desk-legend span:nth-child(2) i{background:#6bbdeb}.desk-legend span:nth-child(3) i{background:#686a79}
 .desk-bars{height:156px;display:grid;grid-template-columns:repeat(6,1fr);gap:4px;align-items:end;margin-top:10px}
-.desk-bars>div{display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:3px;height:100%;color:var(--desk-muted);font-size:.67rem}
+.desk-bars>div{display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:3px;height:100%;color:var(--desk-muted);font-size:var(--desk-caption)}
 .desk-bars i{width:55%;height:calc(var(--bar)*.7);background:linear-gradient(#6a62ef,#4779e8);border-radius:4px 4px 0 0}
-.desk-bars small{font-size:.62rem;white-space:nowrap}
-.desk-rare{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--desk-border);font-size:.75rem}
+.desk-bars small{font-size:inherit;white-space:nowrap}
+.desk-rare{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--desk-border);font-size:var(--desk-copy)}
 .desk-rare:last-child{border-bottom:0}
 .desk-rare .desk-trophy-icon{width:32px}
 .desk-rare>span:not(.desk-trophy-icon){display:grid;min-width:0}
-.desk-rare b{margin-left:auto;white-space:nowrap;color:#bec5ff;font-size:.71rem}
+.desk-rare b{margin-left:auto;white-space:nowrap;color:#bec5ff;font-size:var(--desk-caption);font-variant-numeric:tabular-nums}
 .desk-game-page{position:relative;isolation:isolate}
 .desk-hero-art{position:absolute;top:0;left:50%;z-index:-1;transform:translateX(-50%);width:min(100%,1680px);height:auto;max-height:480px;object-fit:contain;object-position:center top;opacity:.46;pointer-events:none;mask-image:radial-gradient(ellipse 77% 89% at 52% 0%,#000 31%,transparent 92%)}
 .desk-game-inner{width:min(1130px,100% - 50px);margin:auto}
@@ -902,30 +914,66 @@ dialog.desk-sessions-dialog{width:min(485px,100vw - 24px);background:var(--desk-
 .desk-session-modal .desk-session{background:#1c1c25}
 .desk-session footer{flex-wrap:wrap}
 @media(min-width:681px){
-  .page.desk-workspace,.desk-game-inner{width:min(1280px,100% - 50px)}
-  .desk-brand,.desk-overview .library-summary dd{font-size:1.3rem}
-  .desk-overview .library-summary dt,.desk-columns{font-size:.75rem}
-  .desk-tabs>a{font-size:.87rem}
-  .desk-workspace .library-controls{grid-template-columns:minmax(0,1fr) 145px 145px}
-  .desk-workspace .library-controls .searchbox,.desk-workspace .library-controls select{height:38px;font-size:.84rem}
-  .desk-workspace .library-controls .searchbox input{height:36px;font-size:.86rem}
-  .list-view .desk-game .card-link{min-height:68px}
-  .list-view .desk-game .card-art{width:40px}
-  .desk-identity h3,.desk-activity strong{font-size:.9rem}
-  .desk-identity small,.desk-recent>small,.desk-activity small,.desk-progress{font-size:.75rem}
-  .desk-trophy-icon{width:22px}
-  .desk-badge{font-size:.69rem}
-  .desk-panel h2{font-size:1.03rem}
-  .desk-panel p,.desk-muted,.desk-split>aside>.desk-muted{font-size:.85rem}
-  .desk-panel small,.desk-panel time,.desk-unlock footer,.desk-session footer{font-size:.77rem}
-  .desk-feed-head h1{font-size:1.2rem}
-  .desk-unlock strong,.desk-session strong,.desk-session a{font-size:.96rem}
-  .desk-game-title h1{font-size:1.35rem}
-  .desk-game-title>small,.desk-game-links a,.desk-game-links button,.desk-game-metrics dt{font-size:.84rem}
-  .desk-game-metrics dd{font-size:1rem}
+  :root{
+    --desk-caption:clamp(.81rem,.77rem + .1vw,.9rem);
+    --desk-copy:clamp(.91rem,.85rem + .12vw,.98rem);
+    --desk-item:clamp(1rem,.96rem + .12vw,1.1rem);
+    --desk-heading-size:1.12rem;--desk-value:1.35rem
+  }
+  .page.desk-workspace,.desk-game-inner{width:min(var(--desk-width),100% - 50px)}
+  .desk-overview{padding:14px 0 22px}
+  .desk-avatar{width:clamp(66px,6.2vw,82px)}
+  .desk-persona,.desk-brand{font-size:1.4rem}
+  .desk-xp{width:min(245px,100%)}
+  .desk-xp-label,.desk-member-since{font-size:var(--desk-caption)}
+  .desk-overview .library-summary dd{font-size:1.5rem}
+  .desk-overview .library-summary dt,.desk-columns{font-size:var(--desk-caption)}
+  .desk-tabs{min-height:50px;margin-bottom:20px}
+  .desk-tabs>a{font-size:var(--desk-copy)}
+  .desk-workspace .library-controls{grid-template-columns:minmax(0,1fr) 150px 150px}
+  .desk-workspace .library-controls .searchbox,.desk-workspace .library-controls select{height:43px;font-size:var(--desk-copy)}
+  .desk-workspace .library-controls .searchbox input{height:41px;font-size:inherit}
+  .list-view .desk-game .card-link{min-height:76px}
+  .list-view .desk-game .card-art{width:43px}
+  .desk-identity h3,.desk-activity strong{font-size:var(--desk-item)}
+  .desk-identity small,.desk-recent>small,.desk-activity small,.desk-progress{font-size:var(--desk-caption)}
+  .desk-trophy-icon{width:24px}
+  .desk-recent>div small{font-size:var(--desk-caption)}
+  .desk-badge{font-size:.76rem}
+  .desk-split{gap:19px}
+  .desk-split>aside,.desk-collection-list{gap:14px}
+  .desk-panel:not(.desk-unlock,.desk-session){padding:16px}
+  .desk-feed-head{flex-wrap:wrap;margin-bottom:11px}
+  .desk-feed-head h1{font-size:1.32rem}
+  .desk-feed-actions select{min-height:36px;font-size:var(--desk-caption)}
+  .desk-unlock,.desk-session{margin-bottom:13px}
+  .desk-unlock>div,.desk-session>div{gap:13px;padding:13px 14px}
+  .desk-unlock .desk-trophy-icon{width:54px}
+  .desk-unlock footer,.desk-session footer{padding:8px 14px}
+  .desk-session>div .cover{width:46px}
+  .desk-week span{width:clamp(20px,1.35vw,24px);font-size:.72rem}
+  .desk-stat-grid{gap:14px}
+  .desk-bars,.desk-timeline svg{height:190px}
+  .desk-donut{width:min(64%,180px)}
+  .desk-rare{padding-block:9px;gap:10px}
+  .desk-rare strong{overflow-wrap:anywhere}
+  .desk-rare .cover,.desk-rare .desk-trophy-icon{width:39px}
+  .desk-game-title h1{font-size:1.54rem}
+  .desk-game-title>small,.desk-game-links a,.desk-game-links button,.desk-game-metrics dt{font-size:var(--desk-caption)}
+  .desk-game-metrics dd{font-size:var(--desk-item)}
+  .desk-achievement-tools .searchbox,.desk-achievement-controls select,.desk-achievement-menu summary{font-size:var(--desk-copy);min-height:40px}
+  .desk-achievement-reveal{font-size:var(--desk-copy)}
+  .achievement-list li{min-height:110px}
+  .achievement-list li strong{font-size:var(--desk-item)}
+  .achievement-list li p{font-size:var(--desk-copy)}
+  .achievement-list li small{font-size:var(--desk-caption)}
+  dialog.desk-sessions-dialog{width:min(540px,100vw - 24px)}
 }
 @media(min-width:851px){
-  .desk-game-heading{grid-template-columns:195px minmax(0,1fr) auto}
+  .desk-game-heading{grid-template-columns:205px minmax(0,1fr) auto}
+}
+@media(min-width:681px) and (max-width:940px){
+  .desk-overview .library-summary{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 22px}
 }
 @media(max-width:850px){
   .desk-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -941,6 +989,7 @@ dialog.desk-sessions-dialog{width:min(485px,100vw - 24px);background:var(--desk-
   .desk-tabs>a{padding-inline:6px}
   .desk-split,.desk-stat-grid,.desk-collections{grid-template-columns:1fr}
   .desk-history{grid-column:auto}
+  .desk-history .desk-year-values{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
   .desk-workspace .library-controls{grid-template-columns:repeat(2,minmax(0,1fr))}
   .desk-columns{display:none}
   .list-view:has(.desk-game){border-radius:7px}
@@ -961,6 +1010,8 @@ dialog.desk-sessions-dialog{width:min(485px,100vw - 24px);background:var(--desk-
   .desk-feed-actions{justify-content:flex-start}
 }
 @media(max-width:420px){
+  .desk-streak .desk-metric,.desk-year-values .desk-metric{font-size:1.06rem}
+  .desk-bars small{font-size:.7rem}
   .desk-achievement-reveal{flex-basis:100%;margin-bottom:2px}
   .desk-achievement-controls>select{flex:1}
   .desk-game-content .desk-achievement-date{grid-column:2/-1;max-width:none;justify-content:flex-start;text-align:left}
