@@ -691,7 +691,8 @@ dialog:not(.boss-map-panel),dialog:not(.boss-map-panel) .dialog-head,dialog:not(
 }
 dialog .field input,dialog .field textarea,dialog .field select,.collection-choices .checkbox{background:#20212a;border-color:#393a49}
 .page.desk-workspace{width:min(1130px,100% - 50px);padding:28px 0 45px;margin:auto;color:var(--desk-text)}
-.desk-overview{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:13px 0 17px}
+.desk-overview{position:relative;display:flex;justify-content:space-between;align-items:center;gap:20px;padding:13px 46px 17px 0}
+.desk-overview .desk-settings{position:absolute;right:0;top:13px}
 .desk-brand{display:inline-flex;align-items:center;gap:8px;font-size:1.16rem;font-weight:800;letter-spacing:-.035em}
 .desk-brand svg{color:#7384ff}
 .desk-account{display:flex;align-items:center;gap:14px;min-width:0}
@@ -721,17 +722,39 @@ dialog .field input,dialog .field textarea,dialog .field select,.collection-choi
 .desk-metric[data-glyph=crown] svg,.desk-metric[data-glyph=flame] svg{color:#e7ae75}
 .desk-metric[data-glyph=lock] svg{color:var(--desk-muted)}
 .desk-metric,.desk-stat-value{font-variant-numeric:tabular-nums}
-.desk-tabs{display:flex;align-items:stretch;gap:14px;min-height:45px;border-bottom:1px solid var(--desk-border);margin-bottom:18px}
+.desk-nav-row{display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid var(--desk-border);margin-bottom:18px}
+.desk-tabs{display:flex;align-items:stretch;gap:14px;min-width:0;min-height:45px}
 .desk-tabs>a{display:inline-flex;align-items:center;gap:5px;padding:7px 8px;border-bottom:2px solid transparent;color:var(--desk-muted);font-weight:700;font-size:.78rem;white-space:nowrap}
 .desk-tabs>a:hover,.desk-tabs>a[aria-current=page]{color:var(--desk-text)}
 .desk-tabs>a[aria-current=page]{border-color:var(--desk-blue)}
-.desk-tabs .desk-settings{margin-left:auto}
-.desk-workspace .library-controls{margin-bottom:10px;grid-template-columns:minmax(0,1fr) 130px 130px;gap:6px}
+.desk-library-tools{display:flex;align-items:center;gap:5px;flex:none}
+.desk-header .icon-btn{display:grid;place-items:center;width:34px;min-height:34px;padding:0;border-radius:6px;color:var(--desk-muted);background:transparent;border:1px solid transparent}
+.desk-header .icon-btn:hover,.desk-header .icon-btn:focus-visible,.desk-library-filter[open]>summary,.desk-library-filter [data-active=true],.desk-library-tools [aria-expanded=true]{
+  color:var(--desk-text);background:#242535;border-color:#383a51
+}
+.desk-library-filter{position:relative}
+.desk-library-filter summary{list-style:none;cursor:pointer}
+.desk-library-filter summary::-webkit-details-marker{display:none}
+.desk-library-filter-panel{
+  position:absolute;z-index:5;right:0;top:calc(100% + 8px);width:min(215px,calc(100vw - 24px));display:grid;gap:7px;
+  padding:12px;background:var(--desk-card);border:1px solid #353643;border-radius:7px;box-shadow:0 8px 22px #0006;color:var(--desk-muted);font-size:var(--desk-copy)
+}
+.desk-library-filter-panel select{width:100%;min-height:36px;padding:5px 8px;background:#20212b;border:1px solid #393a49;border-radius:5px}
+.desk-hidden-filter{display:flex;align-items:center;gap:7px;padding-top:4px}
+.desk-hidden-filter input{accent-color:var(--desk-blue)}
+.desk-library-search{display:grid;grid-template-rows:0fr;opacity:0;transition:grid-template-rows .2s ease,opacity .16s ease}
+.desk-library-search[data-open=true]{grid-template-rows:1fr;opacity:1}
+.desk-library-search>div{min-height:0;overflow:hidden}
+.desk-library-search .searchbox{
+  width:min(360px,100%);margin:2px 0 12px auto;background:var(--desk-card);border-color:var(--desk-border);border-radius:6px
+}
+.desk-library-search input{height:38px;min-width:0;font-size:var(--desk-copy)}
+.desk-workspace .library-controls{margin-bottom:10px;grid-template-columns:minmax(0,1fr) 130px;gap:6px}
 .desk-workspace .library-controls .searchbox,.desk-workspace .library-controls select{
   min-height:33px;height:33px;background:var(--desk-card);border-color:var(--desk-border);font-size:.76rem;border-radius:5px
 }
 .desk-workspace .library-controls .searchbox input{height:31px;font-size:.78rem}
-.desk-columns,.list-view .desk-game .card-link{display:grid;grid-template-columns:minmax(0,1fr) minmax(120px,.33fr) minmax(137px,.4fr) minmax(102px,.25fr);gap:12px;align-items:center;padding:9px 76px 9px 12px}
+.desk-columns,.list-view .desk-game .card-link{display:grid;grid-template-columns:minmax(0,1fr) minmax(120px,.33fr) minmax(137px,.4fr) minmax(102px,.25fr);gap:12px;align-items:center;padding:9px 47px 9px 12px}
 .desk-columns{background:#1a1a22;border:1px solid var(--desk-border);border-bottom:0;border-radius:7px 7px 0 0;font-size:.68rem;text-transform:uppercase;letter-spacing:.045em}
 .desk-columns span:first-child{grid-column:auto}
 .list-view:has(.desk-game){border:1px solid var(--desk-border);border-radius:0 0 7px 7px}
@@ -903,7 +926,14 @@ dialog.desk-heat-dialog{width:min(890px,100vw - 24px);background:var(--desk-card
 .achievement-list li:hover{background:#1c1c25}
 .achievement-icon{position:relative;display:grid;place-items:center;width:68px;height:68px;border-radius:5px;background:#232530;color:#aeb1bd;overflow:hidden}
 .achievement-icon img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
-.achievement-list .rare .achievement-icon{outline:1px solid #9e8257}
+.achievement-list .rare .achievement-icon,.desk-unlock .rare-achievement,.desk-recent .rare-achievement{
+  outline:1px solid #efbd70;box-shadow:0 0 5px #ffc36d8c,0 0 14px #f5a63850;color:#ffcf8a
+}
+.achievement-list .rare .achievement-icon::after,.desk-unlock .rare-achievement::after,.desk-recent .rare-achievement::after{
+  content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  box-shadow:inset 0 0 5px #ffc57878,inset 0 1px #fff0bbd9
+}
+.desk-recent .rare-achievement{box-shadow:0 0 5px #ffc36d73}
 .achievement-list li strong{font-size:1rem;line-height:1.3;overflow-wrap:anywhere}
 .achievement-list li p{font-size:.87rem;margin-top:2px;color:var(--desk-muted);overflow-wrap:anywhere}
 .achievement-list li small{font-size:.78rem}
@@ -930,17 +960,17 @@ dialog.desk-sessions-dialog{width:min(485px,100vw - 24px);background:var(--desk-
     --desk-heading-size:1.12rem;--desk-value:1.35rem
   }
   .page.desk-workspace,.desk-game-inner{width:min(var(--desk-width),100% - 50px)}
-  .desk-overview{padding:14px 0 22px}
+  .desk-overview{padding:14px 46px 22px 0}
   .desk-avatar{width:clamp(66px,6.2vw,82px)}
   .desk-persona,.desk-brand{font-size:1.4rem}
   .desk-xp{width:min(245px,100%)}
   .desk-xp-label,.desk-member-since{font-size:var(--desk-caption)}
   .desk-overview .library-summary dd{font-size:1.5rem}
   .desk-overview .library-summary dt,.desk-columns{font-size:var(--desk-caption)}
-  .desk-tabs{min-height:50px;margin-bottom:20px}
+  .desk-nav-row{margin-bottom:20px}
+  .desk-tabs{min-height:50px}
   .desk-tabs>a{font-size:var(--desk-copy)}
-  .desk-workspace .library-controls{grid-template-columns:minmax(0,1fr) 150px 150px}
-  .desk-workspace .library-section .library-controls{grid-template-columns:minmax(0,360px) 150px 150px}
+  .desk-workspace .library-controls{grid-template-columns:minmax(0,1fr) 150px}
   .desk-workspace .library-controls .searchbox,.desk-workspace .library-controls select{height:43px;font-size:var(--desk-copy)}
   .desk-workspace .library-controls .searchbox input{height:41px;font-size:inherit}
   .list-view .desk-game .card-link{min-height:76px}
@@ -992,10 +1022,11 @@ dialog.desk-sessions-dialog{width:min(485px,100vw - 24px);background:var(--desk-
 }
 @media(max-width:680px){
   .page.desk-workspace,.page.page-settings,.desk-game-inner{width:calc(100% - 24px)}
-  .desk-overview{align-items:flex-start;flex-direction:column;gap:8px}
+  .desk-overview{align-items:flex-start;flex-direction:column;gap:8px;padding-right:0}
+  .desk-overview .desk-account,.desk-overview .desk-brand{max-width:calc(100% - 46px)}
   .desk-avatar{width:56px}
   .desk-overview .library-summary{width:100%;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
-  .desk-tabs{overflow-x:auto;gap:4px}
+  .desk-tabs{overflow-x:auto;scrollbar-width:none;gap:4px}
   .desk-tabs>a{padding-inline:6px}
   .desk-split,.desk-stat-grid,.desk-collections{grid-template-columns:1fr}
   .desk-history{grid-column:auto}
@@ -1003,7 +1034,7 @@ dialog.desk-sessions-dialog{width:min(485px,100vw - 24px);background:var(--desk-
   .desk-workspace .library-controls{grid-template-columns:repeat(2,minmax(0,1fr))}
   .desk-columns{display:none}
   .list-view:has(.desk-game){border-radius:7px}
-  .list-view .desk-game .card-link{grid-template-columns:minmax(0,1fr) auto;gap:5px;padding-right:70px}
+  .list-view .desk-game .card-link{grid-template-columns:minmax(0,1fr) auto;gap:5px;padding-right:45px}
   .desk-identity{grid-column:1/-1}
   .desk-recent{display:none}
   .desk-progress{font-size:.62rem}
@@ -1020,6 +1051,8 @@ dialog.desk-sessions-dialog{width:min(485px,100vw - 24px);background:var(--desk-
   .desk-feed-actions{justify-content:flex-start}
 }
 @media(max-width:420px){
+  .desk-tabs>a{flex:none;justify-content:center;min-width:32px}
+  .desk-tabs>a:not([aria-current]) span{display:none}
   .desk-streak .desk-metric,.desk-year-values .desk-metric{font-size:1.06rem}
   .desk-bars small{font-size:.7rem}
   .desk-achievement-reveal{flex-basis:100%;margin-bottom:2px}
@@ -1028,6 +1061,7 @@ dialog.desk-sessions-dialog{width:min(485px,100vw - 24px);background:var(--desk-
   .achievement-icon{grid-row:span 2;align-self:start}
 }
 @media(prefers-reduced-motion:reduce){
+  .desk-library-search{transition:none}
   .desk-completed span,.desk-completed span::before,.desk-completed svg,.desk-game-actions .icon-btn{transition:none}
   .desk-completed:active span,.desk-game-actions .icon-btn:active{transform:none}
 }

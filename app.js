@@ -29,7 +29,8 @@ let storageError = '';
 try { state = load(); } catch (error) { state = emptyState(); storageError = error.message; }
 let steamProfile = cachedSteamProfile(state.steam?.account);
 let loadingSteamProfile = false;
-let shelfMode = 'all';
+let librarySearchOpen = false;
+let libraryHidden = false;
 let achievementQuery = '';
 let achievementSort = 'rare';
 let revealHidden = true;
@@ -198,7 +199,7 @@ function gameMenu(game) {
     <div class="game-menu-list">
       ${notes}
       ${button('edit-game','Редактировать игру','edit','quiet',`data-id="${esc(game.id)}"`)}
-      ${button('hide-game',game.hidden ? 'Вернуть в библиотеку' : 'Скрыть игру',game.hidden ? 'eye' : 'eyeOff','quiet',`data-id="${esc(game.id)}"`)}
+      ${game.hidden ? button('restore-game','Вернуть в библиотеку','eye','quiet',`data-id="${esc(game.id)}"`) : ''}
     </div></details>`;
 }
 
@@ -210,32 +211,28 @@ function gameCard(game) {
   return `<article class="game-card desk-game ${status}">
     <a href="#game/${encodeURIComponent(game.id)}" class="card-link" aria-label="Открыть ${esc(displayName(game))}">
       <div class="desk-identity"><div class="card-art">${cover(game)}</div><div><h3>${esc(displayName(game))} ${completionBadge(status)}</h3>
-        <small>${game.steam ? icon('steam',13) + ' Steam' : esc(game.platform)}</small></div></div>
+        ${game.steam ? '' : `<small>${esc(game.platform)}</small>`}</div></div>
       <div class="desk-progress">${achieved === null ? '—' : progressBar(achieved) + '<span>' + icon('trophy',13) + ' ' + total.unlocked + ' / ' + total.total + '</span>'}</div>
       <div class="desk-recent">${recent.length ? `<div>${recent.slice(0,5).map(item => trophyIcon(item)).join('')}${recent.length > 5 ? `<small>+${recent.length-5}</small>` : ''}</div>
-        ${recent[0].time ? `<small>Последнее ${relativeDate(recent[0].time * 1000)}</small>` : ''}` : '—'}</div>
-      <div class="desk-activity"><strong>${icon('clock',14)} ${duration(game.steam?.minutes ?? Math.round(gameHours(game)*60))}</strong><small>${game.steam?.lastPlayed ? relativeDate(game.steam.lastPlayed*1000) : '—'}</small></div>
+        ${recent[0].time ? `<small title="Дата последнего достижения">${relativeDate(recent[0].time * 1000)}</small>` : ''}` : '—'}</div>
+      <div class="desk-activity"><strong title="Общее игровое время">${icon('clock',14)} ${duration(game.steam?.minutes ?? Math.round(gameHours(game)*60))}</strong><small title="Последний запуск">${game.steam?.lastPlayed ? relativeDate(game.steam.lastPlayed*1000) : '—'}</small></div>
     </a>
-    <div class="card-tools">${iconButton('favorite', game.favorite ? 'Убрать из избранного' : 'В избранное', 'bookmark',
-      `data-id="${esc(game.id)}" aria-pressed="${game.favorite}"`)}${gameMenu(game)}</div>
+    <div class="card-tools">${gameMenu(game)}</div>
   </article>`;
 }
 
 function gameList(source) {
   const result = filtered(source);
   if (!result.length) {
-    const isFiltered = Boolean(filter.query || filter.status || route.trophy);
+    const isFiltered = Boolean(filter.query || filter.status || route.trophy || libraryHidden);
     return `<div class="empty"><span class="empty-icon">${icon(isFiltered ? 'search' : 'game', 29)}</span>
       <h2>${isFiltered ? 'Игры не найдены' : 'Здесь пока пусто'}</h2>
       <p>${isFiltered ? 'Попробуйте другой запрос или сбросьте фильтры.' :
-        route.page === 'library' && shelfMode === 'hidden' ? 'Скрытые игры можно вернуть в библиотеку в любой момент.' :
-        route.page === 'library' && shelfMode === 'favorite' ? 'Нажми на закладку у игры, чтобы добавить её в избранное.' :
         route.page === 'collections' ? 'Выбери игры из своей библиотеки.' : 'Подключи Steam в настройках, чтобы загрузить библиотеку.'}</p>
       ${isFiltered ? button('clear-filters', 'Сбросить фильтры', 'x') :
-        route.page === 'library' && shelfMode === 'hidden' ? button('shelf', 'Все игры', 'library', 'secondary', 'data-value="all"') :
         route.page === 'collections' ? button('pick-collection','Выбрать игру','plus','primary') : '<a class="btn btn-primary" href="#settings">Настройки Steam</a>'}</div>`;
   }
-  return `<div class="library-columns desk-columns" aria-hidden="true"><span>Игра</span><span>Прогресс</span><span>Недавние</span><span>Активность</span></div>
+  return `<div class="library-columns desk-columns" aria-hidden="true"><span>Игра</span><span>Прогресс</span><span>Последние достижения</span><span>Активность</span></div>
     <div class="game-grid list-view">${result.slice(0, displayLimit).map(gameCard).join('')}</div>
     ${result.length > displayLimit ? `<div class="load-more">${button('more-games', 'Показать ещё игры', 'down')}</div>` : ''}`;
 }
@@ -248,19 +245,25 @@ function searchField(id = 'global-search') {
   return `<label class="searchbox">${icon('search',22)}<input type="search" id="${id}" placeholder="Поиск по библиотеке" aria-label="Поиск по библиотеке" value="${esc(filter.query)}"></label>`;
 }
 
-function viewControls() {
-  return `<div class="library-controls library-controls-compact">
-    ${searchField()}
-    ${route.page === 'library' && !route.trophy ? `<select id="shelf-mode" aria-label="Раздел библиотеки">${[['all','Все игры'],['favorite','Избранное'],['hidden','Скрытые']]
-      .map(([id,label]) => option(id,label,shelfMode)).join('')}</select>` : ''}
-    <select id="status-filter" aria-label="Статус игры">${[['','Статус'],['perfect','Идеально'],['beaten','Пройдено']].map(([id,label])=>option(id,label,filter.status)).join('')}</select>
+function statusFilter() {
+  return `<select id="status-filter" aria-label="Статус игры">${[['','Любой статус'],['perfect','Идеально'],['beaten','Пройдено']].map(([id,label])=>option(id,label,filter.status)).join('')}</select>`;
+}
+
+function libraryTools() {
+  return `<div class="desk-library-tools">
+    ${iconButton('library-search','Поиск по библиотеке','search',`aria-controls="desk-library-search" aria-expanded="${librarySearchOpen}"`)}
+    <details class="desk-library-filter">
+      <summary class="icon-btn" aria-label="Фильтры библиотеки" title="Фильтры библиотеки" data-active="${Boolean(filter.status || libraryHidden)}">${icon('filter',18)}</summary>
+      <div class="desk-library-filter-panel"><label for="status-filter">Статус</label>${statusFilter()}
+        ${!route.trophy && games().some(game => game.hidden) ? `<label class="desk-hidden-filter"><input type="checkbox" id="library-hidden" ${libraryHidden ? 'checked' : ''}> Ранее скрытые игры</label>` : ''}
+      </div>
+    </details>
   </div>`;
 }
 
 function sourceForPage() {
   if (route.trophy) return games().filter(game => trophyFor(summaryFor(game)) === route.trophy);
-  if (route.page === 'library') return games().filter(game => shelfMode === 'hidden' ? game.hidden :
-    !game.hidden && (shelfMode !== 'favorite' || game.favorite));
+  if (route.page === 'library') return games().filter(game => game.hidden === libraryHidden);
   const collection = route.page === 'collections' && findByRoute(collections());
   if (collection) return games().filter(game => game.collectionIds.includes(collection.id));
   return games();
@@ -273,7 +276,7 @@ function gameResults(source) {
 function library() {
   return `<section class="library-section" aria-label="Библиотека">
     ${route.trophy ? `<div class="cup-filter">${trophyBadge(route.trophy)} <a class="quiet-link" href="#library">${icon('x',16)} Сбросить кубок</a></div>` : ''}
-    ${viewControls()}${gameResults(sourceForPage())}
+    ${gameResults(sourceForPage())}
   </section>`;
 }
 
@@ -323,7 +326,7 @@ function completionBadge(status) {
 }
 
 function trophyIcon(item) {
-  return `<span class="desk-trophy-icon" title="${esc(item.name)}">${icon('trophy',14)}
+  return `<span class="desk-trophy-icon${item.unlocked && isRare(item) ? ' rare-achievement' : ''}" title="${esc(item.name)}">${icon('trophy',14)}
     ${item.icon ? `<img src="${esc(item.icon)}" data-achievement-icon data-fallback-icon="${esc(item.fallbackIcon)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ''}</span>`;
 }
 
@@ -379,12 +382,16 @@ async function refreshSteamProfile() {
 }
 
 function deskHeader() {
+  const inLibrary = route.page === 'library';
   return `<header class="desk-header">
-    <div class="desk-overview">${deskAccount()}${librarySummary()}</div>
-    <nav class="desk-tabs" aria-label="Разделы библиотеки">${deskTabs.map(([page,glyph]) =>
-      `<a href="#${page}" ${route.page === page ? 'aria-current="page"' : ''}>${icon(glyph,16)} ${labels[page]}</a>`).join('')}
-      <a class="desk-settings" href="#settings" aria-label="Настройки" title="Настройки">${icon('gear',17)}</a>
-    </nav>
+    <div class="desk-overview">${deskAccount()}${librarySummary()}
+      <a class="desk-settings icon-btn" href="#settings" aria-label="Настройки" title="Настройки">${icon('gear',17)}</a>
+    </div>
+    <div class="desk-nav-row"><nav class="desk-tabs" aria-label="Разделы библиотеки">${deskTabs.map(([page,glyph]) =>
+      `<a href="#${page}" aria-label="${labels[page]}" ${route.page === page ? 'aria-current="page"' : ''}>${icon(glyph,16)}<span>${labels[page]}</span></a>`).join('')}
+    </nav>${inLibrary ? libraryTools() : ''}</div>
+    ${inLibrary ? `<div id="desk-library-search" class="desk-library-search" data-open="${librarySearchOpen}" ${librarySearchOpen ? '' : 'inert'}>
+      <div>${searchField()}</div></div>` : ''}
   </header>`;
 }
 
@@ -509,15 +516,14 @@ function sessionRows({events,launches,unlocks}, limit, modal = false) {
     modal ? 'Пока нет данных о запусках этой игры.' : 'Пока нет данных об игровых сессиях.'}</p>
     ${launches.slice(0,limit).map(item => `<article class="desk-panel desk-session"><div>${cover(item)}<a href="${gameHref(item)}">${esc(displayName(item))}</a>
     <time class="desk-icon-text">${icon('calendar',14)}${steamDate(item.steam.lastPlayed)}</time></div></article>`).join('')}`;
-  return events.slice(0,limit).map(({game,minutes,day,local,estimated,uncertain}) => {
+  return events.slice(0,limit).map(({game,minutes,day,estimated,uncertain}) => {
     const earned = unlocks.get(game.steam.appid+':'+day) ?? [];
     const date = shortDay.format(calendarDate(day));
     const rounded = Math.round(minutes);
     const label = rounded ? duration(rounded) : 'меньше минуты';
-    const source = [local ? 'Журнал Steam на ПК' : '', estimated || uncertain ? 'Замеры Steam' : ''].filter(Boolean).join(' · ');
-    return `<article class="desk-panel desk-session"><div>${cover(game)}<p>Играл <strong>${label}</strong>
+    const approximate = estimated || uncertain;
+    return `<article class="desk-panel desk-session"><div>${cover(game)}<p>Играл <strong${approximate ? ' title="Приблизительное время"' : ''}>${approximate ? '≈ ' : ''}${label}</strong>
       ${modal ? '' : ` в <a href="${gameHref(game)}">${esc(displayName(game))}</a>`}
-      <small>${source}${uncertain ? ' · Время учтено по дате замера' : ''}</small>
       ${earned.length ? `<small class="desk-icon-text">${icon('trophy',14)}Достижений за день · ${earned.length}</small>` : ''}</p><time class="desk-icon-text">${icon('calendar',14)}${date}</time></div>
       ${earned.length ? `<footer>${earned.slice(0,modal ? 12 : 6).map(item => trophyIcon(item)).join('')}${earned.length > (modal ? 12 : 6) ? `<small>ещё ${earned.length-(modal ? 12 : 6)}</small>` : ''}</footer>` : ''}</article>`;
   }).join('');
@@ -772,7 +778,7 @@ function collectionsPage() {
     const actions = button('pick-collection', 'Выбрать игру', 'plus', 'primary') + button('edit-collection', 'Редактировать', 'edit', 'secondary', `data-id="${esc(collection.id)}"`);
     return `<a class="back-link" href="#collections">${icon('back', 17)} Все коллекции</a>
       ${header('ПОДБОРКА', esc(collection.name), 'Игры из этой коллекции.', actions)}
-      ${viewControls(source)}${gameResults(source)}`;
+      <div class="library-controls library-controls-compact">${searchField()}${statusFilter()}</div>${gameResults(source)}`;
   }
   const list = collections();
   return `<div class="desk-collections"><div>${header('ПОДБОРКИ', 'Коллекции игр', 'Собирай игры по сериям, жанрам или для следующего прохождения.', button('new-collection', 'Новая коллекция', 'plus', 'primary'))}</div>
@@ -948,7 +954,27 @@ function saveGame(form) {
 
 function clearFilters() {
   Object.assign(filter, { query: '', status: '' });
+  librarySearchOpen = false;
+  libraryHidden = false;
   displayLimit = 24;
+}
+
+function toggleLibrarySearch(open) {
+  const panel = app.querySelector('#desk-library-search');
+  const control = app.querySelector('[data-action="library-search"]');
+  if (!panel || !control) return;
+  librarySearchOpen = open;
+  control.setAttribute('aria-expanded',String(open));
+  if (!open) control.focus({preventScroll:true});
+  panel.inert = !open;
+  panel.dataset.open = String(open);
+  const field = panel.querySelector('input');
+  if (open) field.focus({preventScroll:true});
+  else if (filter.query) {
+    field.value = '';
+    filter.query = '';
+    renderResults();
+  }
 }
 
 
@@ -1006,19 +1032,23 @@ const actions = {
   'cloud-local': () => cloud.sync('local'),
   'cloud-remote': () => cloud.sync('remote'),
   'top-search': () => {
-    const field = document.querySelector('#global-search');
+    if (route.page === 'library') return toggleLibrarySearch(true);
+    const field = app.querySelector('#global-search');
     if (field) field.focus();
     else { searchPending = true; go('library'); }
   },
+  'library-search': () => toggleLibrarySearch(!librarySearchOpen),
   'pick-collection': openCollectionPicker,
   'achievement-more': () => {
     achievementLimit += 24;
     updateAchievementRows(true);
   },
-  'shelf': control => { shelfMode = control.dataset.value; displayLimit = 24; render(); },
-  'hide-game': control => {
-    const game = state.games.find(item => item.id === control.dataset.id) ?? findByRoute(state.games);
-    if (game && updateGame(game, { hidden: !game.hidden }, game.hidden ? 'Игра возвращена' : 'Игра скрыта')) render();
+  'restore-game': control => {
+    const game = games().find(item => item.id === control.dataset.id && item.hidden);
+    if (game && updateGame(game, { hidden: false }, 'Игра возвращена в библиотеку')) {
+      if (!games().some(item => item.hidden)) libraryHidden = false;
+      render();
+    }
   },
   'new-note': () => openJournal(),
   'edit-note': control => openJournal(control.dataset.id),
@@ -1034,12 +1064,6 @@ const actions = {
   'new-run': () => openRun(),
   'edit-run': control => openRun(control.dataset.id),
   'delete-run': control => deleteRun(control.dataset.id),
-  'favorite': control => {
-    const game = state.games.find(item => item.id === control.dataset.id) ?? findByRoute(state.games);
-    if (game && updateGame(game, { favorite: !game.favorite }, game.favorite ? 'Убрано из избранного' : 'В избранном')) render();
-  },
-
-
   'edit-game': control => {
     const game = state.games.find(item => item.id === control.dataset.id);
     if (game) openGameForm(game, true);
@@ -1072,29 +1096,27 @@ const actions = {
 };
 
 document.addEventListener('click', event => {
-  const menu = app.querySelector('.desk-achievement-menu[open]');
-  if (menu && !menu.contains(event.target)) menu.open = false;
+  for (const menu of app.querySelectorAll('.desk-achievement-menu[open], .desk-library-filter[open]')) {
+    if (!menu.contains(event.target)) menu.open = false;
+  }
   const control = event.target.closest('[data-action]');
   const action = control?.dataset.action;
   if (Object.hasOwn(actions, action)) actions[action](control);
 });
 
 document.addEventListener('keydown', event => {
-  if (event.key !== 'Escape') return;
-  const menu = app.querySelector('.desk-achievement-menu[open]');
+  if (event.key !== 'Escape' || event.defaultPrevented || dialog.open) return;
+  const menu = app.querySelector('.desk-achievement-menu[open], .desk-library-filter[open]');
   if (menu) {
     menu.open = false;
     menu.querySelector('summary').focus({ preventScroll: true });
-  }
+  } else if (librarySearchOpen && event.target.closest('#desk-library-search,[data-action="library-search"]')) toggleLibrarySearch(false);
 });
 
 document.addEventListener('input', event => {
   if (event.target.id === 'global-search') {
     filter.query = event.target.value;
-    if (!app.querySelector('#game-results')) {
-      searchPending = true;
-      go('library');
-    } else renderResults();
+    renderResults();
   }
   if (event.target.id === 'collection-query') filterCollectionChoices(event.target.value);
   if (event.target.id === 'achievement-query') {
@@ -1139,9 +1161,11 @@ app.addEventListener('change', async event => {
     revealHidden = field.checked;
     updateAchievementRows();
   }
-  if (field.id === 'shelf-mode' || field.id === 'status-filter') {
-    if (field.id === 'shelf-mode') shelfMode = field.value;
+  if (field.id === 'library-hidden' || field.id === 'status-filter') {
+    if (field.id === 'library-hidden') libraryHidden = field.checked;
     else filter.status = field.value;
+    const icon = app.querySelector('.desk-library-filter summary');
+    if (icon) icon.dataset.active = String(Boolean(filter.status || libraryHidden));
     renderResults();
   }
   if (field.id !== 'backup-file' || !field.files.length) return;
@@ -1199,7 +1223,7 @@ window.addEventListener('hashchange', () => {
   }
   const previousGameId = route.id;
   route = next;
-  if (route.trophy) shelfMode = 'all';
+  if (route.trophy) libraryHidden = false;
   if (next.id !== previousGameId) {
     bossRegion = 0;
     bossArea = '';
@@ -1221,8 +1245,7 @@ window.addEventListener('hashchange', () => {
   if (dialog.open) dialog.close();
   render(!searchPending);
   if (searchPending) {
-    app.querySelector('#global-search')?.focus();
-
+    toggleLibrarySearch(true);
     searchPending = false;
   }
 });
