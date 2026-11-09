@@ -1635,8 +1635,19 @@ body{background:var(--desk-bg)}
 .desk-stat-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}
 .desk-stat-value{display:block;margin-top:4px}
 .desk-history{grid-column:span 2}
-.desk-history>svg{width:100%;height:155px;margin-top:8px}
-.desk-chart-years{display:flex;justify-content:space-between}
+.desk-timeline{position:relative;margin:12px 5px 0;touch-action:pan-y}
+.desk-timeline svg{display:block;width:100%;height:155px;overflow:visible}
+.desk-timeline input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:crosshair}
+.desk-timeline:focus-within{outline:1px solid var(--desk-blue);outline-offset:4px}
+.desk-timeline circle{fill:var(--desk-blue);stroke:var(--desk-card);stroke-width:1;vector-effect:non-scaling-stroke}
+.desk-timeline-guide{stroke:#6670ab;stroke-width:1;stroke-dasharray:3 3;vector-effect:non-scaling-stroke}
+.desk-timeline-tooltip{position:absolute;top:0;left:clamp(min(87px,50%),var(--point-x),max(50%,100% - 87px));transform:translateX(-50%);display:grid;gap:3px;width:min(174px,100%);padding:7px 9px;border:1px solid #3a3a50;border-radius:6px;background:#212232;pointer-events:none;font-size:.78rem}
+.desk-timeline-tooltip span,.desk-heat-readout{color:var(--desk-muted);font-size:.74rem}
+.desk-chart-years{position:relative;height:1.1rem;margin-inline:5px}
+.desk-chart-years small{position:absolute;transform:translateX(-50%)}
+.desk-chart-years small:first-child{transform:none}
+.desk-chart-years small:last-child:not(:first-child){transform:translateX(-100%)}
+.desk-heat-readout{display:block;margin-top:7px;line-height:1.35}
 .desk-donut{width:min(60%,144px);aspect-ratio:1;margin:16px auto;border-radius:50%;position:relative;background:conic-gradient(#f0bc7b var(--perfect),#6bbdeb var(--perfect) var(--beaten),#3d3e4b var(--beaten))}
 .desk-donut::after{content:'';position:absolute;inset:14%;background:var(--desk-card);border-radius:50%}
 .desk-legend{display:flex;flex-wrap:wrap;gap:6px 11px;font-size:.68rem;color:var(--desk-muted)}
@@ -1651,14 +1662,15 @@ body{background:var(--desk-bg)}
 .desk-rare .desk-trophy-icon{width:32px}
 .desk-rare>span:not(.desk-trophy-icon){display:grid;min-width:0}
 .desk-rare b{margin-left:auto;white-space:nowrap;color:#bec5ff;font-size:.71rem}
-.desk-game-hero{position:relative;isolation:isolate}
-.desk-hero-art,.desk-game-hero::after{position:absolute;inset:0;z-index:-2;width:100%;height:100%;object-fit:cover;object-position:center 42%}
-.desk-game-hero::after{content:'';z-index:-1;background:linear-gradient(0deg,var(--desk-bg),#111116ab 65%),linear-gradient(90deg,var(--desk-bg),transparent 62%,var(--desk-bg))}
+.desk-game-page{position:relative;isolation:isolate}
+.desk-hero-art{position:absolute;top:0;left:50%;z-index:-1;transform:translateX(-50%);width:min(100%,1680px);height:auto;max-height:480px;object-fit:contain;object-position:center top;opacity:.46;pointer-events:none;mask-image:radial-gradient(ellipse 77% 89% at 52% 0%,#000 31%,transparent 92%)}
 .desk-game-inner{width:min(1130px,100% - 50px);margin:auto}
 .desk-game-hero .desk-game-inner{padding-top:26px;padding-bottom:17px}
 .desk-game-crumb{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;color:var(--desk-muted)}
-.desk-game-crumb a,.desk-game-crumb>div{display:flex;align-items:center;gap:5px}
-.desk-game-crumb .icon-btn{width:33px;min-width:33px;min-height:33px}
+.desk-game-crumb a{display:flex;align-items:center;gap:5px}
+.desk-completed{display:inline-flex;align-items:center;gap:7px;padding:6px 9px;border:1px solid var(--desk-border);border-radius:6px;background:var(--desk-card);color:var(--desk-muted);cursor:pointer}
+.desk-completed:has(input:checked){color:#9ed7fb;border-color:#355370}
+.desk-completed input{width:16px;height:16px;margin:0;accent-color:var(--desk-blue);cursor:pointer}
 .desk-game-heading{display:grid;grid-template-columns:172px minmax(0,1fr) auto;gap:15px;align-items:start}
 .desk-game-heading>.cover{width:100%;aspect-ratio:2.13;border-radius:6px}
 .desk-game-title h1{font-size:1.16rem;line-height:1.25;letter-spacing:-.015em}
@@ -1669,16 +1681,17 @@ body{background:var(--desk-bg)}
 .desk-game-metrics dt{color:var(--desk-muted);font-size:.69rem}
 .desk-game-metrics dd{margin:3px 0 0;color:var(--desk-text);font-size:.87rem;font-weight:800}
 .desk-game-body{padding-top:12px}
-.desk-game-content:has(#game-story:empty){grid-template-columns:minmax(0,1fr)}
 .desk-game-content .achievement-toolbar{gap:6px;align-items:center}
 .desk-game-content .dashboard-panel-head h2{font-size:1.06rem;letter-spacing:0}
 .desk-game-content .achievement-filters{margin:0;max-width:100%}
-.desk-game-content .achievement-overview{background:var(--desk-card)}
 .desk-game-content .redesign-achievements{display:grid;grid-template-columns:1fr;gap:8px}
 .desk-game-content .redesign-achievements li,.desk-game-content .redesign-achievements li.unlocked,.desk-game-content .redesign-achievements li.rare{
-  background:var(--desk-card);border:1px solid var(--desk-border);border-radius:7px;padding:9px;min-height:65px
+  background:var(--desk-card);border:1px solid var(--desk-border);border-radius:7px;padding:13px 15px;min-height:100px;gap:15px
 }
-.desk-game-content .redesign-achievements .achievement-icon{width:45px;height:45px}
+.desk-game-content .redesign-achievements .achievement-icon{width:68px;height:68px}
+.desk-game-content .redesign-achievements li strong{font-size:1rem}
+.desk-game-content .redesign-achievements li p{font-size:.87rem}
+.desk-game-content .redesign-achievements li small{font-size:.78rem}
 .desk-game-links button{display:inline-flex;align-items:center;gap:4px;padding:0;border:0;background:none;color:var(--desk-muted);font:inherit;font-size:.75rem}
 .desk-game-links button:hover{color:#b5beff}
 .desk-feed-actions{display:flex;justify-content:flex-end;align-items:center;flex-wrap:wrap;gap:6px}
@@ -1741,6 +1754,10 @@ dialog.desk-sessions-dialog{width:min(485px,100vw - 24px);background:var(--desk-
   .desk-progress{font-size:.62rem}
   .desk-activity{font-size:.63rem}
   .desk-game-heading{grid-template-columns:82px minmax(0,1fr)}
+  .desk-game-content .redesign-achievements li,.desk-game-content .redesign-achievements li.unlocked,.desk-game-content .redesign-achievements li.rare{min-height:75px;padding:8px;gap:8px}
+  .desk-game-content .redesign-achievements .achievement-icon{width:49px;height:49px}
+  .desk-game-content .redesign-achievements li strong{font-size:.9rem}
+  .desk-game-content .redesign-achievements li p,.desk-game-content .redesign-achievements li small{font-size:.73rem}
   .desk-feed-head{flex-wrap:wrap}
   .desk-feed-actions{justify-content:flex-start}
 }
