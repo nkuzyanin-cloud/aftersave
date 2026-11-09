@@ -22,6 +22,7 @@ const cups = { platinum: 'Платина', silver: 'Серебро', sapphire: '
 const number = new Intl.NumberFormat('ru', { maximumFractionDigits: 2 });
 const dateFormat = new Intl.DateTimeFormat('ru', { day: 'numeric', month: 'long', year: 'numeric' });
 const monthFormat = new Intl.DateTimeFormat('ru', { month:'long', year:'numeric' });
+const STEAM_AUTO_SYNC_MS = 5 * 60 * 1000;
 
 let state;
 let storageError = '';
@@ -37,6 +38,7 @@ let toastTimer;
 let route = getRoute();
 let storagePending = false;
 let syncingSteam = false;
+let lastSteamAttempt = 0;
 let refreshingRecent = false;
 let steamMessage = '';
 let steamError = false;
@@ -507,7 +509,7 @@ function sessionRows({events,launches,unlocks}, limit, modal = false) {
     const rounded = Math.round(minutes);
     const label = rounded ? duration(rounded) : 'меньше минуты';
     const approximate = estimated || uncertain;
-    return `<article class="desk-panel desk-session"><div>${cover(game)}<p>Играл <strong${approximate ? ' title="Приблизительное время"' : ''}>${approximate ? '≈ ' : ''}${label}</strong>
+    return `<article class="desk-panel desk-session"><div>${cover(game)}<p>Играл <strong${approximate ? ' title="Прирост игрового времени в Steam между проверками"' : ''}>${label}</strong>
       ${modal ? '' : ` в <a href="${gameHref(game)}">${esc(displayName(game))}</a>`}
       ${earned.length ? `<small class="desk-icon-text">${icon('trophy',14)}Достижений за день · ${earned.length}</small>` : ''}</p><time class="desk-icon-text">${icon('calendar',14)}${date}</time></div>
       ${earned.length ? `<footer>${earned.slice(0,modal ? 12 : 6).map(item => trophyIcon(item)).join('')}${earned.length > (modal ? 12 : 6) ? `<small>ещё ${earned.length-(modal ? 12 : 6)}</small>` : ''}</footer>` : ''}</article>`;
@@ -1310,18 +1312,22 @@ async function loginSteam(form) {
   finally { submit.disabled = false; }
 }
 
-async function steamSync() {
+async function steamSync({background = false} = {}) {
   if (syncingSteam) return;
   if (!connected()) return openSteamLogin();
   if (storageError) return notify('Сначала восстановите библиотеку из копии.', true);
   const originalAccount = state.steam?.account;
   let succeeded = false;
   syncingSteam = true;
-  steamError = false;
-  steamMessage = 'Подключаемся к Worker…';
-  render();
+  lastSteamAttempt = Date.now();
+  if (!background) {
+    steamError = false;
+    steamMessage = 'Подключаемся к Worker…';
+    render();
+  }
   try {
     const response = await fetchLibrary(false, originalAccount, step => {
+      if (background) return;
       steamMessage = step;
       const status = app.querySelector('.steam-message');
       if (status) status.textContent = step;
@@ -1331,13 +1337,16 @@ async function steamSync() {
     if (!commit(result.state)) throw new Error('Данные Steam не сохранены. Проверьте сообщение и повторите попытку.');
     succeeded = true;
     refreshSteamProfile();
+    steamError = false;
     steamMessage = response.entries.length ? '' :
       'Steam вернул пустую библиотеку. Личные записи сохранены.';
     refreshRecentSteamAchievements();
     cloud.schedule(0);
   } catch (error) {
-    steamError = true;
-    steamMessage = error.message;
+    if (!background) {
+      steamError = true;
+      steamMessage = error.message;
+    }
   } finally {
     syncingSteam = false;
     if (enableCloudAfterLogin && succeeded) {
@@ -1346,10 +1355,15 @@ async function steamSync() {
         try { cloud.toggle(); } catch { notify('Не удалось сохранить настройку облака.',true); }
       }
     }
-    render();
+    if (!background || succeeded && !dialog.open && route.page === 'settings') render();
   }
 }
 
+function maybeSyncSteam() {
+  if (!state.steam || syncingSteam || storageError || !connected() || document.hidden || dialog.open || !navigator.onLine) return;
+  const lastSync = Date.parse(state.steam.lastSync) || 0;
+  if (Date.now() - Math.max(lastSteamAttempt,lastSync) >= STEAM_AUTO_SYNC_MS) void steamSync({background:true});
+}
 
 
 async function refreshSteamSummaries(repaint = true) {
@@ -1958,14 +1972,16 @@ const cloud = createCloudSync({
 render();
 refreshSteamSummaries();
 refreshSteamProfile();
-window.addEventListener('online', () => { cloud.schedule(0); refreshSteamProfile(); });
-document.addEventListener('visibilitychange', () => { if (!document.hidden) cloud.schedule(0); });
+window.addEventListener('online', () => { cloud.schedule(0); refreshSteamProfile(); maybeSyncSteam(); });
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) { cloud.schedule(0); maybeSyncSteam(); }
+});
 cloud.schedule(0);
 setInterval(() => {
   if (!document.hidden) cloud.schedule(0);
-  if (state.steam && Date.now() - Date.parse(state.steam.lastSync) >= 30 * 60 * 1000 &&
-      (connected()) && !document.hidden && !dialog.open && navigator.onLine) steamSync();
 }, 60 * 1000);
+setInterval(maybeSyncSteam, 15 * 1000);
+maybeSyncSteam();
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register(new URL('./sw.js', import.meta.url)).catch(error => console.warn('AFTERSAVE offline:', error));
   navigator.serviceWorker.addEventListener('controllerchange', () => {
