@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <path id="orbit" d="M82 11H16Q11 11 11 16V84Q11 89 16 89H84Q89 89 89 84V16Q89 11 84 11Z"/>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1" gradientUnits="objectBoundingBox">
+      <stop stop-color="#ffe8af"/>
+      <stop offset=".38" stop-color="#ffbd57" stop-opacity=".82"/>
+      <stop offset="1" stop-color="#ff9a27" stop-opacity="0"/>
+    </linearGradient>
+    <radialGradient id="bloom">
+      <stop stop-color="#ffd58a" stop-opacity=".55"/>
+      <stop offset="1" stop-color="#ffa636" stop-opacity="0"/>
+    </radialGradient>
+    <g id="spark">
+      <ellipse cx="0" cy="2" rx="4.1" ry="4.8" fill="url(#bloom)"/>
+      <path d="M-1.1 0Q-2.2 5-4 11Q-.2 7 .55 0Z" fill="url(#gold)">
+        <animateTransform attributeName="transform" type="scale" values="1 .56;1 1;1 .32;1 .56" dur="1.63s" repeatCount="indefinite"/>
+      </path>
+    </g>
+    <g id="ember">
+      <ellipse cx="0" cy="1" rx="3.5" ry="3.5" fill="url(#bloom)"/>
+      <path d="M-.65 0Q-.7 3 .25 9Q.9 3 .65 0Z" fill="url(#gold)">
+        <animateTransform attributeName="transform" type="scale" values="1 .93;1 .28;1 .68;1 .93" dur="1.17s" repeatCount="indefinite"/>
+      </path>
+    </g>
+    <g id="flare">
+      <ellipse cx="0" cy="1" rx="5.5" ry="5.1" fill="url(#bloom)"/>
+      <path d="M-1.35 0Q-1.35 5 2 11Q.45 6 .95 0Z" fill="url(#gold)">
+        <animateTransform attributeName="transform" type="scale" values="1 .45;1 .96;1 .64;1 .45" dur="2.11s" repeatCount="indefinite"/>
+      </path>
+    </g>
+  </defs>
+  <g opacity="0">
+    <use href="#spark"/>
+    <animate attributeName="opacity" values=".82;.38;.95;.82" dur="2.07s" repeatCount="indefinite"/>
+    <animateMotion dur="4.6s" rotate="auto" repeatCount="indefinite"><mpath href="#orbit"/></animateMotion>
+  </g>
+  <g opacity="0">
+    <use href="#ember"/>
+    <animate attributeName="opacity" values=".35;.75;.47;.35" dur="1.31s" repeatCount="indefinite"/>
+    <animateMotion begin="-.32s" dur="4.6s" rotate="auto" repeatCount="indefinite"><mpath href="#orbit"/></animateMotion>
+  </g>
+  <g opacity="0">
+    <use href="#flare"/>
+    <animate attributeName="opacity" values=".86;.54;.98;.86" dur="2.71s" repeatCount="indefinite"/>
+    <animateMotion begin="-.73s" dur="4.6s" rotate="auto" repeatCount="indefinite"><mpath href="#orbit"/></animateMotion>
+  </g>
+  <g opacity="0">
+    <use href="#spark"/>
+    <animate attributeName="opacity" values=".37;.83;.61;.37" dur="1.43s" repeatCount="indefinite"/>
+    <animateMotion begin="-1.19s" dur="4.6s" rotate="auto" repeatCount="indefinite"><mpath href="#orbit"/></animateMotion>
+  </g>
+  <g opacity="0">
+    <use href="#ember"/>
+    <animate attributeName="opacity" values=".46;.84;.32;.46" dur="2.29s" repeatCount="indefinite"/>
+    <animateMotion begin="-1.62s" dur="4.6s" rotate="auto" repeatCount="indefinite"><mpath href="#orbit"/></animateMotion>
+  </g>
+  <g opacity="0">
+    <use href="#flare"/>
+    <animate attributeName="opacity" values=".69;.29;.87;.69" dur="1.72s" repeatCount="indefinite"/>
+    <animateMotion begin="-2.17s" dur="4.6s" rotate="auto" repeatCount="indefinite"><mpath href="#orbit"/></animateMotion>
+  </g>
+  <g opacity="0">
+    <use href="#ember"/>
+    <animate attributeName="opacity" values=".66;.39;.81;.66" dur="2.45s" repeatCount="indefinite"/>
+    <animateMotion begin="-2.46s" dur="4.6s" rotate="auto" repeatCount="indefinite"><mpath href="#orbit"/></animateMotion>
+  </g>
+  <g opacity="0">
+    <use href="#spark"/>
+    <animate attributeName="opacity" values=".98;.49;.73;.98" dur="2.31s" repeatCount="indefinite"/>
+    <animateMotion begin="-2.97s" dur="4.6s" rotate="auto" repeatCount="indefinite"><mpath href="#orbit"/></animateMotion>
+  </g>
+  <g opacity="0">
+    <use href="#flare"/>
+    <animate attributeName="opacity" values=".55;.93;.43;.55" dur="1.89s" repeatCount="indefinite"/>
+    <animateMotion begin="-3.46s" dur="4.6s" rotate="auto" repeatCount="indefinite"><mpath href="#orbit"/></animateMotion>
+  </g>
+  <g opacity="0">
+    <use href="#ember"/>
+    <animate attributeName="opacity" values=".72;.53;.87;.72" dur="1.36s" repeatCount="indefinite"/>
+    <animateMotion begin="-3.81s" dur="4.6s" rotate="auto" repeatCount="indefinite"><mpath href="#orbit"/></animateMotion>
+  </g>
+  <g opacity="0">
+    <use href="#spark"/>
+    <animate attributeName="opacity" values=".44;.77;.92;.44" dur="2.63s" repeatCount="indefinite"/>
+    <animateMotion begin="-4.29s" dur="4.6s" rotate="auto" repeatCount="indefinite"><mpath href="#orbit"/></animateMotion>
+  </g>
+</svg>
