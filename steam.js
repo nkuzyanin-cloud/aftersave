@@ -292,12 +292,16 @@ export function achievementIconAlternatives(value) {
   } catch { return []; }
 }
 
-export async function achievementSummaries(account) {
+export async function achievementRecords(account) {
   if (!account) return [];
   const records = await cacheOperation('readonly', store => store.index('account').getAll(account)) ?? [];
   const result = new Map(records.map(record => [record.key, record]));
   memory.forEach((record, key) => { if (record.account === account) result.set(key, record); });
-  return [...result.values()].map(({ appid, total, unlocked, fetchedAt }) => ({ appid, total, unlocked, fetchedAt }));
+  return Promise.all([...result.values()].map(enrichAchievements));
+}
+
+export async function achievementSummaries(account) {
+  return (await achievementRecords(account)).map(({ appid, total, unlocked, fetchedAt }) => ({ appid, total, unlocked, fetchedAt }));
 }
 
 export async function fetchAchievements(account, id, legacy, force = false) {
