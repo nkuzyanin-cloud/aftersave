@@ -1525,6 +1525,21 @@ body{background:var(--desk-bg)}
 .desk-overview{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:13px 0 17px}
 .desk-brand{display:inline-flex;align-items:center;gap:8px;font-size:1.16rem;font-weight:800;letter-spacing:-.035em}
 .desk-brand svg{color:#7384ff}
+.desk-account{display:flex;align-items:center;gap:14px;min-width:0}
+.desk-avatar{display:grid;place-items:center;position:relative;width:68px;aspect-ratio:1;flex:none;overflow:hidden;border:1px solid #343444;border-radius:50%;background:#22232d;color:var(--desk-muted)}
+.desk-avatar img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.desk-account-info{display:grid;gap:6px;min-width:0}
+.desk-persona{display:flex;align-items:center;gap:6px;width:fit-content;max-width:100%;font-weight:800;font-size:1.24rem;line-height:1.3;overflow-wrap:anywhere}
+.desk-persona svg{flex:none;color:var(--desk-muted)}
+.desk-steam-rank{display:flex;align-items:center;gap:8px}
+.desk-steam-level{display:grid;place-items:center;min-width:29px;min-height:27px;padding:2px 5px;border:1px solid #36384a;border-radius:5px;background:#232432;font-size:.9rem;font-weight:800}
+.desk-xp{width:min(205px,100%);min-width:0}
+.desk-xp-label{display:flex;justify-content:space-between;flex-wrap:wrap;gap:1px 8px;color:var(--desk-muted);font-size:.73rem}
+.desk-xp progress{display:block;width:100%;height:4px;margin-top:3px;border:0;border-radius:4px;appearance:none;background:#2c2d3b;color:var(--desk-blue)}
+.desk-xp progress::-webkit-progress-bar{background:#2c2d3b;border-radius:4px}
+.desk-xp progress::-webkit-progress-value{background:var(--desk-blue);border-radius:4px}
+.desk-xp progress::-moz-progress-bar{background:var(--desk-blue);border-radius:4px}
+.desk-member-since{font-size:.73rem;color:var(--desk-muted)}
 .desk-overview .library-summary{background:none;border:0;margin:0;padding:0;gap:clamp(12px,2.2vw,32px)}
 .desk-overview .library-summary>div{border:0;padding:0;gap:4px}
 .desk-overview .library-summary dt{color:var(--desk-muted);font-size:.68rem;white-space:nowrap}
@@ -1548,7 +1563,9 @@ body{background:var(--desk-bg)}
 .list-view .desk-game:hover,.list-view .desk-game:focus-within{background:#1f1f28}
 .list-view .desk-game .card-link{min-height:61px}
 .desk-identity{display:flex;align-items:center;gap:9px;min-width:0}
-.list-view .desk-game .card-art{width:41px;aspect-ratio:1;flex:none;border-radius:5px}
+.list-view .desk-game .card-art{width:34px;aspect-ratio:2/3;flex:none;border-radius:5px}
+.desk-workspace .cover img,.desk-game-heading>.cover img{object-fit:contain;object-position:center}
+.desk-workspace .cover:has(img:not([hidden])) .cover-fallback,.desk-game-heading>.cover:has(img:not([hidden])) .cover-fallback{visibility:hidden}
 .desk-identity h3{font-size:.79rem;line-height:1.35;overflow-wrap:anywhere}
 .desk-identity small,.desk-recent>small,.desk-activity small{display:flex;align-items:center;gap:4px;color:var(--desk-muted);font-size:.68rem;line-height:1.35}
 .desk-badge{display:inline-flex;vertical-align:1px;align-items:center;gap:3px;margin-left:3px;padding:0 5px;border-radius:8px;font-size:.63rem;font-weight:800;white-space:nowrap}
@@ -1611,7 +1628,7 @@ body{background:var(--desk-bg)}
 .desk-collections .btn-primary{background:#5364d9;border-color:#6776ec;color:#fff;box-shadow:none}
 .desk-collection-list{display:grid;gap:11px}
 .desk-collection-covers{display:flex;gap:6px;align-items:center;min-width:0}
-.desk-collection-covers>*{width:min(15%,73px);aspect-ratio:1;flex:none;border-radius:5px}
+.desk-collection-covers>*{width:min(15%,73px);aspect-ratio:2/3;flex:none;border-radius:5px}
 .desk-collection-covers>span{display:grid;place-items:center;background:#252631;color:#b9bdd0}
 .desk-collection footer{display:flex;align-items:center;gap:9px;margin-top:10px;white-space:nowrap}
 .desk-collection footer .progress-track{height:4px;flex:1}
@@ -1684,7 +1701,7 @@ dialog.desk-sessions-dialog{width:min(485px,100vw - 24px);background:var(--desk-
   .desk-workspace .library-controls .searchbox,.desk-workspace .library-controls select{height:38px;font-size:.84rem}
   .desk-workspace .library-controls .searchbox input{height:36px;font-size:.86rem}
   .list-view .desk-game .card-link{min-height:68px}
-  .list-view .desk-game .card-art{width:47px}
+  .list-view .desk-game .card-art{width:40px}
   .desk-identity h3,.desk-activity strong{font-size:.9rem}
   .desk-identity small,.desk-recent>small,.desk-activity small,.desk-progress{font-size:.75rem}
   .desk-trophy-icon{width:22px}
@@ -1709,6 +1726,7 @@ dialog.desk-sessions-dialog{width:min(485px,100vw - 24px);background:var(--desk-
 @media(max-width:680px){
   .page.desk-workspace,.desk-game-inner{width:calc(100% - 24px)}
   .desk-overview{align-items:flex-start;flex-direction:column;gap:8px}
+  .desk-avatar{width:56px}
   .desk-overview .library-summary{width:100%;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
   .desk-tabs{overflow-x:auto;gap:4px}
   .desk-tabs>a{padding-inline:6px}

@@ -141,6 +141,35 @@ export async function connect(password, expectedAccount) {
 export const readCloud = () => request('personal');
 export const writeCloud = (revision,snapshot) => request('personal',{method:'PUT',body:{revision,snapshot}});
 
+const profileKey = STORAGE_KEY + ':steam-profile';
+
+function normalizeProfile(data, account) {
+  if (!steamId(account) || data?.account !== account || typeof data.name !== 'string' || !data.name.trim()) return null;
+  let avatar = '';
+  try {
+    const url = new URL(data.avatar);
+    if (url.protocol === 'https:' && /(^|\.)(steamstatic\.com|steamusercontent\.com|steampowered\.com|akamaihd\.net)$/.test(url.hostname)) avatar = url.href;
+  } catch { /* Optional avatar. */ }
+  const number = value => Number.isSafeInteger(value) && value >= 0 ? value : null;
+  const createdAt = number(data.createdAt);
+  return { account, name: data.name.trim().slice(0, 160), avatar,
+    createdAt: createdAt && createdAt <= Date.now()/1000 ? createdAt : null,
+    level: number(data.level), xp: number(data.xp), levelStart: number(data.levelStart), remaining: number(data.remaining) };
+}
+
+export function cachedSteamProfile(account) {
+  try { return normalizeProfile(JSON.parse(localStorage.getItem(profileKey)), account); }
+  catch { return null; }
+}
+
+export async function fetchSteamProfile(account) {
+  const profile = normalizeProfile(await request('profile'), account);
+  if (profile) {
+    try { localStorage.setItem(profileKey, JSON.stringify(profile)); } catch { /* Keep the profile in memory. */ }
+  }
+  return profile;
+}
+
 function checkAccount(actual, expected) {
   if (!steamId(actual)) throw new Error('Worker не подтвердил SteamID.');
   if (expected && actual !== expected) throw new Error('Этот Worker подключён к другому Steam-аккаунту. Импорт отменён.');

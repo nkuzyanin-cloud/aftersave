@@ -8,6 +8,9 @@ const TIMEOUT = 10000;
 const encoder = new TextEncoder();
 const paths = {
   library: 'IPlayerService/GetOwnedGames/v0001/',
+  profile: 'ISteamUser/GetPlayerSummaries/v2/',
+  badges: 'IPlayerService/GetBadges/v1/',
+  level: 'IPlayerService/GetSteamLevel/v1/',
   player: 'ISteamUserStats/GetPlayerAchievements/v0001/',
   schema: 'ISteamUserStats/GetSchemaForGame/v0002/',
   percentages: 'ISteamUserStats/GetGlobalAchievementPercentagesForApp/v2/'
@@ -137,6 +140,33 @@ function safeIcon(value) {
   return '';
 }
 
+async function playerProfile(env) {
+  const account = env.STEAM_ID;
+  const [summary, badges] = await Promise.allSettled([
+    steamFetch('profile', env, { steamids: account }),
+    steamFetch('badges', env, { steamid: account })
+  ]);
+  if (summary.status === 'rejected') throw summary.reason;
+  const player = summary.value.response?.players?.find(item => item.steamid === account);
+  if (!player || typeof player.personaname !== 'string') throw new RequestError(404, 'unavailable');
+  const rank = badges.value?.response;
+  const amount = value => Number.isSafeInteger(value) && value >= 0 ? value : null;
+  let level = amount(rank?.player_level);
+  if (level === null) {
+    const fallback = await steamFetch('level', env, { steamid: account }).catch(() => null);
+    level = amount(fallback?.response?.player_level);
+  }
+  const xp = amount(rank?.player_xp);
+  const levelStart = amount(rank?.player_xp_needed_current_level);
+  const remaining = amount(rank?.player_xp_needed_to_level_up);
+  return {
+    account, name: player.personaname.slice(0, 160),
+    avatar: safeIcon(player.avatarfull) || safeIcon(player.avatarmedium),
+    createdAt: amount(player.timecreated),
+    level, xp, levelStart, remaining
+  };
+}
+
 function communityIcon(appid, filename) {
   if (typeof filename !== 'string' || !/^[a-f0-9]{40}\.(?:jpg|png|webp)$/i.test(filename)) return '';
   return 'https://shared.fastly.steamstatic.com/community_assets/images/apps/' + appid + '/' + filename;
@@ -235,9 +265,9 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const cors = allowedOrigin(request);
-    if (url.pathname === '/health' && request.method === 'GET') return reply({ ok: true, version: 6 }, 200, cors);
+    if (url.pathname === '/health' && request.method === 'GET') return reply({ ok: true, version: 7 }, 200, cors);
     const route = url.pathname;
-    if (!['/session', '/session/refresh', '/session/forget', '/personal', '/library', '/achievements', '/artwork'].includes(route)) return reply({ error: 'not_found' }, 404, cors);
+    if (!['/session', '/session/refresh', '/session/forget', '/personal', '/profile', '/library', '/achievements', '/artwork'].includes(route)) return reply({ error: 'not_found' }, 404, cors);
     if (!cors) return reply({ error: 'origin' }, 403, false);
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: {
@@ -281,6 +311,10 @@ export default {
       await authorize(request, env);
       const { success } = await env.API_LIMIT.limit({ key: env.STEAM_ID });
       if (!success) throw new RequestError(429, 'rate_limit');
+      if (route === '/profile') {
+        if (url.search) throw new RequestError(400, 'invalid_request');
+        return reply(await cached(url, env.STEAM_ID + '/profile-v1', 600, ctx, () => playerProfile(env)), 200, true);
+      }
       if (route === '/personal') {
         if (url.search || !env.STEAM_ACTIVITY) throw new RequestError(400, 'invalid_request');
         if (request.method === 'GET') return reply(await readPersonal(env),200,true);

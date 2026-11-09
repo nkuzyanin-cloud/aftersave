@@ -8,7 +8,8 @@ import { createCloudSync } from './cloud.js';
 import { bossRegions, bossById } from './elden-ring.js';
 import { bossArt } from './elden-ring-art.js';
 import { mergeSteam, fetchLibrary, connect, disconnect, connected, steamCover, steamHeader, steamHero, fetchSteamArtwork,
-  fetchAchievements, cachedAchievements, achievementRecords, achievementIconAlternatives } from './steam.js';
+  fetchAchievements, cachedAchievements, achievementRecords, achievementIconAlternatives,
+  cachedSteamProfile, fetchSteamProfile } from './steam.js';
 import { dayNumber, calendarDate, completionItems, steamStatus, addDaily, streaks,
   parseSteamProcessLog, sessionsWithLocalHistory, addSessionDays } from './activity-view.js';
 
@@ -25,6 +26,8 @@ const dateFormat = new Intl.DateTimeFormat('ru', { day: 'numeric', month: 'long'
 let state;
 let storageError = '';
 try { state = load(); } catch (error) { state = emptyState(); storageError = error.message; }
+let steamProfile = cachedSteamProfile(state.steam?.account);
+let loadingSteamProfile = false;
 let shelfMode = 'all';
 let achievementQuery = '';
 let achievementSort = 'rare';
@@ -325,9 +328,56 @@ function gameHref(game, tab = '') {
   return '#game/' + encodeURIComponent(game.id) + (tab ? '/' + tab : '');
 }
 
+function deskAccount() {
+  const profile = steamProfile;
+  if (!profile || profile.account !== state.steam?.account) {
+    return `<a id="desk-account" class="desk-brand" href="#library">${icon('ribbon',25)} AFTERSAVE</a>`;
+  }
+  const { name, avatar, account, createdAt, level, xp, levelStart, remaining } = profile;
+  const gained = xp !== null && levelStart !== null && xp >= levelStart ? xp-levelStart : null;
+  const span = gained !== null && remaining !== null ? gained+remaining : 0;
+  const joined = createdAt ? dateFormat.formatToParts(createdAt*1000)
+    .filter(part => part.type === 'month' || part.type === 'year').map(part => part.value).join(' ') : '';
+  return `<div id="desk-account" class="desk-account">
+    <span class="desk-avatar" aria-hidden="true">
+      ${icon('steam',30)}${avatar ? `<img src="${esc(avatar)}" alt="" referrerpolicy="no-referrer">` : ''}
+    </span>
+    <div class="desk-account-info">
+      <a class="desk-persona" href="https://steamcommunity.com/profiles/${account}/" target="_blank" rel="noopener noreferrer">${esc(name)} ${icon('steam',16)}</a>
+      ${level !== null || xp !== null || remaining !== null ? `<div class="desk-steam-rank">
+        ${level !== null ? `<span class="desk-steam-level" aria-label="Уровень Steam ${level}" title="Уровень Steam">${level}</span>` : ''}
+        ${xp !== null || remaining !== null ? `<div class="desk-xp"><div class="desk-xp-label">
+          ${xp !== null ? `<span>${numeric(xp)} XP</span>` : ''}
+          ${remaining !== null && level !== null ? `<span>${numeric(remaining)} XP до ${level+1}-го уровня</span>` : ''}</div>
+          ${span > 0 ? `<progress aria-label="Прогресс уровня Steam" value="${gained}" max="${span}"></progress>` : ''}
+        </div>` : ''}
+      </div>` : ''}
+      ${joined ? `<small class="desk-member-since">В Steam с ${joined} г.</small>` : ''}
+    </div>
+  </div>`;
+}
+
+async function refreshSteamProfile() {
+  const account = state.steam?.account;
+  if (!account || !connected() || loadingSteamProfile || !navigator.onLine) return;
+  loadingSteamProfile = true;
+  try {
+    const profile = await fetchSteamProfile(account);
+    if (!profile || account !== state.steam?.account || !connected()) return;
+    if (JSON.stringify(profile) === JSON.stringify(steamProfile)) return;
+    steamProfile = profile;
+    const accountElement = app.querySelector('#desk-account');
+    if (accountElement) {
+      accountElement.outerHTML = deskAccount();
+      imageFallbacks(app.querySelector('#desk-account'));
+    }
+  } catch { /* The header keeps the last available profile. */ }
+  finally { loadingSteamProfile = false; }
+}
+
 function deskHeader() {
   return `<header class="desk-header">
-    <div class="desk-overview"><a class="desk-brand" href="#library">${icon('ribbon',25)} AFTERSAVE</a>${librarySummary()}</div>
+    <div class="desk-overview">${deskAccount()}${librarySummary()}</div>
     <nav class="desk-tabs" aria-label="Разделы библиотеки">${deskTabs.map(([page,glyph]) =>
       `<a href="#${page}" ${route.page === page ? 'aria-current="page"' : ''}>${icon(glyph,16)} ${labels[page]}</a>`).join('')}
       <a class="desk-settings" href="#settings" aria-label="Настройки" title="Настройки">${icon('gear',17)}</a>
@@ -518,8 +568,7 @@ function statsPage() {
   const totals = collectionTotals(linked);
   const earned = achievementEntries().filter(({item}) => item.unlocked);
   const rare = earned.filter(({item}) => Number.isFinite(item.percent)).sort((a,b) => a.item.percent - b.item.percent).slice(0,5);
-  const months = new Map(), days = new Map(), genres = new Map();
-  for (const game of linked) if (game.genre.trim()) addDaily(genres,game.genre.trim(),game.steam.minutes);
+  const months = new Map(), days = new Map();
   for (const {item} of earned) if (item.time) {
     const date = new Date(item.time*1000);
     addDaily(months,date.getFullYear()*12+date.getMonth(),1);
@@ -560,8 +609,6 @@ function statsPage() {
     <div class="desk-chart-years"><small>${Math.floor(timeline[0][0]/12)}</small><small>${Math.floor(timeline.at(-1)[0]/12)}</small></div>` : '<p class="desk-muted">Достижения с датами пока не загружены.</p>'}</section>
     <section class="desk-panel"><h2>Больше всего времени</h2>${[...linked].sort((a,b)=>b.steam.minutes-a.steam.minutes).slice(0,5).map(game =>
       `<a class="desk-rare" href="${gameHref(game)}">${cover(game)}<strong>${esc(displayName(game))}</strong><b>${duration(game.steam.minutes)}</b></a>`).join('')}</section>
-    ${genres.size ? `<section class="desk-panel"><h2>Игры по жанрам</h2>${[...genres].sort((a,b) => b[1]-a[1]).slice(0,6).map(([genre,minutes]) =>
-      `<div class="desk-rare"><strong>${esc(genre)}</strong><b>${duration(minutes)}</b></div>`).join('')}<small>Только игры с указанным жанром.</small></section>` : ''}
   </div>`;
 }
 
@@ -605,7 +652,7 @@ function gamePage() { return gameDashboard(); }
 
 function wideCover(game, showFallback = false) {
   const id = game.steam?.appid;
-  return id ? `<div class="cover wide-cover" style="--cover-accent:#7363a2">${showFallback ? `<span class="cover-fallback">${icon('game',24)}</span>` : ''}<img src="${esc(steamHeader(id))}" alt="" loading="lazy" data-steam-art="${id}" data-art-kind="cover"></div>` : cover(game,'wide-cover');
+  return id ? `<div class="cover wide-cover" style="--cover-accent:#7363a2">${showFallback ? `<span class="cover-fallback">${icon('game',24)}</span>` : ''}<img src="${esc(steamHeader(id))}" alt="" decoding="async" referrerpolicy="no-referrer" data-steam-art="${id}" data-art-kind="wide"></div>` : cover(game,'wide-cover');
 }
 
 function settingsPage() {
@@ -1071,21 +1118,21 @@ document.addEventListener('keydown', event => {
 function imageFallbacks(root) {
   root.querySelectorAll('img').forEach(image => {
     const id = Number(image.dataset.steamArt);
-    const isCover = image.dataset.artKind === 'cover';
+    const kind = image.dataset.artKind;
     const tried = new Set([image.src]);
     let artwork;
     let pending = false;
     const fail = async () => {
       if (pending) return;
       pending = true;
-      const coverAlternatives = () => [steamCover(id), steamHeader(id), steamHero(id)];
-      const staticCover = isCover && id ? coverAlternatives().find(url => url && !tried.has(url)) : '';
-      // Try the current catalogue after the main capsule fails. The remaining images are local to Steam's CDN.
-      if (id && artwork === undefined && (!isCover || staticCover !== steamCover(id))) artwork = await fetchSteamArtwork(id);
+      const portrait = steamCover(id);
+      // Try a regular portrait before looking up newer, versioned Steam assets.
+      if (id && artwork === undefined && (kind !== 'cover' || tried.has(portrait))) artwork = await fetchSteamArtwork(id);
       if (!image.isConnected) return;
       const alternatives = image.hasAttribute('data-achievement-icon') ?
         [image.dataset.fallbackIcon, ...achievementIconAlternatives(image.src), ...achievementIconAlternatives(image.dataset.fallbackIcon)] :
-        isCover && id ? [artwork?.cover, artwork?.header, ...coverAlternatives(), artwork?.hero] : [artwork?.hero];
+        kind === 'cover' ? [portrait, artwork?.cover, artwork?.header, steamHeader(id), artwork?.hero, steamHero(id)] :
+        kind === 'wide' ? [artwork?.header, portrait, artwork?.cover] : [artwork?.hero];
       const next = alternatives.find(url => url && !tried.has(url));
       pending = false;
       if (next) {
@@ -1155,6 +1202,7 @@ async function steamSync() {
     const result = mergeSteam(state, response);
     if (!commit(result.state)) throw new Error('Данные Steam не сохранены. Проверьте сообщение и повторите попытку.');
     succeeded = true;
+    refreshSteamProfile();
     steamMessage = response.entries.length ? `Получено ${response.entries.length} игр · добавлено ${result.added} · обновлено ${result.updated}.` :
       'Steam вернул пустую библиотеку. Личные записи сохранены.';
     refreshRecentSteamAchievements();
@@ -1771,7 +1819,8 @@ const cloud = createCloudSync({
 });
 render();
 refreshSteamSummaries();
-window.addEventListener('online', () => cloud.schedule(0));
+refreshSteamProfile();
+window.addEventListener('online', () => { cloud.schedule(0); refreshSteamProfile(); });
 document.addEventListener('visibilitychange', () => { if (!document.hidden) cloud.schedule(0); });
 cloud.schedule(0);
 setInterval(() => {
