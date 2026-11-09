@@ -793,11 +793,22 @@ dialog .field input,dialog .field textarea,dialog .field select,.collection-choi
 .desk-week span{display:grid;place-items:center;width:20px;aspect-ratio:1;background:#262630;border-radius:50%;color:var(--desk-muted);font-size:.61rem}
 .desk-week span.active{background:#3f4180;color:#ececff}
 .desk-year-values{margin-bottom:12px}
-.desk-heatmap{display:grid;grid-template-columns:repeat(var(--weeks),minmax(0,1fr));grid-template-rows:repeat(7,auto);grid-auto-flow:column;gap:2px;margin-top:9px}
-.desk-heatmap span{aspect-ratio:1;background:#292935;border-radius:2px}
+.desk-heat-scroll{overflow:auto}
+.desk-heat-chart{position:relative;display:grid;grid-template-columns:auto minmax(0,1fr);gap:5px 6px;padding:2px}
+.desk-heat-months,.desk-heatmap{display:grid;grid-template-columns:repeat(var(--weeks),minmax(0,1fr));gap:3px;grid-column:2}
+.desk-heat-months{grid-row:1;font-size:.7rem;color:var(--desk-muted);white-space:nowrap}
+.desk-heatmap{grid-row:2;grid-template-rows:repeat(7,auto)}
+.desk-heatmap button{aspect-ratio:1;min-width:0;min-height:0;padding:0;border:0;background:#292935;border-radius:2px;cursor:pointer}
+.desk-heatmap button:is(:hover,:focus-visible){outline:1px solid #c5c8ff;outline-offset:1px;z-index:1}
+.desk-heat-weekdays{grid-area:2/1;display:flex;flex-direction:column;justify-content:space-between;color:var(--desk-muted);font-size:.65rem;line-height:1}
 .desk-heatmap .heat-unknown{background:#1d1d25}
 .desk-heatmap .heat-1{background:#373a6d}.desk-heatmap .heat-2{background:#494d9a}.desk-heatmap .heat-3{background:#5962c2}.desk-heatmap .heat-4{background:#7886fa}
-.desk-year details{margin-top:10px;font-size:var(--desk-caption);color:#b7bcff}.desk-year summary{cursor:pointer}
+.desk-year>[data-action="desk-heat-year"]{display:flex;margin:8px auto 0}
+.desk-heat-tooltip{position:absolute;z-index:2;pointer-events:none;padding:6px 9px;border:1px solid #404156;border-radius:6px;background:#292b40;color:var(--desk-text);white-space:nowrap;box-shadow:0 4px 14px #07071080;font-size:.78rem}
+.desk-heat-tooltip>div{display:flex;gap:12px;color:#c4c8d8;font-size:.75rem;margin-top:3px}
+dialog.desk-heat-dialog{width:min(890px,100vw - 24px);background:var(--desk-card);border-color:#343440}
+.desk-heat-dialog .dialog-head{background:var(--desk-card);border-color:var(--desk-border)}
+.desk-heat-dialog .desk-heat-chart{min-width:710px}
 .desk-collections{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start}
 .desk-collections .section-heading{display:block;margin-top:30px}
 .desk-collections .section-heading h1{font-size:1.55rem}
@@ -820,12 +831,11 @@ dialog .field input,dialog .field textarea,dialog .field select,.collection-choi
 .desk-timeline circle{fill:var(--desk-blue);stroke:var(--desk-card);stroke-width:1;vector-effect:non-scaling-stroke}
 .desk-timeline-guide{stroke:#6670ab;stroke-width:1;stroke-dasharray:3 3;vector-effect:non-scaling-stroke}
 .desk-timeline-tooltip{position:absolute;top:0;left:clamp(min(105px,50%),var(--point-x),max(50%,100% - 105px));transform:translateX(-50%);display:grid;gap:3px;width:min(210px,100%);padding:8px 10px;border:1px solid #3a3a50;border-radius:6px;background:#212232;pointer-events:none;font-size:var(--desk-copy)}
-.desk-timeline-tooltip span,.desk-heat-readout{color:var(--desk-muted);font-size:var(--desk-caption)}
+.desk-timeline-tooltip span{color:var(--desk-muted);font-size:var(--desk-caption)}
 .desk-chart-years{position:relative;height:1.1rem;margin-inline:5px}
 .desk-chart-years small{position:absolute;transform:translateX(-50%)}
 .desk-chart-years small:first-child{transform:none}
 .desk-chart-years small:last-child:not(:first-child){transform:translateX(-100%)}
-.desk-heat-readout{display:block;margin-top:7px;line-height:1.35}
 .desk-donut{width:min(60%,144px);aspect-ratio:1;margin:16px auto;border-radius:50%;position:relative;background:conic-gradient(#f0bc7b var(--perfect),#6bbdeb var(--perfect) var(--beaten),#3d3e4b var(--beaten))}
 .desk-donut::after{content:'';position:absolute;inset:14%;background:var(--desk-card);border-radius:50%}
 .desk-legend{display:flex;flex-wrap:wrap;gap:6px 11px;font-size:var(--desk-caption);color:var(--desk-muted)}
@@ -904,8 +914,7 @@ dialog .field input,dialog .field textarea,dialog .field select,.collection-choi
 .desk-game-links button:hover{color:#b5beff}
 .desk-feed-actions{display:flex;justify-content:flex-end;align-items:center;flex-wrap:wrap;gap:6px}
 .desk-feed-actions select{width:auto;min-height:32px;padding:4px 8px;border-color:var(--desk-border);background:var(--desk-card);font-size:.78rem}
-.desk-history-start{margin:0 0 10px}
-.desk-log-import{position:relative;cursor:pointer;color:#a6afff}
+.desk-log-import{position:relative;cursor:pointer}
 .desk-log-import input{position:absolute;inset:0;width:100%;opacity:0;cursor:pointer}
 .desk-log-import:focus-within{outline:2px solid var(--desk-blue);outline-offset:2px}
 dialog.desk-sessions-dialog{width:min(485px,100vw - 24px);background:var(--desk-card);border-color:#343440}
@@ -931,6 +940,7 @@ dialog.desk-sessions-dialog{width:min(485px,100vw - 24px);background:var(--desk-
   .desk-tabs{min-height:50px;margin-bottom:20px}
   .desk-tabs>a{font-size:var(--desk-copy)}
   .desk-workspace .library-controls{grid-template-columns:minmax(0,1fr) 150px 150px}
+  .desk-workspace .library-section .library-controls{grid-template-columns:minmax(0,360px) 150px 150px}
   .desk-workspace .library-controls .searchbox,.desk-workspace .library-controls select{height:43px;font-size:var(--desk-copy)}
   .desk-workspace .library-controls .searchbox input{height:41px;font-size:inherit}
   .list-view .desk-game .card-link{min-height:76px}
