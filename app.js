@@ -23,6 +23,7 @@ const number = new Intl.NumberFormat('ru', { maximumFractionDigits: 2 });
 const dateFormat = new Intl.DateTimeFormat('ru', { day: 'numeric', month: 'long', year: 'numeric' });
 const monthFormat = new Intl.DateTimeFormat('ru', { month:'long', year:'numeric' });
 const STEAM_AUTO_SYNC_MS = 5 * 60 * 1000;
+const STEAM_RECENT_PLAY_MS = 2 * 60 * 60 * 1000;
 
 let state;
 let storageError = '';
@@ -1377,6 +1378,14 @@ async function refreshSteamSummaries(repaint = true) {
   if (summary) summary.outerHTML = librarySummary();
   if (['library','collections'].includes(route.page)) renderResults(true);
   if (['achievements','sessions','stats'].includes(route.page) || route.page === 'game' && route.tab === 'sessions') refreshDeskFeed();
+  const game = route.page === 'game' ? findByRoute(games()) : null;
+  if (game?.steam && displayedAchievements) {
+    const box = app.querySelector('#steam-achievements');
+    const record = summaryFor(game);
+    const refresh = app.querySelector('[data-action="achievement-reload"]');
+    if (box && !refresh?.disabled && record?.key === displayedAchievements.key &&
+        record.fetchedAt > displayedAchievements.fetchedAt) drawAchievements(box,record);
+  }
 }
 
 async function refreshRecentSteamAchievements() {
@@ -1386,12 +1395,20 @@ async function refreshRecentSteamAchievements() {
   try {
     await refreshSteamSummaries();
     if (account !== state.steam?.account || scanningAchievements || !connected()) return;
-    const earliest = Date.now() - 7 * 86400000;
-    const recent = games().filter(game => {
-      const last = (game.steam?.lastPlayed ?? 0) * 1000;
-      return !game.hidden && last >= earliest && (summaryFor(game)?.fetchedAt ?? 0) < last;
-    }).sort(byLastPlayed).slice(0,5);
-    for (const game of recent) {
+    const now = Date.now();
+    const observed = new Map();
+    for (const {appid,observedTo} of state.steam?.activity?.windows ?? []) {
+      observed.set(appid,Math.max(observed.get(appid) ?? 0,observedTo));
+    }
+    const recent = games().filter(game => game.steam && !game.hidden).map(game => ({
+      game, last:Math.max(game.steam.lastPlayed * 1000,observed.get(game.steam.appid) ?? 0)
+    })).filter(({game,last}) => {
+      const fetchedAt = summaryFor(game)?.fetchedAt ?? 0;
+      // The previous achievement request can finish just after its library poll.
+      return last >= now - 7 * 86400000 && (fetchedAt < last ||
+        last >= now - STEAM_RECENT_PLAY_MS && now - fetchedAt >= STEAM_AUTO_SYNC_MS - 30000);
+    }).sort((a,b) => b.last-a.last).slice(0,5);
+    for (const {game} of recent) {
       if (account !== state.steam?.account || scanningAchievements || !connected()) break;
       try { await fetchAchievements(account,game.steam.appid,false,true); }
       catch (error) {

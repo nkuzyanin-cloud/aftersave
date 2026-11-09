@@ -215,7 +215,7 @@ async function artwork(appid) {
 async function achievements(url, id, env, ctx) {
   const owned = await library(url, env, ctx);
   if (!owned.response.games?.some(item => item.appid === id)) throw new RequestError(404, 'not_owned');
-  return cached(url, env.STEAM_ID + '/achievements-v3/' + id, 1200, ctx, async () => {
+  return cached(url, env.STEAM_ID + '/achievements-v4/' + id, 120, ctx, async () => {
     const { playerstats } = await steamFetch('player', env, { steamid: env.STEAM_ID, appid: id, l: 'russian' });
     if (!playerstats?.success || playerstats.steamID !== env.STEAM_ID) throw new RequestError(404, 'unavailable');
     const list = Array.isArray(playerstats.achievements) ? playerstats.achievements : [];
