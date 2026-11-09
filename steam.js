@@ -140,6 +140,7 @@ export async function connect(password, expectedAccount) {
 
 export const readCloud = () => request('personal');
 export const writeCloud = (revision,snapshot) => request('personal',{method:'PUT',body:{revision,snapshot}});
+export const fetchSteamFeed = page => request(page);
 
 const profileKey = STORAGE_KEY + ':steam-profile';
 

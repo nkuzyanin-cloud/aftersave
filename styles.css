@@ -686,7 +686,7 @@ dialog .field input,dialog .field textarea,dialog .field select{background:#2021
 .desk-metric[data-glyph=lock] svg{color:var(--desk-muted)}
 .desk-metric,.desk-stat-value{font-variant-numeric:tabular-nums}
 .desk-nav-row{display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid var(--desk-border);margin-bottom:18px}
-.desk-tabs{display:flex;align-items:stretch;gap:14px;min-width:0;min-height:45px}
+.desk-tabs{display:flex;align-items:stretch;gap:14px;min-width:0;min-height:45px;overflow-x:auto;scrollbar-width:none}
 .desk-tabs>a{display:inline-flex;align-items:center;gap:5px;padding:7px 8px;border-bottom:2px solid transparent;color:var(--desk-muted);font-weight:700;font-size:.78rem;white-space:nowrap}
 .desk-tabs>a:hover,.desk-tabs>a[aria-current=page]{color:var(--desk-text)}
 .desk-tabs>a[aria-current=page]{border-color:var(--desk-blue)}
@@ -902,8 +902,37 @@ dialog.desk-collection-dialog{width:min(560px,calc(100vw - 24px))}
 .desk-achievement-menu summary{display:flex;align-items:center;gap:6px;list-style:none;cursor:pointer}
 .desk-achievement-menu summary::-webkit-details-marker{display:none}
 .desk-achievement-menu[open] summary,.desk-achievement-menu summary:hover{border-color:#485279;color:var(--desk-text)}
-.desk-achievement-sort{position:absolute;z-index:4;top:calc(100% + 6px);right:0;display:grid;gap:6px;width:215px;padding:10px;border:1px solid #353643;border-radius:7px;background:var(--desk-card);box-shadow:0 8px 20px #0006;color:var(--desk-muted);font-size:.78rem}
-.desk-achievement-sort select{width:100%;background:#1e202a}
+.desk-achievement-menu .desk-library-filter-panel{width:min(240px,calc(100vw - 24px))}
+.desk-store-heading{display:flex;align-items:baseline;justify-content:space-between;gap:8px 16px;flex-wrap:wrap;margin:0 0 14px}
+.desk-store-heading h1{font-size:clamp(1.25rem,2vw,1.8rem);margin:0}
+.desk-store-heading span{font-size:var(--desk-caption);color:var(--desk-muted)}
+.desk-store-feed h2{font-size:var(--desk-heading-size);margin:18px 0 9px}
+.desk-wishlist,.desk-news-list{list-style:none;padding:0;margin:0}
+.desk-wishlist{border:1px solid var(--desk-border);border-radius:7px;background:var(--desk-card)}
+.desk-wishlist li{display:grid;grid-template-columns:minmax(0,1fr) minmax(130px,24%);gap:10px;align-items:baseline;padding:13px 16px}
+.desk-wishlist li+li{border-top:1px solid var(--desk-border)}
+.desk-wishlist strong,.desk-news-card strong{overflow-wrap:anywhere}
+.desk-wishlist span,.desk-news-card small,.desk-news-card time{color:var(--desk-muted);font-size:var(--desk-caption)}
+.desk-news-filters{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.desk-news-filters [aria-pressed=true]{background:#23283d;color:#dbe3ff}
+.desk-news-list{display:grid;gap:7px}
+.desk-news-card{display:grid;grid-template-columns:minmax(100px,17%) minmax(0,1fr) auto auto;align-items:center;gap:12px;padding:8px;background:var(--desk-card);border:1px solid var(--desk-border);border-radius:7px}
+.desk-news-card:hover{border-color:#485279}
+.desk-news-art{display:grid;place-items:center;position:relative;aspect-ratio:2.25;background:#212331;border-radius:4px;overflow:hidden;color:var(--desk-muted)}
+.desk-news-art img{position:absolute;width:100%;height:100%;object-fit:cover}
+.desk-news-copy{display:grid;justify-items:start;gap:4px;min-width:0}
+.desk-news-card .desk-news-tag,.desk-news-card .desk-news-link{color:#a7b9ff}
+.desk-news-featured{grid-template-columns:minmax(0,46%) minmax(0,1fr) auto}
+.desk-news-featured strong{font-size:var(--desk-heading-size)}
+.desk-news-featured time,.desk-news-card>svg{margin-right:6px}
+@media(max-width:620px){
+  .desk-wishlist li{grid-template-columns:minmax(0,1fr) minmax(94px,37%);padding:10px}
+  .desk-news-card{grid-template-columns:minmax(72px,25%) minmax(0,1fr) auto;gap:5px 8px}
+  .desk-news-card time{grid-column:2;grid-row:2}
+  .desk-news-card>svg{grid-column:3;grid-row:1}
+  .desk-news-featured{grid-template-columns:1fr}
+  .desk-news-featured time{grid-column:1;grid-row:auto}
+}
 .achievement-list{display:grid;gap:10px;padding:0;list-style:none}
 .achievement-list li{
   display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:15px;min-height:104px;
@@ -1005,7 +1034,7 @@ dialog.desk-sessions-dialog{width:min(485px,100vw - 24px);background:var(--desk-
   .desk-overview .desk-account,.desk-overview .desk-brand{max-width:calc(100% - 46px)}
   .desk-avatar{width:56px}
   .desk-overview .library-summary{width:100%;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
-  .desk-tabs{overflow-x:auto;scrollbar-width:none;gap:4px}
+  .desk-tabs{gap:4px}
   .desk-tabs>a{padding-inline:6px}
   .desk-split,.desk-stat-grid,.desk-collections{grid-template-columns:1fr}
   .desk-history{grid-column:auto}
