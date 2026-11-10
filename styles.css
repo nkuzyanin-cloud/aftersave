@@ -1149,3 +1149,7 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
   .desk-celebration-new::after,.desk-completion-timeline li{animation:none}
   .desk-celebration-new::after{display:none}
 }
+
+.app-update-notice{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:9px 12px;margin-bottom:15px;padding:10px 12px;border:1px solid #5964b4;border-radius:10px;background:#262944;color:#eff0ff}
+.app-update-notice>span{display:flex;align-items:center;gap:8px;font-size:var(--desk-copy)}
+.app-update-notice .btn{min-height:35px;padding:7px 12px}
