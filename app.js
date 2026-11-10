@@ -1036,8 +1036,8 @@ function collectionsPage() {
     return { item, grouped, ...totals, games: grouped.length, time: totals.minutes, achievements: totals.unlocked };
   }).sort((a, b) => b[collectionSort] - a[collectionSort] || a.item.name.localeCompare(b.item.name, 'ru'));
   const sorts = [['games', 'Игры', 'game'], ['time', 'Время', 'clock'], ['achievements', 'Достижения', 'trophy']];
-  const featured = list.find(entry => /^(сосалики|соулслайки|soulslikes?|souls[- ]?likes?)$/i.test(entry.item.name.trim())) || list[0];
-  const rest = featured ? list.filter(entry => entry !== featured) : [];
+  const featured = list[0];
+  const rest = list.slice(1);
   const sortControls = list.length ? '<div class="desk-collection-sort" role="group" aria-label="Сортировать коллекции по убыванию">' +
     '<span class="desk-collection-sort-heading">Сортировать по убыванию</span>' +
     '<div class="desk-collection-sort-controls">' + sorts.map(([value, label, glyph]) =>
