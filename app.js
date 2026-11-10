@@ -967,39 +967,59 @@ function refreshDeskFeed() {
   imageFallbacks(app.querySelector('#desk-feed'));
 }
 
-function collectionArtwork(grouped) {
-  const featured = [...grouped]
-    .filter(game => game.steam?.appid || coverUrl(game.cover))
-    .sort((a, b) => gameHours(b) - gameHours(a) || displayName(a).localeCompare(displayName(b), 'ru'))
-    .slice(0, 3);
-  return '<div class="desk-collection-art" aria-hidden="true">' + featured.map(game => {
-    const id = game.steam?.appid;
-    const url = id ? steamHeader(id) : coverUrl(game.cover);
-    return '<span class="desk-collection-art-slice">' +
-      (url ? '<img src="' + esc(url) + '" alt="" decoding="async" loading="lazy"' +
-        (id ? ' data-steam-art="' + id + '" data-art-kind="wide"' : '') + '>' : '') + '</span>';
-  }).join('') + '</div>';
+
+function collectionShowcaseGames(grouped, limit = 7) {
+  return [...grouped].sort((a,b) => gameHours(b) - gameHours(a) ||
+    displayName(a).localeCompare(displayName(b),'ru')).slice(0,limit);
 }
 
-function collectionCard(entry, featured) {
-  const { item, grouped, minutes, unlocked, total } = entry;
-  const lead = [...grouped].sort((a, b) => gameHours(b) - gameHours(a))[0];
-  const leader = lead && gameHours(lead) > 0 ? 'Больше всего времени: ' + displayName(lead) :
-    grouped.length ? 'Игры в подборке' : 'Пока нет игр';
+function collectionMetrics(entry, hero = false) {
+  const { grouped, minutes, unlocked, total } = entry;
   const rate = total ? unlocked / total * 100 : 0;
-  return '<a href="#collections/' + encodeURIComponent(item.id) +
-    '" class="desk-collection' + (featured ? ' desk-collection--featured' : '') + '">' +
-    collectionArtwork(grouped) +
-    '<div class="desk-collection-main"><h2>' + esc(item.name) + '</h2>' +
-      '<p title="' + esc(leader) + '">' + esc(leader) + '</p></div>' +
-    '<div class="desk-collection-stats"><div class="desk-collection-statline">' +
-      '<div class="desk-collection-stat"><strong>' + numeric(grouped.length) + '</strong><small>игр</small></div>' +
-      '<div class="desk-collection-stat"><strong>' + duration(minutes) + '</strong><small>время в играх</small></div>' +
-      '<div class="desk-collection-stat"><strong>' + numeric(unlocked) + ' / ' + numeric(total) +
-        '</strong><small>достижений</small></div>' +
-    '</div><div class="desk-collection-completion"><span>' +
-      (total ? Math.round(rate) + '% достижений' : 'Нет данных о достижениях') +
-      '</span>' + progressBar(rate) + '</div></div></a>';
+  const values = '<div class="collection-metrics-values">' +
+    '<span><strong>' + numeric(grouped.length) + '</strong><small>игр</small></span>' +
+    '<span><strong>' + duration(minutes) + '</strong><small>время в играх</small></span>' +
+    '<span><strong>' + numeric(unlocked) + ' / ' + numeric(total) + '</strong><small>достижений</small></span></div>';
+  const bar = '<div class="collection-metrics-progress"><span>' +
+    (total ? Math.round(rate) + '% достижений' : 'Нет данных о достижениях') +
+    '</span>' + progressBar(rate) + '</div>';
+  return '<div class="collection-metrics' + (hero ? ' collection-metrics-hero' : '') + '">' + values + bar + '</div>';
+}
+
+function collectionLeader(grouped) {
+  const game = collectionShowcaseGames(grouped,1)[0];
+  return game && gameHours(game) > 0 ? 'Больше всего времени: ' + displayName(game) :
+    grouped.length ? 'Игры из твоей библиотеки' : 'Пока нет игр';
+}
+
+function collectionHero(entry) {
+  const { item, grouped } = entry;
+  const selected = collectionShowcaseGames(grouped,7);
+  const game = selected.find(game => game.steam?.appid) || selected[0];
+  const id = game?.steam?.appid;
+  const backdrop = id ? steamHero(id) : (game ? coverUrl(game.cover) : '');
+  const image = backdrop ? '<img src="' + esc(backdrop) + '" alt="" decoding="async" loading="lazy"' +
+    (id ? ' data-steam-art="' + id + '" data-art-kind="collection-hero"' : '') + '>' : '';
+  return '<a href="#collections/' + encodeURIComponent(item.id) + '" class="collection-hero">' +
+    '<div class="collection-hero-background" aria-hidden="true">' + image + '</div>' +
+    '<div class="collection-hero-copy"><span class="collection-hero-label">КОЛЛЕКЦИЯ В ФОКУСЕ</span>' +
+    '<h2>' + esc(item.name) + '</h2><p>' + esc(collectionLeader(grouped)) + '</p>' +
+    collectionMetrics(entry,true) + '</div>' +
+    '<div class="collection-hero-deck" aria-hidden="true">' +
+    selected.map(game => cover(game,'collection-hero-poster')).join('') + '</div></a>';
+}
+
+function collectionRow(entry) {
+  const { item, grouped } = entry;
+  const selection = collectionShowcaseGames(grouped,5);
+  return '<a href="#collections/' + encodeURIComponent(item.id) + '" class="collection-shelf">' +
+    '<div class="collection-shelf-title"><h2>' + esc(item.name) + '</h2>' +
+    '<p title="' + esc(collectionLeader(grouped)) + '">' + esc(collectionLeader(grouped)) + '</p></div>' +
+    '<div class="collection-shelf-posters" aria-hidden="true">' +
+    selection.map(game=>cover(game,'collection-shelf-poster')).join('') +
+    (grouped.length > selection.length ? '<span class="collection-shelf-overflow">+' +
+      numeric(grouped.length - selection.length) + '</span>' : '') + '</div>' +
+    collectionMetrics(entry) + '</a>';
 }
 
 function collectionsPage() {
@@ -1016,6 +1036,8 @@ function collectionsPage() {
     return { item, grouped, ...totals, games: grouped.length, time: totals.minutes, achievements: totals.unlocked };
   }).sort((a, b) => b[collectionSort] - a[collectionSort] || a.item.name.localeCompare(b.item.name, 'ru'));
   const sorts = [['games', 'Игры', 'game'], ['time', 'Время', 'clock'], ['achievements', 'Достижения', 'trophy']];
+  const featured = list.find(entry => /^(сосалики|соулслайки|soulslikes?|souls[- ]?likes?)$/i.test(entry.item.name.trim())) || list[0];
+  const rest = featured ? list.filter(entry => entry !== featured) : [];
   const sortControls = list.length ? '<div class="desk-collection-sort" role="group" aria-label="Сортировать коллекции по убыванию">' +
     '<span class="desk-collection-sort-heading">Сортировать по убыванию</span>' +
     '<div class="desk-collection-sort-controls">' + sorts.map(([value, label, glyph]) =>
@@ -1025,15 +1047,17 @@ function collectionsPage() {
     ).join('') + '</div></div>' : '';
   return '<div class="desk-collections">' +
     '<div class="desk-collections-head">' +
-      header('ПОДБОРКИ', 'Коллекции игр', 'Игровые серии, жанры и личные подборки.',
+      header('ПОДБОРКИ', 'Коллекции игр', 'Игры по сериям, жанрам и своим категориям.',
         button('new-collection', 'Новая коллекция', 'plus', 'primary')) +
     '</div>' +
+    (featured ? collectionHero(featured) : '') +
     '<div class="desk-collection-toolbar"><span class="desk-collection-count">' +
       numeric(list.length) + ' коллекций</span>' + sortControls + '</div>' +
     '<div class="desk-collection-list">' +
-      (list.length ? list.map((entry, index) => collectionCard(entry, index === 0)).join('') :
-        '<p class="desk-collection-empty">Здесь появятся твои коллекции. Начни с первой подборки.</p>') +
+      (rest.length ? rest.map(collectionRow).join('') :
+        (featured ? '' : '<p class="desk-collection-empty">Здесь появятся твои коллекции. Начни с первой подборки.</p>')) +
     '</div></div>';
+
 }
 
 
@@ -1597,7 +1621,8 @@ function imageFallbacks(root) {
       const alternatives = image.hasAttribute('data-achievement-icon') ?
         [image.dataset.fallbackIcon, ...achievementIconAlternatives(image.src), ...achievementIconAlternatives(image.dataset.fallbackIcon)] :
         kind === 'cover' ? [portrait, artwork?.cover, artwork?.header, steamHeader(id), artwork?.hero, steamHero(id)] :
-        kind === 'wide' ? [artwork?.header, portrait, artwork?.cover] : [artwork?.hero];
+        kind === 'wide' ? [artwork?.header, portrait, artwork?.cover] :
+        kind === 'collection-hero' ? [steamHeader(id), artwork?.hero, artwork?.header, portrait] : [artwork?.hero];
       const next = alternatives.find(url => url && !tried.has(url));
       pending = false;
       if (next) {
