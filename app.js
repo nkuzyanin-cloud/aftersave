@@ -1034,7 +1034,17 @@ function collectionsPage() {
     const grouped = games().filter(game => game.collectionIds.includes(item.id));
     const totals = collectionTotals(grouped);
     return { item, grouped, ...totals, games: grouped.length, time: totals.minutes, achievements: totals.unlocked };
-  }).sort((a, b) => b[collectionSort] - a[collectionSort] || a.item.name.localeCompare(b.item.name, 'ru'));
+  });
+  if (collectionSort === 'achievements') {
+    const maxUnlocked = Math.max(1, ...list.map(entry => entry.unlocked));
+    const maxMinutes = Math.max(1, ...list.map(entry => entry.minutes));
+    // Weighted completion rating: 70% completion, 15% unlocked achievements, 15% playtime.
+    const score = entry => 70 * (entry.total ? entry.unlocked / entry.total : 0) +
+      15 * entry.unlocked / maxUnlocked + 15 * entry.minutes / maxMinutes;
+    list.sort((a, b) => score(b) - score(a) || a.item.name.localeCompare(b.item.name, 'ru'));
+  } else {
+    list.sort((a, b) => b[collectionSort] - a[collectionSort] || a.item.name.localeCompare(b.item.name, 'ru'));
+  }
   const sorts = [['games', 'Игры', 'game'], ['time', 'Время', 'clock'], ['achievements', 'Достижения', 'trophy']];
   const featured = list[0];
   const rest = list.slice(1);
