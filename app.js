@@ -1002,7 +1002,7 @@ function collectionHero(entry) {
     (id ? ' data-steam-art="' + id + '" data-art-kind="collection-hero"' : '') + '>' : '';
   return '<a href="#collections/' + encodeURIComponent(item.id) + '" class="collection-hero">' +
     '<div class="collection-hero-background" aria-hidden="true">' + image + '</div>' +
-    '<div class="collection-hero-copy"><span class="collection-hero-label">КОЛЛЕКЦИЯ В ФОКУСЕ</span>' +
+    '<div class="collection-hero-copy">' +
     '<h2>' + esc(item.name) + '</h2><p>' + esc(collectionLeader(grouped)) + '</p>' +
     collectionMetrics(entry,true) + '</div>' +
     '<div class="collection-hero-deck" aria-hidden="true">' +
@@ -1038,21 +1038,21 @@ function collectionsPage() {
   const sorts = [['games', 'Игры', 'game'], ['time', 'Время', 'clock'], ['achievements', 'Достижения', 'trophy']];
   const featured = list[0];
   const rest = list.slice(1);
-  const sortControls = list.length ? '<div class="desk-collection-sort" role="group" aria-label="Сортировать коллекции по убыванию">' +
-    '<span class="desk-collection-sort-heading">Сортировать по убыванию</span>' +
-    '<div class="desk-collection-sort-controls">' + sorts.map(([value, label, glyph]) =>
-      '<button type="button" class="desk-collection-sort-btn" data-action="collection-sort" data-value="' + value +
-      '" aria-pressed="' + (collectionSort === value) + '" title="Сортировать по: ' +
-      label.toLocaleLowerCase('ru') + '">' + icon(glyph, 15) + '<span>' + label + '</span></button>'
-    ).join('') + '</div></div>' : '';
+  const sortControls = list.length ? '<details class="desk-collection-sort">' +
+    '<summary class="desk-collection-filter-trigger icon-btn" aria-label="Фильтры коллекций" title="Фильтры коллекций">' +
+      icon('filter',18) + '</summary>' +
+    '<div class="desk-collection-sort-controls" role="group" aria-label="Сортировать коллекции по убыванию">' +
+      '<span class="desk-collection-sort-heading">Сортировать по убыванию</span>' +
+      sorts.map(([value,label,glyph]) =>
+        '<button type="button" class="desk-collection-sort-btn" data-action="collection-sort" data-value="' + value +
+        '" aria-pressed="' + (collectionSort === value) + '" title="Сортировать по: ' +
+        label.toLocaleLowerCase('ru') + '">' + icon(glyph,15) + '<span>' + label + '</span></button>'
+      ).join('') + '</div></details>' : '';
   return '<div class="desk-collections">' +
-    '<div class="desk-collections-head">' +
-      header('ПОДБОРКИ', 'Коллекции игр', 'Игры по сериям, жанрам и своим категориям.',
-        button('new-collection', 'Новая коллекция', 'plus', 'primary')) +
-    '</div>' +
-    (featured ? collectionHero(featured) : '') +
     '<div class="desk-collection-toolbar"><span class="desk-collection-count">' +
-      numeric(list.length) + ' коллекций</span>' + sortControls + '</div>' +
+      numeric(list.length) + ' коллекций</span><div class="desk-collection-controls">' +
+      sortControls + button('new-collection','Новая коллекция','plus','primary') + '</div></div>' +
+    (featured ? collectionHero(featured) : '') +
     '<div class="desk-collection-list">' +
       (rest.length ? rest.map(collectionRow).join('') :
         (featured ? '' : '<p class="desk-collection-empty">Здесь появятся твои коллекции. Начни с первой подборки.</p>')) +
@@ -1375,7 +1375,8 @@ const actions = {
     if (!['games', 'time', 'achievements'].includes(value) || collectionSort === value) return;
     collectionSort = value;
     render();
-    app.querySelector(`.desk-collection-sort-btn[data-value="${value}"]`)?.focus({ preventScroll: true });
+    app.querySelector('.desk-collections')?.classList.add('desk-collections--sort-change');
+    app.querySelector('.desk-collection-filter-trigger')?.focus({ preventScroll: true });
   },
   'new-collection': () => openCollectionForm(),
   'edit-collection': control => {
