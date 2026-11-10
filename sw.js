@@ -1,5 +1,5 @@
 // Bump this version whenever a file in the precache changes.
-const CACHE_VERSION = 35;
+const CACHE_VERSION = 36;
 const scope = new URL(self.registration.scope);
 const cachePrefix = `aftersave::${scope.href}::v`;
 const cacheName = `${cachePrefix}${CACHE_VERSION}`;
@@ -21,9 +21,12 @@ const precache = new Set([
 ].map(path => new URL(path, scope).href));
 
 self.addEventListener('install', event => {
-  event.waitUntil(caches.open(cacheName).then(cache =>
-    cache.addAll([...precache].map(url => new Request(url, { cache: 'reload' })))
-  ));
+  event.waitUntil((async () => {
+    const cache = await caches.open(cacheName);
+    await cache.addAll([...precache].map(url => new Request(url, { cache: 'reload' })));
+    // A waiting worker cannot replace a cache-first worker while PWA tabs remain open.
+    await self.skipWaiting();
+  })());
 });
 
 self.addEventListener('activate', event => {
@@ -60,7 +63,21 @@ self.addEventListener('fetch', event => {
   const bossMap = ['image', 'document'].includes(request.destination) && path.startsWith(mapPath) && url.pathname.endsWith('.webp');
   const bossPortrait = request.destination === 'image' && path.startsWith(portraitPath) && url.pathname.endsWith('.jpg');
   if (!precache.has(path) && !bossMap && !bossPortrait) return;
+  const shellAsset = precache.has(path) && (
+    request.mode === 'navigate' || ['script', 'style'].includes(request.destination)
+  );
   event.respondWith(caches.open(bossMap ? mapCacheName : cacheName).then(async cache => {
+    if (shellAsset) {
+      // Prefer the latest deployed application code, but keep offline fallback.
+      try {
+        const response = await fetch(request, { cache: 'no-cache' });
+        if (!response.ok) throw new Error('App update unavailable');
+        await cache.put(path, response.clone()).catch(() => {});
+        return response;
+      } catch {
+        return await cache.match(path) || Response.error();
+      }
+    }
     const cached = await cache.match(path);
     if (cached) return cached;
     const response = await fetch(request);
