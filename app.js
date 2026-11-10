@@ -1,5 +1,5 @@
 
-import {
+import { 
   STORAGE_KEY, load, save, emptyState, exportJSON, importJSON, exportCSV, isEldenRing
 } from './data.js';
 import { icon } from './icons.js';
