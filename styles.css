@@ -802,6 +802,15 @@ dialog.desk-heat-dialog{width:min(890px,100vw - 24px);background:var(--desk-card
 .desk-collections .section-heading p{font-size:.85rem}
 .desk-collections .heading-actions{margin-top:11px;justify-content:flex-start}
 .desk-collections .btn-primary{background:#5364d9;border-color:#6776ec;color:#fff;box-shadow:none}
+.desk-collection-results{display:grid;align-content:start;gap:12px;min-width:0}
+.desk-collection-sort{display:grid;gap:8px;min-width:0}
+.desk-collection-sort-heading{color:var(--desk-muted);font-size:var(--desk-caption)}
+.desk-collection-sort-controls{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,.9fr) minmax(0,1.4fr);gap:6px}
+.desk-collection-sort-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:0;min-height:38px;padding:7px 5px;border:1px solid #373949;border-radius:9px;background:#20212b;color:#c0c3d2;font:inherit;font-size:clamp(.72rem,2.9vw,.83rem);white-space:nowrap;cursor:pointer;transition:background .15s,border-color .15s,color .15s}
+.desk-collection-sort-btn svg{flex:none}
+.desk-collection-sort-btn:hover{background:#292c3e;border-color:#646991;color:#fff}
+.desk-collection-sort-btn[aria-pressed="true"]{background:#303761;border-color:#6a73e5;color:#f5f5ff}
+.desk-collection-sort-btn:focus-visible{outline:2px solid #9da4ff;outline-offset:2px}
 .desk-collection-list{display:grid;gap:11px}
 .desk-collection-covers{display:flex;gap:6px;align-items:center;min-width:0}
 .desk-collection-covers>*{width:min(15%,73px);aspect-ratio:2/3;flex:none;border-radius:5px}
