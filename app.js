@@ -967,6 +967,41 @@ function refreshDeskFeed() {
   imageFallbacks(app.querySelector('#desk-feed'));
 }
 
+function collectionArtwork(grouped) {
+  const featured = [...grouped]
+    .filter(game => game.steam?.appid || coverUrl(game.cover))
+    .sort((a, b) => gameHours(b) - gameHours(a) || displayName(a).localeCompare(displayName(b), 'ru'))
+    .slice(0, 3);
+  return '<div class="desk-collection-art" aria-hidden="true">' + featured.map(game => {
+    const id = game.steam?.appid;
+    const url = id ? steamHeader(id) : coverUrl(game.cover);
+    return '<span class="desk-collection-art-slice">' +
+      (url ? '<img src="' + esc(url) + '" alt="" decoding="async" loading="lazy"' +
+        (id ? ' data-steam-art="' + id + '" data-art-kind="wide"' : '') + '>' : '') + '</span>';
+  }).join('') + '</div>';
+}
+
+function collectionCard(entry, featured) {
+  const { item, grouped, minutes, unlocked, total } = entry;
+  const lead = [...grouped].sort((a, b) => gameHours(b) - gameHours(a))[0];
+  const leader = lead && gameHours(lead) > 0 ? 'Больше всего времени: ' + displayName(lead) :
+    grouped.length ? 'Игры в подборке' : 'Пока нет игр';
+  const rate = total ? unlocked / total * 100 : 0;
+  return '<a href="#collections/' + encodeURIComponent(item.id) +
+    '" class="desk-collection' + (featured ? ' desk-collection--featured' : '') + '">' +
+    collectionArtwork(grouped) +
+    '<div class="desk-collection-main"><h2>' + esc(item.name) + '</h2>' +
+      '<p title="' + esc(leader) + '">' + esc(leader) + '</p></div>' +
+    '<div class="desk-collection-stats"><div class="desk-collection-statline">' +
+      '<div class="desk-collection-stat"><strong>' + numeric(grouped.length) + '</strong><small>игр</small></div>' +
+      '<div class="desk-collection-stat"><strong>' + duration(minutes) + '</strong><small>время в играх</small></div>' +
+      '<div class="desk-collection-stat"><strong>' + numeric(unlocked) + ' / ' + numeric(total) +
+        '</strong><small>достижений</small></div>' +
+    '</div><div class="desk-collection-completion"><span>' +
+      (total ? Math.round(rate) + '% достижений' : 'Нет данных о достижениях') +
+      '</span>' + progressBar(rate) + '</div></div></a>';
+}
+
 function collectionsPage() {
   const collection = findByRoute(collections());
   if (collection) {
@@ -981,23 +1016,24 @@ function collectionsPage() {
     return { item, grouped, ...totals, games: grouped.length, time: totals.minutes, achievements: totals.unlocked };
   }).sort((a, b) => b[collectionSort] - a[collectionSort] || a.item.name.localeCompare(b.item.name, 'ru'));
   const sorts = [['games', 'Игры', 'game'], ['time', 'Время', 'clock'], ['achievements', 'Достижения', 'trophy']];
-  return `<div class="desk-collections">
-    <div>${header('ПОДБОРКИ', 'Коллекции игр', 'Собирай игры по сериям, жанрам или для следующего прохождения.', button('new-collection', 'Новая коллекция', 'plus', 'primary'))}</div>
-    <div class="desk-collection-results">
-      ${list.length ? `<div class="desk-collection-sort" role="group" aria-label="Сортировать коллекции по убыванию">
-        <span class="desk-collection-sort-heading">Сортировать по убыванию</span>
-        <div class="desk-collection-sort-controls">${sorts.map(([value, label, glyph]) =>
-          `<button type="button" class="desk-collection-sort-btn" data-action="collection-sort" data-value="${value}"
-            aria-pressed="${collectionSort === value}" title="Сортировать по: ${label.toLocaleLowerCase('ru')}">${icon(glyph, 15)}<span>${label}</span></button>`
-        ).join('')}</div></div>` : ''}
-      <div class="desk-collection-list">${list.length ? list.map(({item, grouped, minutes, unlocked, total}) =>
-        `<a href="#collections/${encodeURIComponent(item.id)}" class="desk-panel desk-collection">
-          <h2>${esc(item.name)}</h2><div class="desk-collection-covers">${grouped.slice(0,5).map(game => cover(game)).join('')}${grouped.length > 5 ? `<span>+${grouped.length-5}</span>` : ''}</div>
-          <footer><small class="desk-icon-text">${icon('game',15)}${grouped.length} игр</small><small class="desk-icon-text">${icon('clock',15)}${duration(minutes)}</small>
-            ${total ? `<small class="desk-icon-text">${icon('trophy',15)}${unlocked} / ${total}</small>${progressBar(unlocked/total*100)}` : ''}</footer></a>`
-      ).join('') : '<p class="desk-panel desk-muted">Здесь появятся твои коллекции и их прогресс.</p>'}</div>
-    </div>
-  </div>`;
+  const sortControls = list.length ? '<div class="desk-collection-sort" role="group" aria-label="Сортировать коллекции по убыванию">' +
+    '<span class="desk-collection-sort-heading">Сортировать по убыванию</span>' +
+    '<div class="desk-collection-sort-controls">' + sorts.map(([value, label, glyph]) =>
+      '<button type="button" class="desk-collection-sort-btn" data-action="collection-sort" data-value="' + value +
+      '" aria-pressed="' + (collectionSort === value) + '" title="Сортировать по: ' +
+      label.toLocaleLowerCase('ru') + '">' + icon(glyph, 15) + '<span>' + label + '</span></button>'
+    ).join('') + '</div></div>' : '';
+  return '<div class="desk-collections">' +
+    '<div class="desk-collections-head">' +
+      header('ПОДБОРКИ', 'Коллекции игр', 'Игровые серии, жанры и личные подборки.',
+        button('new-collection', 'Новая коллекция', 'plus', 'primary')) +
+    '</div>' +
+    '<div class="desk-collection-toolbar"><span class="desk-collection-count">' +
+      numeric(list.length) + ' коллекций</span>' + sortControls + '</div>' +
+    '<div class="desk-collection-list">' +
+      (list.length ? list.map((entry, index) => collectionCard(entry, index === 0)).join('') :
+        '<p class="desk-collection-empty">Здесь появятся твои коллекции. Начни с первой подборки.</p>') +
+    '</div></div>';
 }
 
 
