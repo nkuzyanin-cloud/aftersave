@@ -908,6 +908,8 @@ dialog.desk-collection-dialog{width:min(560px,calc(100vw - 24px))}
 .desk-store-heading span{font-size:var(--desk-caption);color:var(--desk-muted)}
 .desk-store-feed h2{font-size:var(--desk-heading-size);margin:18px 0 9px}
 .desk-wishlist,.desk-news-list{list-style:none;padding:0;margin:0}
+.desk-wishlist-group+.desk-wishlist-group{margin-top:24px}
+.desk-wishlist-group h2{margin:0 0 9px}
 .desk-wishlist{border:1px solid var(--desk-border);border-radius:7px;background:var(--desk-card)}
 .desk-wishlist li{display:grid;grid-template-columns:104px minmax(0,1fr) minmax(130px,24%);gap:12px;align-items:center;padding:9px 12px}
 .desk-wishlist li+li{border-top:1px solid var(--desk-border)}

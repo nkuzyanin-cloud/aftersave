@@ -417,13 +417,20 @@ function releaseSortDate(label = '') {
   return period ? NaN : Date.UTC(year,11,31);
 }
 
-function orderedWishlist(items) {
+function wishlistGroups(items) {
   const today = Date.parse(dateStamp());
-  return items.filter(item => item.name).map(item => {
+  const released = [], upcoming = [], undated = [];
+  for (const item of items) {
+    if (!item.name) continue;
     const date = releaseSortDate(item.releaseDate);
-    const group = Number.isFinite(date) ? (date >= today ? 0 : 1) : 2;
-    return {item,group,date};
-  }).sort((a,b) => a.group-b.group || (a.group === 1 ? b.date-a.date : a.date-b.date)).map(row => row.item);
+    const group = !Number.isFinite(date) ? undated : date < today ? released : upcoming;
+    group.push({item,date});
+  }
+  return [
+    ['Уже вышли', released.sort((a,b) => b.date-a.date)],
+    ['Предстоящие релизы', upcoming.sort((a,b) => a.date-b.date)],
+    ['Дата не объявлена', undated]
+  ];
 }
 
 function storeFeedContent() {
@@ -440,16 +447,20 @@ function storeFeedContent() {
     return `<p class="dash-empty" role="status">${esc(message)}</p>`;
   }
   if (page === 'wishlist') {
-    const items = orderedWishlist(data.items);
+    const groups = wishlistGroups(data.items);
+    const shown = groups.reduce((count,[,rows]) => count + rows.length,0);
     const release = value => /^\d{4}-\d{2}-\d{2}$/.test(value) ? dateLabel(value) : value || 'Дата не объявлена';
     return (record.error ? `<p class="dash-empty" role="status">${esc(record.error)}</p>` : '') +
-      (items.length ? `<ul class="desk-wishlist">${items.map(item => `<li>
-        ${wideCover({steam:{appid:item.appid}},true)}
-        <strong>${esc(item.name)}</strong><span class="desk-wishlist-date">${esc(release(item.releaseDate))}</span>
-      </li>`).join('')}</ul>` : '') +
+      groups.filter(([,rows]) => rows.length).map(([label,rows]) => `<section class="desk-wishlist-group">
+        <h2>${label}</h2>
+        <ul class="desk-wishlist">${rows.map(({item}) => `<li>
+          ${wideCover({steam:{appid:item.appid}},true)}
+          <strong>${esc(item.name)}</strong><span class="desk-wishlist-date">${esc(release(item.releaseDate))}</span>
+        </li>`).join('')}</ul>
+      </section>`).join('') +
       (data.status === 'updating' ? '<p class="dash-empty" role="status">Загружаем данные игр…</p>' :
         !data.items.length ? '<p class="dash-empty">Список желаемого пуст.</p>' :
-          items.length < data.items.length ? '<p class="dash-empty">Для некоторых игр Steam не предоставил данные магазина.</p>' : '');
+          shown < data.items.length ? '<p class="dash-empty">Для некоторых игр Steam не предоставил данные магазина.</p>' : '');
   }
   const items = majorNewsOnly ? data.items.filter(item => item.major) : data.items;
   const featured = items.find(item => item.major);
