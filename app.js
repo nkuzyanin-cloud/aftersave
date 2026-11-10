@@ -45,6 +45,7 @@ let revealHidden = true;
 let toastTimer;
 let route = getRoute();
 let storagePending = false;
+let appUpdateReady = false;
 let syncingSteam = false;
 let lastSteamAttempt = 0;
 let refreshingRecent = false;
@@ -137,9 +138,17 @@ function commit(next, message, options) {
   }
 }
 
+function updateNotice() {
+  return `<div class="app-update-notice" role="status">
+    <span>${icon('download',18)} Обновление AFTERSAVE готово</span>
+    ${button('reload-after-update', 'Обновить', 'refresh', 'primary')}
+  </div>`;
+}
+
 function shell(content) {
   const workspace = deskTabs.some(([page]) => page === route.page);
   return `<main id="main" tabindex="-1" class="page page-${route.page}${workspace ? ' desk-workspace' : ''}">
+    ${appUpdateReady ? updateNotice() : ''}
     ${storageError ? `<div class="alert">${icon('shield',19)}<span>${esc(storageError)}</span><a href="#settings">Восстановить данные</a></div>` : ''}
     ${workspace ? deskHeader() : route.page === 'settings' ? `<a class="back-link" href="#library">${icon('back',17)} К играм</a>` : ''}
     ${content}
@@ -1341,6 +1350,7 @@ const actions = {
   'export-json': () => download(`aftersave-${dateStamp()}.json`, exportJSON(state), 'application/json;charset=utf-8'),
   'export-csv': () => download(`aftersave-${dateStamp()}.csv`, exportCSV(state), 'text/csv;charset=utf-8'),
   'import-json': () => app.querySelector('#backup-file')?.click(),
+  'reload-after-update': () => location.reload(),
   'close-dialog': () => dialog.close(),
 
 
@@ -2286,9 +2296,18 @@ setInterval(() => {
 setInterval(maybeSyncSteam, 15 * 1000);
 maybeSyncSteam();
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register(new URL('./sw.js', import.meta.url)).catch(error => console.warn('AFTERSAVE offline:', error));
+  const controlledAtStart = Boolean(navigator.serviceWorker.controller);
+  navigator.serviceWorker.register(new URL('./sw.js', import.meta.url))
+    .then(registration => registration.update().catch(() => {}))
+    .catch(error => console.warn('AFTERSAVE offline:', error));
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     const offline = app.querySelector('#offline-label');
     if (offline) offline.textContent = 'Офлайн-режим готов на этом устройстве.';
+    // Do not discard in-progress form edits when an update becomes active.
+    if (!controlledAtStart || appUpdateReady) return;
+    appUpdateReady = true;
+    if (!app.querySelector('.app-update-notice')) {
+      app.querySelector('#main')?.insertAdjacentHTML('afterbegin', updateNotice());
+    }
   });
 }
