@@ -15,7 +15,7 @@ import { dayNumber, calendarDate, addDaily, streaks,
 const app = document.querySelector('#app');
 const dialog = document.querySelector('#dialog');
 const toast = document.querySelector('#toast');
-const labels = { library: 'Игры', wishlist: 'Список желаний', achievements: 'Достижения', collections: 'Коллекции', sessions: 'Игровые сессии', stats: 'Статистика', news: 'Новости', settings: 'Настройки', game: 'Игра' };
+const labels = { library: 'Игры', wishlist: 'Список желаемого', achievements: 'Достижения', collections: 'Коллекции', sessions: 'Игровые сессии', stats: 'Статистика', news: 'Новости', settings: 'Настройки', game: 'Игра' };
 const deskTabs = [['library','game'],['wishlist','bookmark'],['achievements','trophy'],['collections','layers'],['sessions','clock'],['stats','chart'],['news','news']];
 const achievementOrders = [['common','По убыванию'],['rare','Редкие'],['recent','Недавно полученные']];
 const storeFeeds = new Map();
@@ -397,6 +397,35 @@ function storeFeedPage() {
   </section>`;
 }
 
+function releaseSortDate(label = '') {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(label)) return Date.parse(label);
+  const yearMatch = /\b[1-9]\d{3}\b/.exec(label);
+  if (!yearMatch) return NaN;
+  const year = Number(yearMatch[0]);
+  const period = label.toLowerCase().replace(/\s+(?:г\.?|года)\s*$/u, '').replace(yearMatch[0], '').trim();
+  const quarter = /(?:\bq\s*([1-4])\b|\b([1-4])\s*(?:-?й\s*)?(?:кв\.|квартал))/u.exec(period);
+  if (quarter) return Date.UTC(year, Number(quarter[1] ?? quarter[2]) * 3, 0);
+  const monthName = /[а-яёa-z]{3,}/u.exec(period)?.[0].slice(0,3);
+  const months = monthName && /^[a-z]/.test(monthName) ?
+    ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'] :
+    ['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+  const month = months.indexOf(monthName === 'мая' ? 'май' : monthName);
+  if (month >= 0) {
+    const day = /\b(?:[1-9]|[12]\d|3[01])\b/.exec(period);
+    return day ? Date.UTC(year,month,Number(day[0])) : Date.UTC(year,month+1,0);
+  }
+  return period ? NaN : Date.UTC(year,11,31);
+}
+
+function orderedWishlist(items) {
+  const today = Date.parse(dateStamp());
+  return items.filter(item => item.name).map(item => {
+    const date = releaseSortDate(item.releaseDate);
+    const group = Number.isFinite(date) ? (date >= today ? 0 : 1) : 2;
+    return {item,group,date};
+  }).sort((a,b) => a.group-b.group || (a.group === 1 ? b.date-a.date : a.date-b.date)).map(row => row.item);
+}
+
 function storeFeedContent() {
   const page = route.page;
   if (!state.steam?.account || !connected()) {
@@ -407,28 +436,29 @@ function storeFeedContent() {
   if (!data || data.status === 'pending' || data.status === 'unavailable') {
     const message = record?.error ? record.error : data?.status === 'pending' ?
       'Первая загрузка начнётся при ближайшей проверке Steam.' : data?.status === 'unavailable' ?
-      'Steam не вернул список желаний. Возможно, он пуст или скрыт настройками приватности.' : 'Загрузка данных Steam…';
+      'Steam не вернул список желаемого. Возможно, он пуст или скрыт настройками приватности.' : 'Загрузка данных Steam…';
     return `<p class="dash-empty" role="status">${esc(message)}</p>`;
   }
   if (page === 'wishlist') {
-    const items = data.items.filter(item => item.name);
+    const items = orderedWishlist(data.items);
     const release = value => /^\d{4}-\d{2}-\d{2}$/.test(value) ? dateLabel(value) : value || 'Дата не объявлена';
     return (record.error ? `<p class="dash-empty" role="status">${esc(record.error)}</p>` : '') +
       (items.length ? `<ul class="desk-wishlist">${items.map(item => `<li>
-        <strong>${esc(item.name)}</strong><span>${esc(release(item.releaseDate))}</span>
+        ${wideCover({steam:{appid:item.appid}},true)}
+        <strong>${esc(item.name)}</strong><span class="desk-wishlist-date">${esc(release(item.releaseDate))}</span>
       </li>`).join('')}</ul>` : '') +
       (data.status === 'updating' ? '<p class="dash-empty" role="status">Загружаем данные игр…</p>' :
-        !data.items.length ? '<p class="dash-empty">Список желаний пуст.</p>' :
+        !data.items.length ? '<p class="dash-empty">Список желаемого пуст.</p>' :
           items.length < data.items.length ? '<p class="dash-empty">Для некоторых игр Steam не предоставил данные магазина.</p>' : '');
   }
   const items = majorNewsOnly ? data.items.filter(item => item.major) : data.items;
   const featured = items.find(item => item.major);
   const latest = items.filter(item => item !== featured);
   return (record.error ? `<p class="dash-empty" role="status">${esc(record.error)}</p>` : '') +
-    (data.status === 'partial' ? '<p class="dash-empty" role="status">Steam не вернул новости для части игр.</p>' : '') +
     (featured ? newsCard(featured,true) : '') +
     (latest.length ? `<h2>Последние публикации</h2><ul class="desk-news-list">${latest.map(item => `<li>${newsCard(item)}</li>`).join('')}</ul>` :
       featured ? '' : `<p class="dash-empty">${data.status === 'updating' ? 'Проверяем новости по библиотеке…' :
+        data.status === 'partial' && !data.items.length ? 'Steam пока не загрузил новости для всей библиотеки.' :
         majorNewsOnly ? 'Крупных обновлений пока нет.' : 'Свежих публикаций пока нет.'}</p>`);
 }
 
