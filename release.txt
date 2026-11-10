@@ -1,0 +1,3 @@
+AFTERSAVE release 36
+Collections sorting: games, playtime, unlocked achievements (descending)
+Date: 2026-11-10
