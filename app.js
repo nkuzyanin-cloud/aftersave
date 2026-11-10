@@ -27,6 +27,9 @@ const dateFormat = new Intl.DateTimeFormat('ru', { day: 'numeric', month: 'long'
 const monthFormat = new Intl.DateTimeFormat('ru', { month:'long', year:'numeric' });
 const STEAM_AUTO_SYNC_MS = 5 * 60 * 1000;
 const STEAM_RECENT_PLAY_MS = 2 * 60 * 60 * 1000;
+const openedAt = Date.now();
+const completionMemory = new Map();
+const animatedCompletions = new Set();
 
 let state;
 let storageError = '';
@@ -202,15 +205,36 @@ function gameCard(game) {
   const status = completionFor(game,total);
   const recent = recentUnlocks(total);
   const canRestore = route.page === 'library' && libraryHidden && game.hidden;
+  const identity = `<div class="card-art">${cover(game)}</div>`;
+  const name = esc(displayName(game));
+  const results = `data-action="completion-results" data-id="${esc(game.id)}" aria-haspopup="dialog"`;
+  const notice = status === 'perfect' && route.page === 'library' && !canRestore && completionNotice(total);
+  if (notice?.pending) {
+    const key = completionKey(total) + ':' + notice.event;
+    const animate = !document.hidden && !animatedCompletions.has(key);
+    if (animate) animatedCompletions.add(key);
+    return `<article class="game-card desk-game perfect desk-celebration${animate ? ' desk-celebration-new' : ''}">
+      <div class="card-link desk-celebration-row" aria-hidden="true">
+        <div class="desk-identity">${identity}<strong>${name}</strong></div>
+        <span class="desk-celebration-message">${icon('trophy',21)} Все достижения получены</span>
+        <span class="desk-celebration-action">Посмотреть итоги ${icon('right',16)}</span>
+      </div>
+      <button type="button" class="desk-celebration-button" ${results} aria-label="${name}. Все достижения получены. Посмотреть итоги"></button>
+    </article>`;
+  }
+  const link = `href="${gameHref(game)}" aria-label="Открыть ${name}"`;
+  const perfect = status === 'perfect';
   return `<article class="game-card desk-game ${status}${canRestore ? ' desk-can-restore' : ''}">
-    <a href="#game/${encodeURIComponent(game.id)}" class="card-link" aria-label="Открыть ${esc(displayName(game))}">
-      <div class="desk-identity"><div class="card-art">${cover(game)}</div><div><h3>${esc(displayName(game))} ${completionBadge(status)}</h3>
+    ${perfect ? '<div class="card-link">' : `<a class="card-link" ${link}>`}
+      <div class="desk-identity">${identity}<div><h3>${perfect ?
+        `<a class="desk-game-stretched" ${link}>${name}</a> <button class="desk-results-link" type="button" ${results} aria-label="Идеально. Итоги игры ${name}" title="Посмотреть итоги">${completionBadge(status)}</button>` :
+        `${name} ${completionBadge(status)}`}</h3>
         ${game.steam ? '' : `<small>${esc(game.platform)}</small>`}</div></div>
       <div class="desk-progress">${achieved === null ? '—' : progressBar(achieved) + '<span>' + icon('trophy',13) + ' ' + total.unlocked + ' / ' + total.total + '</span>'}</div>
       <div class="desk-recent">${recent.length ? `<div>${recent.slice(0,5).map(item => trophyIcon(item)).join('')}${recent.length > 5 ? `<small>+${recent.length-5}</small>` : ''}</div>
         ${recent[0].time ? `<small title="Дата последнего достижения">${relativeDate(recent[0].time * 1000)}</small>` : ''}` : '—'}</div>
       <div class="desk-activity"><strong title="Общее игровое время">${icon('clock',14)} ${duration(game.steam?.minutes ?? Math.round(gameHours(game)*60))}</strong><small title="Последний запуск">${game.steam?.lastPlayed ? relativeDate(game.steam.lastPlayed*1000) : '—'}</small></div>
-    </a>
+    ${perfect ? '</div>' : '</a>'}
     ${canRestore ? iconButton('restore-game','Вернуть в библиотеку','eye',`data-id="${esc(game.id)}"`) : ''}
   </article>`;
 }
@@ -316,6 +340,31 @@ function completionFor(game, record = summaryFor(game)) {
 
 function completionBadge(status) {
   return status ? `<span class="desk-badge ${status}">${icon(status === 'perfect' ? 'trophy' : 'check',13)} ${status === 'perfect' ? 'Идеально' : 'Пройдено'}</span>` : '';
+}
+
+function completionKey(record) {
+  return `${STORAGE_KEY}:completion:${record.account}:${record.appid}`;
+}
+
+function completionNotice(record) {
+  const key = completionKey(record);
+  try { return JSON.parse(localStorage.getItem(key)) ?? completionMemory.get(key); }
+  catch { return completionMemory.get(key); }
+}
+
+function saveCompletionNotice(record, notice) {
+  const key = completionKey(record);
+  try { localStorage.setItem(key, JSON.stringify(notice)); }
+  catch { completionMemory.set(key,notice); }
+}
+
+function trackCompletion(record, previous) {
+  if (trophyFor(record) !== 'platinum' || trophyFor(previous) === 'platinum') return;
+  const last = recentUnlocks(record).find(item => item.time > 0);
+  const fresh = record.fetchedAt >= openedAt && last && last.time * 1000 >= Date.now() - 2 * 86400000;
+  if (previous ? record.unlocked <= previous.unlocked : !fresh) return;
+  const event = JSON.stringify([record.total,last?.id,last?.time]);
+  if (completionNotice(record)?.event !== event) saveCompletionNotice(record,{event,pending:true});
 }
 
 function trophyIcon(item) {
@@ -1003,10 +1052,56 @@ function renderResults(more = false) {
 
 function showDialog(title, eyebrow, content, className = '') {
   dialog.className = className;
-  dialog.innerHTML = `<div class="dialog-head"><div><div class="eyebrow"><i></i>${eyebrow}</div><h2 id="dialog-title">${title}</h2></div>${iconButton('close-dialog', 'Закрыть', 'x')}</div>${content}`;
+  dialog.innerHTML = `<div class="dialog-head"><div>${eyebrow ? `<div class="eyebrow"><i></i>${eyebrow}</div>` : ''}<h2 id="dialog-title">${title}</h2></div>${iconButton('close-dialog', 'Закрыть', 'x')}</div>${content}`;
   if (!dialog.open) dialog.showModal();
   dialog.scrollTop = 0;
   dialog.querySelector('[autofocus], input:not([type=hidden]), .dialog-body button, .dialog-head button')?.focus();
+}
+
+function openCompletionResults(control) {
+  const game = games().find(item => item.id === control.dataset.id);
+  if (!game) return;
+  const record = summaryFor(game);
+  if (trophyFor(record) !== 'platinum') return;
+  const unlocked = recentUnlocks(record);
+  const dated = unlocked.filter(item => item.time > 0);
+  const hasCompleteDates = dated.length === record.total;
+  const last = hasCompleteDates ? dated[0] : null;
+  const rarest = unlocked.filter(item => Number.isFinite(item.percent)).sort((a,b) => a.percent-b.percent)[0];
+  const milestones = [
+    ['Первое достижение', hasCompleteDates ? dated.at(-1) : null],
+    ['Самое редкое', rarest],
+    ['Последнее достижение', last]
+  ];
+  const finish = last ? last.time * 1000 : 0;
+  const windows = state.steam?.activity?.windows?.filter(row => row.appid === game.steam.appid && row.observedTo <= finish);
+  const local = state.steam?.localSessions?.filter(row => row.appid === game.steam.appid && row.startedAt < finish)
+    .map(row => ({...row,endedAt:Math.min(row.endedAt,finish)}));
+  const days = sessionsWithLocalHistory(windows,local,new Map([[game.steam.appid,game]]));
+  const minutes = Math.round(days.reduce((sum,day) => sum + day.minutes,0));
+  const hero = steamHero(game.steam.appid);
+  const notice = completionNotice(record);
+  if (notice?.pending) {
+    saveCompletionNotice(record,{...notice,pending:false});
+    renderResults(true);
+    [...app.querySelectorAll('.desk-results-link')].find(item => item.dataset.id === game.id)?.focus({preventScroll:true});
+  }
+  showDialog(esc(displayName(game,true)), '', `<div class="desk-completion-body">
+    <div class="desk-completion-art" aria-hidden="true">${hero ? `<img src="${esc(hero)}" alt="" referrerpolicy="no-referrer" data-steam-art="${game.steam.appid}" data-art-kind="hero">` : ''}</div>
+    <div class="desk-completion-score">${icon('trophy',28)} <strong>${record.unlocked} / ${record.total}</strong></div>
+    <p class="desk-completion-caption">Все достижения получены</p>
+    <ol class="desk-completion-timeline">${milestones.map(([label,item]) => `<li>
+      <small>${label}</small>
+      ${item ? `${trophyIcon(item)}<strong>${esc(item.name)}</strong>
+        ${item.time ? `<time>${steamDate(item.time)}</time>` : ''}
+        ${label === 'Самое редкое' ? `<small>${numeric(item.percent)}% игроков Steam</small>` : ''}` : '<span class="desk-muted">Нет данных Steam</span>'}
+    </li>`).join('')}</ol>
+    ${days.length ? `<footer class="desk-completion-metrics" aria-label="Учтённые сессии до последнего достижения">
+      <span>${icon('clock',16)} ${duration(minutes)} по сессиям до 100%</span>
+      <span>${icon('calendar',16)} Игровых дней по журналу: ${numeric(days.length)}</span>
+    </footer>` : ''}
+  </div>`,'desk-completion-dialog');
+  imageFallbacks(dialog);
 }
 
 function inputField(label, name, value, attrs = '', type = 'text') {
@@ -1135,6 +1230,7 @@ const actions = {
   },
   'boss-map-place': control => showBossMap(bossById.get(control.dataset.id), Number(control.dataset.place)),
   'more-games': () => { displayLimit += 24; renderResults(true); },
+  'completion-results': openCompletionResults,
   'steam-sync': () => steamSync(),
   'cloud-toggle': () => {
     if (!connected() || !state.steam) {
@@ -1542,6 +1638,7 @@ async function refreshSteamSummaries(repaint = true) {
   const account = state.steam?.account ?? null;
   const records = await achievementRecords(account);
   if (account !== (state.steam?.account ?? null)) return;
+  for (const record of records) trackCompletion(record, summaryAccount === account ? summaries.get(record.appid) : null);
   summaryAccount = account;
   summaries = new Map(records.map(record => [record.appid,record]));
   if (!repaint || dialog.open) return;
