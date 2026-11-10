@@ -40,6 +40,7 @@ let librarySearchOpen = false;
 let libraryHidden = false;
 let achievementQuery = '';
 let achievementSort = 'rare';
+let collectionSort = 'games';
 let revealHidden = true;
 let toastTimer;
 let route = getRoute();
@@ -965,16 +966,29 @@ function collectionsPage() {
     return `<a class="back-link" href="#collections">${icon('back', 17)} Все коллекции</a>
       <div class="desk-collection-detail">${header('', esc(collection.name), '', actions)}${gameResults(source)}</div>`;
   }
-  const list = collections();
-  return `<div class="desk-collections"><div>${header('ПОДБОРКИ', 'Коллекции игр', 'Собирай игры по сериям, жанрам или для следующего прохождения.', button('new-collection', 'Новая коллекция', 'plus', 'primary'))}</div>
-    <div class="desk-collection-list">${list.length ? list.map(item => {
-      const grouped = games().filter(game => game.collectionIds.includes(item.id));
-      const {minutes,unlocked,total} = collectionTotals(grouped);
-      return `<a href="#collections/${encodeURIComponent(item.id)}" class="desk-panel desk-collection">
-        <h2>${esc(item.name)}</h2><div class="desk-collection-covers">${grouped.slice(0,5).map(game => cover(game)).join('')}${grouped.length > 5 ? `<span>+${grouped.length-5}</span>` : ''}</div>
-        <footer><small class="desk-icon-text">${icon('game',15)}${grouped.length} игр</small><small class="desk-icon-text">${icon('clock',15)}${duration(minutes)}</small>
-          ${total ? `<small class="desk-icon-text">${icon('trophy',15)}${unlocked} / ${total}</small>${progressBar(unlocked/total*100)}` : ''}</footer></a>`;
-    }).join('') : '<p class="desk-panel desk-muted">Здесь появятся твои коллекции и их прогресс.</p>'}</div></div>`;
+  const list = collections().map(item => {
+    const grouped = games().filter(game => game.collectionIds.includes(item.id));
+    const totals = collectionTotals(grouped);
+    return { item, grouped, ...totals, games: grouped.length, time: totals.minutes, achievements: totals.unlocked };
+  }).sort((a, b) => b[collectionSort] - a[collectionSort] || a.item.name.localeCompare(b.item.name, 'ru'));
+  const sorts = [['games', 'Игры', 'game'], ['time', 'Время', 'clock'], ['achievements', 'Достижения', 'trophy']];
+  return `<div class="desk-collections">
+    <div>${header('ПОДБОРКИ', 'Коллекции игр', 'Собирай игры по сериям, жанрам или для следующего прохождения.', button('new-collection', 'Новая коллекция', 'plus', 'primary'))}</div>
+    <div class="desk-collection-results">
+      ${list.length ? `<div class="desk-collection-sort" role="group" aria-label="Сортировать коллекции по убыванию">
+        <span class="desk-collection-sort-heading">Сортировать по убыванию</span>
+        <div class="desk-collection-sort-controls">${sorts.map(([value, label, glyph]) =>
+          `<button type="button" class="desk-collection-sort-btn" data-action="collection-sort" data-value="${value}"
+            aria-pressed="${collectionSort === value}" title="Сортировать по: ${label.toLocaleLowerCase('ru')}">${icon(glyph, 15)}<span>${label}</span></button>`
+        ).join('')}</div></div>` : ''}
+      <div class="desk-collection-list">${list.length ? list.map(({item, grouped, minutes, unlocked, total}) =>
+        `<a href="#collections/${encodeURIComponent(item.id)}" class="desk-panel desk-collection">
+          <h2>${esc(item.name)}</h2><div class="desk-collection-covers">${grouped.slice(0,5).map(game => cover(game)).join('')}${grouped.length > 5 ? `<span>+${grouped.length-5}</span>` : ''}</div>
+          <footer><small class="desk-icon-text">${icon('game',15)}${grouped.length} игр</small><small class="desk-icon-text">${icon('clock',15)}${duration(minutes)}</small>
+            ${total ? `<small class="desk-icon-text">${icon('trophy',15)}${unlocked} / ${total}</small>${progressBar(unlocked/total*100)}` : ''}</footer></a>`
+      ).join('') : '<p class="desk-panel desk-muted">Здесь появятся твои коллекции и их прогресс.</p>'}</div>
+    </div>
+  </div>`;
 }
 
 
@@ -1287,6 +1301,13 @@ const actions = {
   'edit-run': control => openRun(control.dataset.id),
   'delete-run': control => deleteRun(control.dataset.id),
   'clear-filters': () => { clearFilters(); if (route.trophy) go('library'); else render(); },
+  'collection-sort': control => {
+    const value = control.dataset.value;
+    if (!['games', 'time', 'achievements'].includes(value) || collectionSort === value) return;
+    collectionSort = value;
+    render();
+    app.querySelector(`.desk-collection-sort-btn[data-value="${value}"]`)?.focus({ preventScroll: true });
+  },
   'new-collection': () => openCollectionForm(),
   'edit-collection': control => {
     const item = state.collections.find(item => item.id === control.dataset.id);
