@@ -1,6 +1,7 @@
 const DAY = 86400;
 const BATCH = 30;
 const MAX_ARTICLE_AGE = 30 * DAY;
+const RETRY_AFTER = 60 * 60;
 const NEWS_FEED = 'steam_community_announcements';
 const checkedDay = time => Math.floor(time / DAY) * DAY;
 const appid = value => Number.isInteger(value) && value > 0 && value <= 4294967295;
@@ -9,7 +10,8 @@ const clean = (value, max) => typeof value === 'string' ? value.trim().slice(0, 
 async function steamJSON(method, params) {
   const url = new URL(method, 'https://api.steampowered.com/');
   url.search = new URLSearchParams(params);
-  const response = await fetch(url, { redirect:'error', signal:AbortSignal.timeout(10000) });
+  // Workers supports manual redirects. Reject them via the HTTP status check below.
+  const response = await fetch(url.href, { redirect:'manual', signal:AbortSignal.timeout(10000) });
   if (!response.ok) throw new Error(`Steam HTTP ${response.status}`);
   return response.json();
 }
@@ -94,7 +96,11 @@ async function refresh(db, account, kind, checked, loadRoster, loadDetails) {
     ).bind(account,kind,JSON.stringify(removed))];
     await db.batch([saveRow(db,account,kind,0,checked,roster),...prune]);
   }
-  const pending = (roster?.ids ?? []).filter(id => (rows.get(id)?.checked ?? 0) < checkedDay(checked)).slice(0,BATCH);
+  const due = (roster?.ids ?? []).filter(id => {
+    const row = rows.get(id);
+    return !row || row.checked < checkedDay(checked) || (!row.payload && row.checked <= checked - RETRY_AFTER);
+  });
+  const pending = due.slice(0,BATCH);
   if (pending.length) await loadDetails(pending);
 }
 
@@ -119,7 +125,9 @@ export async function refreshSteamFeeds(db, account, library, now) {
       }
     })
   ]);
-  if (results.every(result => result.status === 'rejected')) throw results[0].reason;
+  for (const [index,result] of results.entries()) {
+    if (result.status === 'rejected') console.warn('Steam feed refresh failed', index === 0 ? 'wishlist' : 'news', result.reason?.name);
+  }
 }
 
 function articleWords(text) {
