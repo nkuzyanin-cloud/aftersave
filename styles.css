@@ -434,7 +434,7 @@ body{font-size:var(--type-body);line-height:1.45}
 }
 body{background:radial-gradient(ellipse at 50% -25%,#2c2e3b 0%,transparent 48%),var(--graphite)}
 .page-library,.page-collections,.page-game{--muted:#bac0cc;--dim:#aab0bc;--border:var(--graphite-line)}
-.page-library,.page-collections{max-width:1440px}
+.page-library,.page-collections{max-width:1200px}
 .library-section #game-results{margin-inline:0}
 .list-view{gap:0;border-top:1px solid var(--graphite-line)}
 .list-view .game-card,.list-view .game-card.cup-platinum{
@@ -627,7 +627,7 @@ dialog.boss-map-panel{width:min(970px,100vw - 24px);background:#1b1e23;border-co
 /* Desktop Steam library and activity */
 :root{
   --desk-bg:#111116;--desk-card:#18181f;--desk-border:#272730;--desk-text:#eeeeF4;--desk-muted:#a2a6b6;--desk-blue:#7482ff;--desk-platinum:#d6e6fa;
-  --desk-width:1320px;--desk-caption:.76rem;--desk-copy:.86rem;--desk-item:.94rem;--desk-heading-size:1rem;--desk-value:1.18rem
+  --desk-width:1200px;--desk-caption:.76rem;--desk-copy:.86rem;--desk-item:.94rem;--desk-heading-size:1rem;--desk-value:1.18rem
 }
 body{background:var(--desk-bg)}
 body:has(.desk-header){
@@ -653,7 +653,7 @@ dialog:not(.boss-map-panel),dialog:not(.boss-map-panel) .dialog-head,dialog:not(
   background:var(--desk-card);border-color:#343440
 }
 dialog .field input,dialog .field textarea,dialog .field select{background:#20212a;border-color:#393a49}
-.page.desk-workspace{width:min(1130px,100% - 50px);padding:28px 0 45px;margin:auto;color:var(--desk-text)}
+.page.desk-workspace{width:min(var(--desk-width),100% - 50px);padding:28px 0 45px;margin:auto;color:var(--desk-text)}
 .desk-overview{position:relative;display:flex;justify-content:space-between;align-items:center;gap:20px;padding:13px 46px 17px 0}
 .desk-overview .desk-settings{position:absolute;right:0;top:13px}
 .desk-brand{display:inline-flex;align-items:center;gap:8px;font-size:1.16rem;font-weight:800;letter-spacing:-.035em}
@@ -797,7 +797,7 @@ dialog.desk-heat-dialog{width:min(890px,100vw - 24px);background:var(--desk-card
 .desk-heat-dialog .dialog-head{background:var(--desk-card);border-color:var(--desk-border)}
 .desk-heat-dialog .desk-heat-chart{min-width:710px}
 /* Collections v2: showcase hero + compact cover shelves, cyan/platinum palette */
-.page.page-collections.desk-workspace{width:min(1450px,calc(100% - 48px));max-width:none}
+.page.page-collections.desk-workspace{width:min(var(--desk-width),calc(100% - 50px));max-width:none}
 .desk-collections{--collection-cyan:#70d9d8;display:flex;flex-direction:column;gap:16px;min-width:0}
 .desk-collections-head .section-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0 0 2px}
 .desk-collections-head .section-heading h1{font-size:clamp(1.65rem,2.6vw,2.25rem);letter-spacing:-.05em}
@@ -947,7 +947,7 @@ dialog.desk-collection-dialog{width:min(560px,calc(100vw - 24px))}
 .desk-rare b{margin-left:auto;white-space:nowrap;color:#bec5ff;font-size:var(--desk-caption);font-variant-numeric:tabular-nums}
 .desk-game-page{position:relative;isolation:isolate}
 .desk-hero-art{position:absolute;top:0;left:50%;z-index:-1;transform:translateX(-50%);width:min(100%,1680px);height:auto;max-height:480px;object-fit:contain;object-position:center top;opacity:.46;pointer-events:none;mask-image:radial-gradient(ellipse 77% 89% at 52% 0%,#000 31%,transparent 92%)}
-.desk-game-inner{width:min(1130px,100% - 50px);margin:auto}
+.desk-game-inner{width:min(var(--desk-width),100% - 50px);margin:auto}
 .desk-game-hero .desk-game-inner{padding-top:26px;padding-bottom:17px}
 .desk-game-crumb{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;color:var(--desk-muted)}
 .desk-game-crumb a{display:flex;align-items:center;gap:5px}
@@ -1272,7 +1272,7 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
 
 
 /* AFTERSAVE Statistics dashboard. Intentionally scoped: site header, tabs and other pages untouched. */
-.page.page-stats.desk-workspace{width:min(1480px,calc(100% - 52px));max-width:none}
+.page.page-stats.desk-workspace{width:min(var(--desk-width),calc(100% - 50px));max-width:none}
 .stats-dashboard{--stats-cyan:#77c6e6;--stats-platinum:#b9d0e2;--stats-muted:#a6b5c3;--stats-bg:#101722;--stats-line:#303d50;
  display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:13px;color:#e8f0f7}
 .stats-dashboard .stats-panel{position:relative;isolation:isolate;min-width:0;overflow:hidden;border:1px solid var(--stats-line);
