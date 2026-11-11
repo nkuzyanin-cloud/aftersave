@@ -41,6 +41,7 @@ let libraryHidden = false;
 let achievementQuery = '';
 let achievementSort = 'rare';
 let collectionSort = 'games';
+let statsTimeMode = 'months';
 let revealHidden = true;
 let toastTimer;
 let route = getRoute();
@@ -803,47 +804,128 @@ async function importSteamLog(file) {
   } catch (error) { notify(error.message || 'Не удалось прочитать журнал Steam.',true); }
 }
 
+function statsHourChart(events) {
+  const now = new Date();
+  const anchor = statsTimeMode === 'years' ? now.getUTCFullYear() : now.getUTCFullYear()*12+now.getUTCMonth();
+  const count = statsTimeMode === 'years' ? 7 : 12;
+  const first = anchor-count+1;
+  const amounts = new Map();
+  for (const event of events) {
+    if (!Number.isFinite(event.day) || !Number.isFinite(event.minutes) || event.minutes <= 0) continue;
+    const date = calendarDate(event.day);
+    const key = statsTimeMode === 'years' ? date.getUTCFullYear() :
+      date.getUTCFullYear()*12+date.getUTCMonth();
+    if (key >= first && key <= anchor) addDaily(amounts,key,event.minutes);
+  }
+  const points = Array.from({length:count},(_,i) => {
+    const key = first+i;
+    const label = statsTimeMode === 'years' ? String(key) :
+      new Intl.DateTimeFormat('ru',{month:'short',timeZone:'UTC'}).format(new Date(Date.UTC(Math.floor(key/12),key%12,1))).replace('.','');
+    return {key,label,minutes:amounts.get(key) ?? 0};
+  });
+  const max = Math.max(0,...points.map(point=>point.minutes));
+  if (!max) return '<div class="stats-time-chart-empty">Нет записанных сессий за выбранный период.</div>';
+  return '<div class="stats-time-chart" style="--stats-chart-columns:'+count+'" role="img" aria-label="Игровые часы по записанным сессиям">'+
+    points.map(point=>'<div class="stats-time-column" title="'+esc(point.label+': '+duration(Math.round(point.minutes)))+'">'+
+      '<strong>'+(point.minutes ? numeric(Math.round(point.minutes/60))+' ч' : '')+'</strong>'+
+      '<div class="stats-time-column-track"><i style="height:'+percent(point.minutes/max*100)+'%"></i></div>'+
+      '<small>'+esc(point.label)+'</small></div>').join('')+'</div>';
+}
+
 function statsPage() {
   const linked = games().filter(game => game.steam && !game.hidden);
-  const known = linked.map(game => summaryFor(game)).filter(record => record?.total);
-  const perfect = known.filter(record => trophyFor(record) === 'platinum').length;
-  const beaten = linked.filter(game => completionFor(game) === 'beaten').length;
-  const other = Math.max(0, linked.length-perfect-beaten);
+  const records = linked.map(game => summaryFor(game)).filter(record => record?.total);
   const totals = collectionTotals(linked);
+  const completed = linked.filter(game => completionFor(game) === 'perfect').length;
+  const beaten = linked.filter(game => completionFor(game) === 'beaten').length;
+  const other = Math.max(0,linked.length-completed-beaten);
+  const gameCount = Math.max(1,linked.length);
+  const unlocked = totals.unlocked, total = totals.total;
+  const completionRate = total ? unlocked/total*100 : 0;
+  const finished = completed+beaten;
+  const libraryRate = linked.length ? finished/linked.length*100 : 0;
   const earned = achievementEntries().filter(({item}) => item.unlocked);
-  const rare = earned.filter(({item}) => Number.isFinite(item.percent)).sort((a,b) => a.item.percent - b.item.percent).slice(0,5);
-  const months = new Map(), days = new Map();
-  for (const {item} of earned) if (item.time) {
-    const date = new Date(item.time*1000);
-    addDaily(months,date.getFullYear()*12+date.getMonth(),1);
-    addDaily(days,dayNumber(date),1);
-  }
-  const buckets = [0,0,0,0,0,0];
-  for (const record of known) {
-    const progress = achievementPercent(record);
-    buckets[progress === 0 ? 0 : progress === 100 ? 5 : Math.min(4,Math.ceil(progress/25))]++;
-  }
-  const maxBucket = Math.max(1,...buckets);
-  const bestDay = [...days].sort((a,b) => b[1]-a[1])[0];
-  const bestMonth = [...months].sort((a,b) => b[1]-a[1])[0];
-  return `<div id="desk-feed" class="desk-stat-grid">
-    <section class="desk-panel"><h2 class="desk-heading">${icon('library',19)}Обзор библиотеки</h2><small>Количество игр</small><strong class="desk-stat-value">${numeric(linked.length)}</strong>
-    <div class="desk-donut" style="--perfect:${perfect/Math.max(1,linked.length)*100}%;--beaten:${(perfect+beaten)/Math.max(1,linked.length)*100}%" role="img" aria-label="Распределение по прохождению"></div>
-    <div class="desk-legend"><span><i></i>${perfect} Идеально</span><span><i></i>${beaten} Пройдено</span><span><i></i>${other} Без отметки</span></div></section>
-    <section class="desk-panel"><h2 class="desk-heading">${icon('chart',19)}Прохождение игр</h2><small>Средний прогресс по играм с данными</small>
-    <strong class="desk-stat-value">${known.length ? numeric(known.reduce((n,r) => n+achievementPercent(r),0)/known.length)+'%' : '—'}</strong>
-    <div class="desk-bars">${buckets.map((n,i) => `<div><span>${n}</span><i style="--bar:${n/maxBucket*100}%"></i><small>${['0%','до 25%','25–50%','50–75%','75–99%','100%'][i]}</small></div>`).join('')}</div></section>
-    <section class="desk-panel"><h2 class="desk-heading">${icon('gem',19)}Самые редкие достижения</h2>${rare.length ? rare.map(({game,item}) => `<a class="desk-rare" href="${gameHref(game,'achievements')}">${trophyIcon(item)}
-    <span><strong>${esc(item.name)}</strong><small>${esc(displayName(game))}</small></span><b>${numeric(item.percent)}%</b></a>`).join('') : '<p class="desk-muted">Пока нет данных о редкости.</p>'}</section>
-    <section class="desk-panel desk-history"><h2 class="desk-heading">${icon('trend',19)}Общий прогресс достижений</h2><div class="desk-year-values">
-    ${[[numeric(totals.unlocked),'Получено','trophy'],[numeric(totals.total-totals.unlocked),'Заблокировано','lock'],
-      [bestDay ? numeric(bestDay[1]) : '—','Максимум за день','flame'],[bestMonth ? numeric(bestMonth[1]) : '—','Максимум за месяц','calendar']].map(([value,label,glyph]) =>
-      `<div><small>${label}</small><strong class="desk-metric" data-glyph="${glyph}">${icon(glyph,16)}${value}</strong></div>`).join('')}</div>
-    <small>Данные по ${known.length} из ${linked.length} игр</small>
-    ${achievementTimeline(months)}</section>
-    <section class="desk-panel"><h2 class="desk-heading">${icon('clock',19)}Больше всего времени</h2>${[...linked].sort((a,b)=>b.steam.minutes-a.steam.minutes).slice(0,5).map(game =>
-      `<a class="desk-rare" href="${gameHref(game)}">${cover(game)}<strong>${esc(displayName(game))}</strong><b>${duration(game.steam.minutes)}</b></a>`).join('')}</section>
-  </div>`;
+  const dated = earned.filter(({item}) => item.time > 0);
+  const days = achievementDays(dated);
+  const today = dayNumber(Date.now());
+  const earnedThisYear = [...days].reduce((sum,[day,value]) =>
+    sum+(day >= today-364 && day <= today ? value : 0),0);
+  const streak = streaks(days,today);
+  const rarityMeasured = earned.filter(({item}) => Number.isFinite(item.percent));
+  const rareCount = rarityMeasured.filter(({item}) => item.percent < 5).length;
+  const top = [...linked].sort((a,b)=>(b.steam?.minutes ?? 0)-(a.steam?.minutes ?? 0)).slice(0,5);
+  const topMax = top[0]?.steam?.minutes || 1;
+  const sessions = sessionContext().events;
+  const latest = statsTimeMode === 'years' ? 'По годам' : 'По месяцам';
+  return '<div id="desk-feed" class="stats-dashboard">'+
+    '<section class="stats-panel stats-panel-achievements">'+
+      '<h2 class="stats-heading">'+icon('trophy',23)+'Достижения</h2>'+
+      '<span class="stats-watermark" aria-hidden="true">'+icon('trophy',118)+'</span>'+
+      '<div class="stats-achievements-value"><strong>'+numeric(unlocked)+'</strong><span>/ '+numeric(total)+'</span></div>'+
+      '<div class="stats-achievements-progress">'+
+        '<div class="stats-track" role="progressbar" aria-label="Получено достижений" aria-valuemin="0" aria-valuemax="100" aria-valuenow="'+Math.round(completionRate)+'">'+
+          '<i style="width:'+percent(completionRate)+'%"></i></div>'+
+        '<strong>'+numeric(Math.round(completionRate*10)/10)+'%</strong>'+
+      '</div>'+
+      '<p class="stats-achievements-year">'+icon('trend',19)+'<strong>+'+numeric(earnedThisYear)+'</strong><span>за последние 365 дней</span></p>'+
+    '</section>'+
+    '<section class="stats-panel stats-panel-games">'+
+      '<h2 class="stats-heading">'+icon('game',23)+'Игры</h2>'+
+      '<span class="stats-watermark" aria-hidden="true">'+icon('game',112)+'</span>'+
+      '<div class="stats-games-content">'+
+        '<div class="stats-games-total"><strong>'+numeric(linked.length)+'</strong><span>игр</span></div>'+
+        '<div class="stats-games-split">'+
+          '<div><span class="stats-games-symbol">'+icon('trophy',20)+'</span><strong>'+numeric(completed)+'</strong><small>идеально</small></div>'+
+          '<div><span class="stats-games-symbol">'+icon('check',20)+'</span><strong>'+numeric(beaten)+'</strong><small>пройдено</small></div>'+
+          '<div><span class="stats-games-symbol">'+icon('circle',20)+'</span><strong>'+numeric(other)+'</strong><small>без отметки</small></div>'+
+        '</div></div>'+
+    '</section>'+
+    '<section class="stats-panel stats-panel-time">'+
+      '<div class="stats-panel-top"><h2 class="stats-heading">'+icon('clock',23)+'Игровое время</h2>'+
+        '<div class="stats-period-controls" role="group" aria-label="Период истории игровых сессий">'+
+          '<button type="button" data-action="stats-time-period" data-value="months" aria-pressed="'+(statsTimeMode==='months')+'">По месяцам</button>'+
+          '<button type="button" data-action="stats-time-period" data-value="years" aria-pressed="'+(statsTimeMode==='years')+'">По годам</button>'+
+        '</div></div>'+
+      '<div class="stats-total-hours"><strong>'+numeric(Math.floor(totals.minutes/60))+' ч</strong>'+
+        '<span>общее время Steam</span></div>'+
+      statsHourChart(sessions)+
+      '<p class="stats-chart-caption">График: только учтённые игровые сессии. История до начала отслеживания недоступна.</p>'+
+    '</section>'+
+    '<section class="stats-panel stats-panel-top-time">'+
+      '<h2 class="stats-heading">'+icon('trophy',23)+'Топ игр по времени</h2>'+
+      '<div class="stats-top-list">'+
+        (top.length ? top.map((game,index) => {
+          const minutes=game.steam?.minutes??0;
+          return '<a class="stats-top-game" href="'+gameHref(game)+'">'+
+            '<span class="stats-top-index">'+(index+1)+'.</span>'+cover(game)+
+            '<div class="stats-top-game-info"><div><strong>'+esc(displayName(game))+'</strong>'+
+              '<span>'+duration(minutes)+'</span></div>'+
+            '<div class="stats-top-track"><i style="width:'+percent(minutes/topMax*100)+'%"></i></div>'+
+            '</div></a>';
+        }).join('') : '<p class="stats-empty">Нет данных об игровом времени.</p>')+
+      '</div></section>'+
+    '<section class="stats-panel stats-panel-rare">'+
+      '<h2 class="stats-heading">'+icon('gem',23)+'Редкие достижения</h2>'+
+      '<span class="stats-bottom-watermark" aria-hidden="true">'+icon('gem',108)+'</span>'+
+      '<strong class="stats-bottom-value">'+(rarityMeasured.length ? numeric(rareCount) : '—')+'</strong>'+
+      '<p>Получено достижений с редкостью менее 5% игроков Steam.</p>'+
+      '<small>Данные о редкости: '+numeric(rarityMeasured.length)+' из '+numeric(earned.length)+' полученных</small>'+
+    '</section>'+
+    '<section class="stats-panel stats-panel-streak">'+
+      '<h2 class="stats-heading">'+icon('flame',23)+'Серия достижений</h2>'+
+      '<span class="stats-bottom-watermark" aria-hidden="true">'+icon('flame',112)+'</span>'+
+      '<strong class="stats-bottom-value">'+numeric(streak.current)+' <span>дн.</span></strong>'+
+      '<p>Текущая серия дней с полученными достижениями.</p>'+
+      '<div class="stats-record">'+icon('trophy',17)+'Рекорд за 365 дней: <strong>'+numeric(streak.best)+' дн.</strong></div>'+
+    '</section>'+
+    '<section class="stats-panel stats-panel-library">'+
+      '<h2 class="stats-heading">'+icon('layers',23)+'Прогресс библиотеки</h2>'+
+      '<div class="stats-library-inner"><div>'+
+        '<strong class="stats-bottom-value">'+numeric(Math.round(libraryRate*10)/10)+'%</strong>'+
+        '<p>Пройдено игр ('+numeric(finished)+' из '+numeric(linked.length)+')</p>'+
+      '</div><div class="stats-library-ring" role="img" aria-label="Пройдено '+numeric(Math.round(libraryRate*10)/10)+'% игр" style="--stats-library-pct:'+percent(libraryRate)+'%"></div></div>'+
+    '</section>'+
+  '</div>';
 }
 
 function achievementTimeline(months) {
@@ -1298,6 +1380,13 @@ const actions = {
     menu.open = false;
     menu.querySelector('summary').focus({preventScroll:true});
     updateAchievementRows();
+  },
+  'stats-time-period': control => {
+    const mode = control.dataset.value;
+    if (!['months','years'].includes(mode) || mode === statsTimeMode) return;
+    statsTimeMode = mode;
+    refreshDeskFeed();
+    app.querySelector('[data-action="stats-time-period"][aria-pressed="true"]')?.focus({preventScroll:true});
   },
   'desk-feed-more': () => { feedLimit += 24; refreshDeskFeed(); },
   'desk-locked': () => { lockedFeed = !lockedFeed; feedLimit = 24; refreshDeskFeed(); },
