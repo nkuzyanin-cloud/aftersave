@@ -240,9 +240,9 @@ function gameCard(game) {
         `<a class="desk-game-stretched" ${link}>${name}</a> <button class="desk-results-link" type="button" ${results} aria-label="Идеально. Итоги игры ${name}" title="Посмотреть итоги">${completionBadge(status)}</button>` :
         `${name} ${completionBadge(status)}`}</h3>
         ${game.steam ? '' : `<small>${esc(game.platform)}</small>`}</div></div>
-      <div class="desk-progress">${achieved === null ? '—' : progressBar(achieved) + '<span>' + icon('trophy',13) + ' ' + total.unlocked + ' / ' + total.total + '</span>'}</div>
+      <div class="desk-progress">${achieved === null ? '<span>Нет достижений</span>' : progressBar(achieved) + '<span>' + icon('trophy',13) + ' ' + total.unlocked + ' / ' + total.total + '</span>'}</div>
       <div class="desk-recent">${recent.length ? `<div>${recent.slice(0,5).map(item => trophyIcon(item)).join('')}${recent.length > 5 ? `<small>+${recent.length-5}</small>` : ''}</div>
-        ${recent[0].time ? `<small title="Дата последнего достижения">${relativeDate(recent[0].time * 1000)}</small>` : ''}` : '—'}</div>
+        ${recent[0].time ? `<small title="Дата последнего достижения">${relativeDate(recent[0].time * 1000)}</small>` : ''}` : (total?.total ? '—' : '')}</div>
       <div class="desk-activity"><strong title="Общее игровое время">${icon('clock',14)} ${duration(game.steam?.minutes ?? Math.round(gameHours(game)*60))}</strong><small title="Последний запуск">${game.steam?.lastPlayed ? relativeDate(game.steam.lastPlayed*1000) : '—'}</small></div>
     ${perfect ? '</div>' : '</a>'}
     ${canRestore ? iconButton('restore-game','Вернуть в библиотеку','eye',`data-id="${esc(game.id)}"`) : ''}
@@ -1940,7 +1940,7 @@ function gameDashboard() {
             </div>
           </div>
           <dl class="desk-game-metrics">
-            <div><dt class="desk-icon-text">${icon('trophy',15)}Достижения</dt><dd id="game-achievement-count">${summary?.total ? summary.unlocked+' / '+summary.total : '—'}</dd></div>
+            <div><dt class="desk-icon-text">${icon('trophy',15)}Достижения</dt><dd id="game-achievement-count">${summary?.total ? summary.unlocked+' / '+summary.total : 'Нет достижений'}</dd></div>
             <div><dt class="desk-icon-text">${icon('clock',15)}Время игры</dt><dd>${duration(game.steam?.minutes ?? Math.round(game.hours*60))}</dd></div>
             <div><dt class="desk-icon-text">${icon('calendar',15)}Последний запуск</dt><dd>${steamDate(game.steam?.lastPlayed)}</dd></div>
           </dl>
@@ -2261,7 +2261,8 @@ async function showAchievements(force = false) {
     }
     await refreshSteamSummaries(false);
   } catch (error) {
-    if (view === achievementView) drawAchievements(box, cached, error.message);
+    if (view === achievementView) drawAchievements(box, cached,
+      /\(404\)/.test(error.message) ? 'Нет достижений' : error.message);
   }
 }
 
@@ -2274,7 +2275,7 @@ function drawAchievements(box, record, message = '', loading = false) {
   }
   const count = document.querySelector('#game-achievement-count');
   if (count && record) {
-    count.textContent = record.total ? record.unlocked + ' / ' + record.total : '—';
+    count.textContent = record.total ? record.unlocked + ' / ' + record.total : 'Нет достижений';
     const badge = document.querySelector('#game-trophy');
     if (badge) {
       const game = findByRoute(games());
@@ -2285,7 +2286,7 @@ function drawAchievements(box, record, message = '', loading = false) {
   const menuOpen = box.querySelector('.desk-achievement-menu')?.open;
   const focusedField = box.contains(document.activeElement) ? document.activeElement.id : '';
   box.innerHTML = (message ? `<p class="dash-empty" role="status">${esc(message)}</p>` : '') +
-    (!record?.total && !message ? `<p class="dash-empty">${record ? 'Steam сообщает, что у игры нет достижений.' : 'Данные пока недоступны.'}</p>` : '') +
+    (!record?.total && !message ? `<p class="dash-empty">${record ? 'Нет достижений' : 'Данные пока недоступны.'}</p>` : '') +
     (record?.total ? `<div class="desk-achievement-tools">
       <label class="searchbox">${icon('search',17)}<input type="search" id="achievement-query" aria-label="Поиск по достижениям" placeholder="Поиск" value="${esc(achievementQuery)}"></label>
       <div class="desk-achievement-controls">
