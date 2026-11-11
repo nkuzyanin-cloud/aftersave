@@ -886,7 +886,7 @@ function statsPage() {
           '<button type="button" data-action="stats-time-period" data-value="months" aria-pressed="'+(statsTimeMode==='months')+'">По месяцам</button>'+
           '<button type="button" data-action="stats-time-period" data-value="years" aria-pressed="'+(statsTimeMode==='years')+'">По годам</button>'+
         '</div></div>'+
-      '<div class="stats-total-hours"><strong>'+numeric(Math.floor(totals.minutes/60))+' ч</strong>'+
+      '<div class="stats-total-hours"><strong>'+numeric(Math.round(totals.minutes/60))+' ч</strong>'+
         '<span>общее время Steam</span></div>'+
       statsHourChart(sessions)+
       '<p class="stats-chart-caption">График: только учтённые игровые сессии. История до начала отслеживания недоступна.</p>'+
