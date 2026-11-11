@@ -877,7 +877,7 @@ function statsPage() {
         '<div class="stats-games-split">'+
           '<div><span class="stats-games-symbol">'+icon('trophy',20)+'</span><strong>'+numeric(completed)+'</strong><small>идеально</small></div>'+
           '<div><span class="stats-games-symbol">'+icon('check',20)+'</span><strong>'+numeric(beaten)+'</strong><small>пройдено</small></div>'+
-          '<div><span class="stats-games-symbol">'+icon('circle',20)+'</span><strong>'+numeric(other)+'</strong><small>без отметки</small></div>'+
+          '<div><span class="stats-games-symbol stats-unmarked-symbol" aria-hidden="true"></span><strong>'+numeric(other)+'</strong><small>без отметки</small></div>'+
         '</div></div>'+
     '</section>'+
     '<section class="stats-panel stats-panel-time">'+

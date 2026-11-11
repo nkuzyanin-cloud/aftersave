@@ -1306,6 +1306,7 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
 .stats-dashboard .stats-games-split strong{font-size:1.55rem;line-height:1.1;font-variant-numeric:tabular-nums}
 .stats-dashboard .stats-games-split small{grid-column:1/-1;color:#b6c5ce;font-size:.86rem;white-space:nowrap}
 .stats-dashboard .stats-games-symbol{display:flex;color:#8adbec}
+.stats-dashboard .stats-unmarked-symbol::before{content:'';display:block;width:16px;height:16px;border:2px solid #86c7d4;border-radius:50%}
 .stats-dashboard .stats-panel-top{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .stats-dashboard .stats-panel-top .stats-heading{margin-bottom:10px}
 .stats-dashboard .stats-period-controls{display:flex;gap:4px;padding:4px;border:1px solid #354858;border-radius:999px;background:#202c3a;white-space:nowrap}
