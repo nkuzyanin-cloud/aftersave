@@ -721,15 +721,10 @@ function achievementLockedOrder(entries) {
 }
 
 function achievementMomentLabel(time) {
-  const when = new Date(time*1000);
-  const now = new Date();
-  const today = new Date(now.getFullYear(),now.getMonth(),now.getDate());
-  const yesterday = new Date(now.getFullYear(),now.getMonth(),now.getDate()-1);
-  const day = new Date(when.getFullYear(),when.getMonth(),when.getDate());
-  const hour = new Intl.DateTimeFormat('ru',{hour:'2-digit',minute:'2-digit'}).format(when);
-  if (+day === +today) return 'Сегодня, ' + hour;
-  if (+day === +yesterday) return 'Вчера, ' + hour;
-  return fullMoment.format(time*1000);
+  const date = new Date(time*1000);
+  return [String(date.getDate()).padStart(2,'0'),
+    String(date.getMonth()+1).padStart(2,'0'),
+    date.getFullYear()].join('.');
 }
 
 function achievementEarnedContent(earned, totalUnlocked) {
@@ -739,10 +734,8 @@ function achievementEarnedContent(earned, totalUnlocked) {
   const remaining=selected.slice(5);
   const since=Date.now()-7*24*60*60*1000;
   const lastWeek=earned.filter(({item})=>item.time*1000 >= since && item.time*1000 <= Date.now()).length;
-  const gameArt=recent[0]?.game?.steam?.appid ? steamHeader(recent[0].game.steam.appid) : '';
   return '<section class="ach-feature ach-earned-feature" aria-label="Недавние полученные достижения">' +
     '<div class="ach-earned-intro">' +
-      (gameArt ? '<div class="ach-earned-art" aria-hidden="true" style="background-image:url(&quot;' + esc(gameArt) + '&quot;)"></div>' : '') +
       '<div class="ach-intro-copy"><h1>Недавние достижения</h1>' +
         '<p>Последние разблокированные достижения<br>из ваших игр</p></div>' +
       '<div class="ach-hero-metrics">' +

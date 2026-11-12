@@ -1670,3 +1670,123 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
   .achievements-v3 .ach-earned-items .ach-item-rarity small{font-size:.6rem}
   .achievements-v3 .ach-earned-items .ach-item-open{grid-column:4;grid-row:1}
 }
+
+
+/* Approved achievements hero background and locked grid alignment, v5.
+   Only the earned-achievements view is changed. The background asset is generic. */
+.achievements-v3 .ach-earned-feature{
+  min-height:284px;
+  background-image:
+    linear-gradient(90deg,rgba(0,19,24,.69) 0%,rgba(1,28,35,.49) 38%,rgba(1,21,27,.75) 68%,rgba(2,19,25,.87) 100%),
+    url('./assets/achievements-hero.webp');
+  background-position:center center;
+  background-size:cover;
+  background-repeat:no-repeat;
+}
+.achievements-v3 .ach-earned-intro{
+  background:linear-gradient(90deg,rgba(0,17,22,.24),transparent 90%);
+  padding:27px 28px;
+}
+.achievements-v3 .ach-intro-copy h1{font-size:clamp(1.68rem,2.5vw,2.15rem);line-height:1.2}
+.achievements-v3 .ach-intro-copy p{font-size:.97rem;line-height:1.5}
+.achievements-v3 .ach-hero-metric strong{font-size:clamp(1.6rem,2.1vw,1.9rem)}
+.achievements-v3 .ach-hero-metric small{font-size:.82rem}
+.achievements-v3 .ach-feature-list{padding:8px 20px 8px 10px}
+.achievements-v3 .ach-feature-row{
+  grid-template-columns:49px minmax(0,1fr) 114px 114px;
+  gap:10px;
+  min-height:54px;
+  padding:7px 0;
+}
+.achievements-v3 .ach-feature-row .desk-trophy-icon{width:47px;height:47px}
+.achievements-v3 .ach-feature-info strong{font-size:.96rem}
+.achievements-v3 .ach-feature-info small{font-size:.82rem}
+.achievements-v3 .ach-feature-date{
+  display:block;
+  width:100%;
+  text-align:right;
+  font-size:.82rem;
+  font-variant-numeric:tabular-nums;
+}
+.achievements-v3 .ach-feature-rarity{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  width:100%;
+  min-width:0;
+  padding-left:13px;
+  border-left:1px solid #3b727a;
+  text-align:left;
+  font-size:.85rem;
+}
+.achievements-v3 .ach-feature-rarity>span{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:2px;
+  line-height:1.13;
+}
+.achievements-v3 .ach-feature-rarity small{font-size:.67rem}
+.achievements-v3 .ach-earned-items .ach-item{
+  grid-template-columns:49px minmax(0,1fr) 110px 135px 18px;
+  min-height:61px;
+  gap:12px;
+  padding:8px 15px;
+}
+.achievements-v3 .ach-earned-items .ach-item>.desk-trophy-icon{width:47px;height:47px}
+.achievements-v3 .ach-earned-items .ach-item-info strong{font-size:.97rem}
+.achievements-v3 .ach-earned-items .ach-item-game{font-size:.82rem}
+.achievements-v3 .ach-earned-items .ach-item-rarity{
+  width:110px;
+  justify-content:flex-start;
+  align-items:center;
+  font-size:.91rem;
+  font-variant-numeric:tabular-nums;
+}
+.achievements-v3 .ach-earned-items .ach-item-rarity>span{
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  line-height:1.15;
+}
+.achievements-v3 .ach-earned-items .ach-item-rarity small{font-size:.69rem}
+.achievements-v3 .ach-earned-items .ach-item-date{
+  display:flex;
+  width:100%;
+  justify-content:flex-start;
+  padding-left:16px;
+  border-left:1px solid #3b727a;
+  font-size:.85rem;
+  white-space:nowrap;
+  font-variant-numeric:tabular-nums;
+}
+@media(max-width:1080px){
+  .achievements-v3 .ach-feature-row{grid-template-columns:43px minmax(0,1fr) 93px 92px;gap:8px}
+  .achievements-v3 .ach-feature-row .desk-trophy-icon{width:41px;height:41px}
+  .achievements-v3 .ach-feature-date{font-size:.76rem}
+  .achievements-v3 .ach-feature-rarity{font-size:.78rem;padding-left:9px}
+  .achievements-v3 .ach-feature-rarity small{font-size:.58rem}
+  .achievements-v3 .ach-earned-items .ach-item{grid-template-columns:44px minmax(0,1fr) 92px 115px 17px;gap:9px}
+  .achievements-v3 .ach-earned-items .ach-item>.desk-trophy-icon{width:43px;height:43px}
+  .achievements-v3 .ach-earned-items .ach-item-rarity{width:92px}
+  .achievements-v3 .ach-earned-items .ach-item-date{font-size:.79rem;padding-left:9px}
+}
+@media(max-width:850px){
+  .achievements-v3 .ach-earned-feature{min-height:0}
+  .achievements-v3 .ach-earned-intro{min-height:205px;padding:22px}
+  .achievements-v3 .ach-feature-row{grid-template-columns:43px minmax(0,1fr) 90px 92px}
+  .achievements-v3 .ach-earned-items .ach-item{grid-template-columns:44px minmax(0,1fr) 95px 17px}
+  .achievements-v3 .ach-earned-items .ach-item-date{display:none}
+  .achievements-v3 .ach-earned-items .ach-item-rarity{width:auto}
+}
+@media(max-width:540px){
+  .achievements-v3 .ach-feature-row{grid-template-columns:40px minmax(0,1fr) 77px;gap:7px}
+  .achievements-v3 .ach-feature-date{display:none}
+  .achievements-v3 .ach-feature-rarity{padding-left:7px}
+  .achievements-v3 .ach-feature-rarity small{font-size:.57rem}
+  .achievements-v3 .ach-earned-items .ach-item{grid-template-columns:38px minmax(0,1fr) 65px 15px;gap:7px;padding:8px}
+  .achievements-v3 .ach-earned-items .ach-item-rarity{grid-column:3;grid-row:1;align-self:center}
+  .achievements-v3 .ach-earned-items .ach-item-open{grid-column:4;grid-row:1}
+  .achievements-v3 .ach-earned-items .ach-item-info strong{font-size:.81rem}
+  .achievements-v3 .ach-earned-items .ach-item-game{font-size:.73rem}
+}

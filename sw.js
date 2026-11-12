@@ -1,5 +1,5 @@
 // Bump this version whenever a file in the precache changes.
-const CACHE_VERSION = 47;
+const CACHE_VERSION = 48;
 const scope = new URL(self.registration.scope);
 const cachePrefix = `aftersave::${scope.href}::v`;
 const cacheName = `${cachePrefix}${CACHE_VERSION}`;
@@ -14,7 +14,7 @@ const coverIds = [
 const precache = new Set([
   './index.html', './styles.css', './app.js', './data.js', './icons.js', './steam.js', './cloud.js', './activity-view.js', './elden-ring.js', './elden-ring-art.js', './manifest.webmanifest',
   './assets/icon.svg', './assets/icon-192.png', './assets/icon-512.png',
-  './assets/profile-header.webp',
+  './assets/profile-header.webp', './assets/achievements-hero.webp',
   './assets/apple-touch-icon.png', './assets/elden-ring-hero.jpg', './assets/witcher-3-achievements.json', './assets/elden-ring-achievements.json',
   './assets/fonts/manrope-latin.woff2', './assets/fonts/manrope-cyrillic.woff2',
   ...coverIds.map(id => `./assets/covers/${id}.jpg`),
