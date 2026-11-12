@@ -60,6 +60,7 @@ let summaries = new Map();
 let summaryAccount = null;
 let feedLimit = 24;
 let lockedFeed = false;
+let lockedAchievementOrder = 'common';
 let achievementYear = '';
 let scanningAchievements = false;
 let stopAchievementScan = false;
@@ -661,31 +662,170 @@ function achievementDays(entries) {
   return days;
 }
 
+function achievementRarityLabel(item) {
+  return Number.isFinite(item.percent) ?
+    icon('trophy',14) + '<span>' + numeric(Math.round(item.percent*10)/10) + '% <small>игроков Steam</small></span>' :
+    '<span>Редкость неизвестна</span>';
+}
+
+function achievementItemRow(entry, locked = false) {
+  const {game,item} = entry;
+  return '<article class="ach-item">' +
+    trophyIcon(item) +
+    '<div class="ach-item-info"><strong>' + esc(item.name) + '</strong>' +
+      (item.description || item.hidden ? '<p>' + esc(item.description || 'Условие скрыто в Steam') + '</p>' : '') +
+      '<a class="ach-item-game" href="' + gameHref(game,'achievements') + '">' + icon('steam',13) + esc(displayName(game)) + '</a>' +
+    '</div>' +
+    '<span class="ach-item-rarity">' + achievementRarityLabel(item) + '</span>' +
+    '<div class="ach-item-date">' + (locked ? icon('lock',14) + '<span>Не получено</span>' :
+      icon('calendar',14) + '<time datetime="' + new Date(item.time*1000).toISOString() + '">' +
+      esc(fullMoment.format(item.time*1000)) + '</time>') + '</div>' +
+    '<a class="ach-item-open" href="' + gameHref(game,'achievements') + '" aria-label="Открыть достижения игры ' +
+      esc(displayName(game)) + '">' + icon('right',16) + '</a>' +
+  '</article>';
+}
+
+function achievementFeatureRow(entry) {
+  const {game,item} = entry;
+  return '<div class="ach-feature-row">' +
+    trophyIcon(item) +
+    '<div class="ach-feature-info"><strong>' + esc(item.name) + '</strong>' +
+      '<small>' + esc(displayName(game)) + '</small></div>' +
+    '<span class="ach-feature-date">' + esc(fullMoment.format(item.time*1000)) + '</span>' +
+    '<span class="ach-feature-rarity">' + achievementRarityLabel(item) + '</span>' +
+  '</div>';
+}
+
+function achievementIncompleteGames() {
+  return games().filter(game => !game.hidden && game.steam).map(game => {
+    const record = summaryFor(game);
+    if (!record?.total || !Array.isArray(record.items)) return null;
+    const remaining = record.items.filter(item => !item.unlocked);
+    if (!remaining.length) return null;
+    return {game,record,remaining,missing:remaining.length,
+      ratio:record.unlocked/record.total*100,hours:gameHours(game)};
+  }).filter(Boolean);
+}
+
+function achievementLockedOrder(entries) {
+  const direction = lockedAchievementOrder === 'rare' ? 1 : -1;
+  return [...entries].sort((a,b) => {
+    const aRate=Number.isFinite(a.item.percent) ? a.item.percent : null;
+    const bRate=Number.isFinite(b.item.percent) ? b.item.percent : null;
+    if (aRate === null && bRate !== null) return 1;
+    if (bRate === null && aRate !== null) return -1;
+    return direction * ((aRate ?? 0)-(bRate ?? 0)) ||
+      displayName(a.game).localeCompare(displayName(b.game),'ru') ||
+      a.item.name.localeCompare(b.item.name,'ru');
+  });
+}
+
+function achievementEarnedContent(earned) {
+  const selected = achievementYear ? earned.filter(({item}) =>
+    String(new Date(item.time*1000).getFullYear()) === achievementYear) : earned;
+  const recent=selected.slice(0,5);
+  const remaining=selected.slice(5);
+  const today=dayNumber(Date.now());
+  const series=streaks(achievementDays(earned),today).current;
+  return '<section class="ach-feature ach-earned-feature" aria-label="Недавние полученные достижения">' +
+    '<div class="ach-earned-intro">' +
+      '<div><span class="ach-kicker">' + icon('trophy',17) + 'История достижений</span>' +
+        '<h1>Последние достижения</h1><p>Последние разблокированные достижения из твоих игр.</p></div>' +
+      '<div class="ach-streak">' + icon('flame',25) + '<div><small>Текущая серия</small><strong>' +
+        numeric(series) + ' дн.</strong></div></div>' +
+    '</div>' +
+    '<div class="ach-feature-list">' +
+      (recent.length ? recent.map(achievementFeatureRow).join('') :
+      '<p class="ach-feature-empty">В выбранном году нет полученных достижений с известной датой.</p>') +
+    '</div></section>' +
+    '<div class="ach-list-header"><h2>Полученные достижения</h2>' +
+      '<span>' + numeric(remaining.length) + ' после последних пяти</span></div>' +
+    '<div class="ach-items">' +
+      (remaining.length ? remaining.slice(0,feedLimit).map(entry=>achievementItemRow(entry)).join('') :
+      '<p class="ach-empty">' + (recent.length ? 'Других достижений за выбранный период нет.' :
+      'Попробуй выбрать другой год или обновить достижения Steam.') + '</p>') +
+    '</div>' + feedMore(remaining.length);
+}
+
+function achievementLockedContent(locked) {
+  const available=achievementIncompleteGames();
+  const near=available.filter(entry => entry.ratio >= 80 && entry.missing <= 20);
+  const candidates=near.length ? near : available;
+  const featured=[...candidates].sort((a,b)=>b.hours-a.hours||b.ratio-a.ratio||a.missing-b.missing)[0];
+  const other=[...available].filter(entry => entry !== featured)
+    .sort((a,b)=>a.missing-b.missing||b.ratio-a.ratio||b.hours-a.hours).slice(0,5);
+  const all=achievementLockedOrder(locked);
+  const feature=featured ? '<section class="ach-feature ach-locked-feature" aria-label="Игра с незавершёнными достижениями">' +
+    '<div class="ach-locked-spotlight"><a class="ach-feature-cover" href="' + gameHref(featured.game,'achievements') +
+      '">' + cover(featured.game) + '</a><div class="ach-locked-info">' +
+      '<span class="ach-kicker">' + icon('lock',17) + (near.length ? 'Среди близких к завершению' : 'Самая наигранная незавершённая') + '</span>' +
+      '<h1><a href="' + gameHref(featured.game,'achievements') + '">' + esc(displayName(featured.game)) + '</a></h1>' +
+      '<div class="ach-locked-count">' + icon('trophy',17) + '<strong>' + numeric(featured.record.unlocked) +
+      ' / ' + numeric(featured.record.total) + '</strong> достижений <b>' +
+      numeric(Math.round(featured.ratio)) + '%</b></div>' +
+      '<div class="ach-progress-track" role="progressbar" aria-label="Прогресс достижений игры" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' +
+        percent(featured.ratio) + '"><i style="width:' + percent(featured.ratio) + '%"></i></div>' +
+      '<p>' + icon('clock',15) + duration(Math.round(featured.hours*60)) + ' в игре</p>' +
+      '<p>' + icon('lock',15) + 'Осталось ' + numeric(featured.missing) + ' ' +
+        (featured.missing===1 ? 'достижение' : featured.missing>=2 && featured.missing<=4 ? 'достижения' : 'достижений') + '</p>' +
+    '</div></div>' +
+    '<div class="ach-locked-missing"><h2>' + icon('lock',18) + 'Недостающие достижения (' + numeric(featured.missing) + ')</h2>' +
+      '<div class="ach-missing-scroll" tabindex="0" aria-label="Список недостающих достижений главной игры">' +
+        featured.remaining.map(item => '<div class="ach-missing-row">' + trophyIcon(item) +
+          '<div><strong>' + esc(item.name) + '</strong><p>' +
+          esc(item.description || (item.hidden ? 'Условие скрыто в Steam' : 'Описание недоступно')) +
+          '</p></div><span>' + achievementRarityLabel(item) + '</span></div>').join('') +
+      '</div></div></section>' :
+    '<section class="ach-feature ach-feature-empty"><h1>Пока нет незавершённых игр</h1>' +
+      '<p>Загрузи достижения Steam, чтобы увидеть оставшиеся цели.</p></section>';
+  return feature +
+    '<div class="ach-locked-columns">' +
+      '<section class="ach-near-games"><header class="ach-column-heading"><h2>' + icon('trophy',19) +
+        'Близкие к завершению</h2><p>Другие игры с небольшим остатком достижений.</p></header>' +
+        (other.length ? other.map(({game,record,missing,ratio}) =>
+          '<a class="ach-near-game" href="' + gameHref(game,'achievements') + '">' +
+            cover(game) + '<div><strong>' + esc(displayName(game)) + '</strong>' +
+            '<small>' + numeric(record.unlocked) + ' / ' + numeric(record.total) +
+            ' · Осталось ' + numeric(missing) + '</small>' +
+            '<div class="ach-progress-track" aria-hidden="true"><i style="width:' + percent(ratio) +
+            '%"></i></div></div>' + icon('right',16) + '</a>'
+        ).join('') : '<p class="ach-empty">Других незавершённых игр с загруженными достижениями нет.</p>') +
+      '</section>' +
+      '<section class="ach-locked-all"><header class="ach-column-heading ach-locked-list-head"><h2>' +
+        icon('lock',19) + 'Заблокированные достижения</h2>' +
+        '<label>Сортировка <select id="ach-locked-order" aria-label="Сортировка заблокированных достижений">' +
+          option('common','Сначала распространённые',lockedAchievementOrder) +
+          option('rare','Сначала редкие',lockedAchievementOrder) +
+        '</select></label></header>' +
+        '<div class="ach-items">' +
+          (all.length ? all.slice(0,feedLimit).map(entry=>achievementItemRow(entry,true)).join('') :
+          '<p class="ach-empty">Нет заблокированных достижений в загруженных данных.</p>') +
+        '</div>' + feedMore(all.length) +
+      '</section>' +
+    '</div>';
+}
+
 function achievementsPage() {
-  const entries = achievementEntries();
-  const earned = entries.filter(({item}) => item.unlocked && item.time).sort((a,b) => b.item.time - a.item.time);
-  const locked = entries.filter(({item}) => !item.unlocked);
-  const years = [...new Set(earned.map(({item}) => new Date(item.time*1000).getFullYear()))];
-  const visible = lockedFeed ? locked : achievementYear ? earned.filter(({item}) => String(new Date(item.time*1000).getFullYear()) === achievementYear) : earned;
-  const days = achievementDays(earned), today = dayNumber(Date.now());
-  const year = [...days].reduce((total,[day,n]) => total + (day >= today-364 && day <= today ? n : 0),0);
-  return `<div id="desk-feed" class="desk-split"><div>
-    <div class="desk-feed-head"><h1 class="desk-heading">${icon(lockedFeed ? 'lock' : 'trophy',20)}${lockedFeed ? 'Заблокированные достижения' : 'Последние достижения'}</h1><div class="desk-feed-actions">
-      ${lockedFeed ? button('desk-locked','К полученным','back','quiet') : years.length ? `<select id="desk-unlock-year" aria-label="Год получения">
-      ${option('','Все годы',achievementYear)}${years.map(year => option(year,year,achievementYear)).join('')}</select>` : ''}
-    </div></div>
-    ${visible.length ? visible.slice(0,feedLimit).map(({game,item}) => `<article class="desk-panel desk-unlock">
-      <div>${trophyIcon(item)}<div><strong>${esc(item.name)}</strong>
-      ${item.description || item.hidden ? `<p>${esc(item.description || 'Steam не предоставил условие')}</p>` : ''}
-      ${Number.isFinite(item.percent) ? `<small class="desk-icon-text">${icon('user',14)}${numeric(item.percent)}% игроков Steam</small>` : ''}</div></div>
-      <footer><a href="${gameHref(game,'achievements')}">${icon('steam',14)} ${esc(displayName(game))}</a>
-      ${item.time ? `<time class="desk-icon-text">${icon('calendar',14)}${fullMoment.format(item.time*1000)}</time>` : ''}</footer></article>`).join('') :
-      `<p class="desk-panel desk-muted">${lockedFeed ? 'Нет заблокированных достижений в загруженных данных.' : 'Пока нет загруженных достижений с датой. Обнови достижения Steam в настройках.'}</p>`}
-    ${feedMore(visible.length)}
-  </div><aside>${streakPanel(days,today,-Infinity,numeric(year))}
-    ${lockedFeed ? '' : `<section class="desk-panel"><h2 class="desk-heading">${icon('checklist',18)}Что дальше</h2>
-    ${button('desk-locked','Заблокированные · ' + numeric(locked.length),'lock','quiet')}</section>`}
-  </aside></div>`;
+  const entries=achievementEntries();
+  const earned=entries.filter(({item})=>item.unlocked && item.time && Number.isFinite(item.time))
+    .sort((a,b)=>b.item.time-a.item.time);
+  const locked=entries.filter(({item})=>!item.unlocked);
+  const years=[...new Set(earned.map(({item})=>new Date(item.time*1000).getFullYear()))]
+    .sort((a,b)=>b-a);
+  return '<div id="desk-feed" class="achievements-v3">' +
+    '<div class="ach-toolbar"><div class="ach-tabs" role="group" aria-label="Тип достижений">' +
+      '<button type="button" data-action="desk-locked" data-value="earned" class="ach-tab' +
+        (!lockedFeed ? ' is-active' : '') + '" aria-pressed="' + (!lockedFeed) + '">' +
+        icon('trophy',16) + 'Полученные</button>' +
+      '<button type="button" data-action="desk-locked" data-value="locked" class="ach-tab' +
+        (lockedFeed ? ' is-active' : '') + '" aria-pressed="' + lockedFeed + '">' +
+        icon('lock',16) + 'Заблокированные</button></div>' +
+    (!lockedFeed && years.length ? '<label class="ach-select-label">Год получения <select id="desk-unlock-year" aria-label="Год получения">' +
+      option('','Все годы',achievementYear) +
+      years.map(year=>option(year,year,achievementYear)).join('') + '</select></label>' : '') +
+    '</div>' +
+    (lockedFeed ? achievementLockedContent(locked) : achievementEarnedContent(earned)) +
+  '</div>';
 }
 
 
@@ -1389,7 +1529,14 @@ const actions = {
     app.querySelector('[data-action="stats-time-period"][aria-pressed="true"]')?.focus({preventScroll:true});
   },
   'desk-feed-more': () => { feedLimit += 24; refreshDeskFeed(); },
-  'desk-locked': () => { lockedFeed = !lockedFeed; feedLimit = 24; refreshDeskFeed(); },
+  'desk-locked': control => {
+    const next = control.dataset.value === 'locked';
+    if (lockedFeed === next) return;
+    lockedFeed = next;
+    feedLimit = 24;
+    refreshDeskFeed();
+    app.querySelector('.ach-tab.is-active')?.focus({preventScroll:true});
+  },
   'desk-heat-year': openHeatYear,
   'desk-game-sessions': control => openGameSessions(findByRoute(games()),control),
   'desk-game-sessions-more': control => openGameSessions(findByRoute(games()),null,Number(control.dataset.limit)),
@@ -1567,6 +1714,13 @@ app.addEventListener('change', async event => {
     feedLimit = 24;
     refreshDeskFeed();
     app.querySelector('#desk-unlock-year')?.focus({preventScroll:true});
+  }
+  if (field.id === 'ach-locked-order') {
+    if (!['common','rare'].includes(field.value)) return;
+    lockedAchievementOrder = field.value;
+    feedLimit = 24;
+    refreshDeskFeed();
+    app.querySelector('#ach-locked-order')?.focus({preventScroll:true});
   }
   if (field.id === 'achievement-state') {
     achievementFilter = field.value;
