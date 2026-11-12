@@ -391,7 +391,8 @@ function gameHref(game, tab = '') {
 function deskAccount() {
   const profile = steamProfile;
   if (!profile || profile.account !== state.steam?.account) {
-    return `<a id="desk-account" class="desk-brand" href="#library">${icon('ribbon',25)} AFTERSAVE</a>`;
+    return `<div id="desk-account" class="desk-account"><a class="desk-brand" href="#library">${icon('ribbon',25)} AFTERSAVE</a>
+   <a class="desk-persona-settings" href="#settings" aria-label="Настройки" title="Настройки">${icon('gear',17)}</a></div>`;
   }
   const { name, avatar, account, createdAt, level, xp, levelStart, remaining } = profile;
   const gained = xp !== null && levelStart !== null && xp >= levelStart ? xp-levelStart : null;
@@ -403,7 +404,8 @@ function deskAccount() {
       ${icon('steam',30)}${avatar ? `<img src="${esc(avatar)}" alt="" referrerpolicy="no-referrer">` : ''}
     </span>
     <div class="desk-account-info">
-      <a class="desk-persona" href="https://steamcommunity.com/profiles/${account}/" target="_blank" rel="noopener noreferrer">${esc(name)} ${icon('steam',16)}</a>
+      <div class="desk-persona"><a class="desk-persona-link" href="https://steamcommunity.com/profiles/${account}/" target="_blank" rel="noopener noreferrer">${esc(name)} ${icon('steam',16)}</a>
+      <a class="desk-persona-settings" href="#settings" aria-label="Настройки" title="Настройки">${icon('gear',17)}</a></div>
       ${level !== null || xp !== null || remaining !== null ? `<div class="desk-steam-rank">
         ${level !== null ? `<span class="desk-steam-level" aria-label="Уровень Steam ${level}" title="Уровень Steam">${level}</span>` : ''}
         ${xp !== null || remaining !== null ? `<div class="desk-xp"><div class="desk-xp-label">
@@ -438,9 +440,7 @@ async function refreshSteamProfile() {
 function deskHeader() {
   const inLibrary = route.page === 'library';
   return `<header class="desk-header">
-    <div class="desk-overview">${deskAccount()}${librarySummary()}
-      <a class="desk-settings icon-btn" href="#settings" aria-label="Настройки" title="Настройки">${icon('gear',17)}</a>
-    </div>
+    <div class="desk-overview">${deskAccount()}</div>
     <div class="desk-nav-row"><nav class="desk-tabs" aria-label="Разделы библиотеки">${deskTabs.map(([page,glyph]) =>
       `<a href="#${page}" aria-label="${labels[page]}" ${route.page === page ? 'aria-current="page"' : ''}>${icon(glyph,16)}<span>${labels[page]}</span></a>`).join('')}
     </nav>${inLibrary ? libraryTools() : ''}</div>
@@ -673,13 +673,13 @@ function achievementItemRow(entry, locked = false) {
   return '<article class="ach-item">' +
     trophyIcon(item) +
     '<div class="ach-item-info"><strong>' + esc(item.name) + '</strong>' +
-      (item.description || item.hidden ? '<p>' + esc(item.description || 'Условие скрыто в Steam') + '</p>' : '') +
+      (locked && (item.description || item.hidden) ? '<p>' + esc(item.description || 'Условие скрыто в Steam') + '</p>' : '') +
       '<a class="ach-item-game" href="' + gameHref(game,'achievements') + '">' + icon('steam',13) + esc(displayName(game)) + '</a>' +
     '</div>' +
     '<span class="ach-item-rarity">' + achievementRarityLabel(item) + '</span>' +
     '<div class="ach-item-date">' + (locked ? icon('lock',14) + '<span>Не получено</span>' :
-      icon('calendar',14) + '<time datetime="' + new Date(item.time*1000).toISOString() + '">' +
-      esc(fullMoment.format(item.time*1000)) + '</time>') + '</div>' +
+      '<time datetime="' + new Date(item.time*1000).toISOString() + '">' +
+      esc(achievementMomentLabel(item.time)) + '</time>') + '</div>' +
     '<a class="ach-item-open" href="' + gameHref(game,'achievements') + '" aria-label="Открыть достижения игры ' +
       esc(displayName(game)) + '">' + icon('right',16) + '</a>' +
   '</article>';
@@ -691,7 +691,7 @@ function achievementFeatureRow(entry) {
     trophyIcon(item) +
     '<div class="ach-feature-info"><strong>' + esc(item.name) + '</strong>' +
       '<small>' + esc(displayName(game)) + '</small></div>' +
-    '<span class="ach-feature-date">' + esc(fullMoment.format(item.time*1000)) + '</span>' +
+    '<span class="ach-feature-date">' + esc(achievementMomentLabel(item.time)) + '</span>' +
     '<span class="ach-feature-rarity">' + achievementRarityLabel(item) + '</span>' +
   '</div>';
 }
@@ -720,27 +720,43 @@ function achievementLockedOrder(entries) {
   });
 }
 
-function achievementEarnedContent(earned) {
+function achievementMomentLabel(time) {
+  const when = new Date(time*1000);
+  const now = new Date();
+  const today = new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  const yesterday = new Date(now.getFullYear(),now.getMonth(),now.getDate()-1);
+  const day = new Date(when.getFullYear(),when.getMonth(),when.getDate());
+  const hour = new Intl.DateTimeFormat('ru',{hour:'2-digit',minute:'2-digit'}).format(when);
+  if (+day === +today) return 'Сегодня, ' + hour;
+  if (+day === +yesterday) return 'Вчера, ' + hour;
+  return fullMoment.format(time*1000);
+}
+
+function achievementEarnedContent(earned, totalUnlocked) {
   const selected = achievementYear ? earned.filter(({item}) =>
     String(new Date(item.time*1000).getFullYear()) === achievementYear) : earned;
   const recent=selected.slice(0,5);
   const remaining=selected.slice(5);
-  const today=dayNumber(Date.now());
-  const series=streaks(achievementDays(earned),today).current;
+  const since=Date.now()-7*24*60*60*1000;
+  const lastWeek=earned.filter(({item})=>item.time*1000 >= since && item.time*1000 <= Date.now()).length;
+  const gameArt=recent[0]?.game?.steam?.appid ? steamHeader(recent[0].game.steam.appid) : '';
   return '<section class="ach-feature ach-earned-feature" aria-label="Недавние полученные достижения">' +
     '<div class="ach-earned-intro">' +
-      '<div><span class="ach-kicker">' + icon('trophy',17) + 'История достижений</span>' +
-        '<h1>Последние достижения</h1><p>Последние разблокированные достижения из твоих игр.</p></div>' +
-      '<div class="ach-streak">' + icon('flame',25) + '<div><small>Текущая серия</small><strong>' +
-        numeric(series) + ' дн.</strong></div></div>' +
+      (gameArt ? '<div class="ach-earned-art" aria-hidden="true" style="background-image:url(&quot;' + esc(gameArt) + '&quot;)"></div>' : '') +
+      '<div class="ach-intro-copy"><h1>Недавние достижения</h1>' +
+        '<p>Последние разблокированные достижения<br>из ваших игр</p></div>' +
+      '<div class="ach-hero-metrics">' +
+        '<div class="ach-hero-metric ach-hero-total">' + icon('trophy',34) +
+          '<div><strong>' + numeric(totalUnlocked) + '</strong><small>всего достижений</small></div></div>' +
+        '<div class="ach-hero-metric ach-hero-week"><div><strong>+' + numeric(lastWeek) +
+          '</strong><small>за последние 7 дней</small></div></div>' +
+      '</div>' +
     '</div>' +
     '<div class="ach-feature-list">' +
       (recent.length ? recent.map(achievementFeatureRow).join('') :
       '<p class="ach-feature-empty">В выбранном году нет полученных достижений с известной датой.</p>') +
     '</div></section>' +
-    '<div class="ach-list-header"><h2>Полученные достижения</h2>' +
-      '<span>' + numeric(remaining.length) + ' после последних пяти</span></div>' +
-    '<div class="ach-items">' +
+    '<div class="ach-items ach-earned-items">' +
       (remaining.length ? remaining.slice(0,feedLimit).map(entry=>achievementItemRow(entry)).join('') :
       '<p class="ach-empty">' + (recent.length ? 'Других достижений за выбранный период нет.' :
       'Попробуй выбрать другой год или обновить достижения Steam.') + '</p>') +
@@ -820,11 +836,11 @@ function achievementsPage() {
       '<button type="button" data-action="desk-locked" data-value="locked" class="ach-tab' +
         (lockedFeed ? ' is-active' : '') + '" aria-pressed="' + lockedFeed + '">' +
         icon('lock',16) + 'Заблокированные</button></div>' +
-    (!lockedFeed && years.length ? '<label class="ach-select-label">Год получения <select id="desk-unlock-year" aria-label="Год получения">' +
+    (!lockedFeed && years.length ? '<label class="ach-select-label"><select id="desk-unlock-year" aria-label="Год получения">' +
       option('','Все годы',achievementYear) +
       years.map(year=>option(year,year,achievementYear)).join('') + '</select></label>' : '') +
     '</div>' +
-    (lockedFeed ? achievementLockedContent(locked) : achievementEarnedContent(earned)) +
+    (lockedFeed ? achievementLockedContent(locked) : achievementEarnedContent(earned, entries.filter(({item})=>item.unlocked).length)) +
   '</div>';
 }
 
