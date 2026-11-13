@@ -1913,9 +1913,15 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
 .desk-game-achievement-view .desk-game-title>small{font-size:.92rem;margin-top:7px}
 .desk-game-achievement-view .desk-game-links{margin-top:14px}
 .desk-game-achievement-view .desk-game-metrics{
-  grid-column:2;grid-row:1;margin-top:95px;
+  grid-column:2;grid-row:2;margin-top:0;
   justify-content:flex-start;gap:12px;
-  align-self:end;z-index:2;
+  align-self:start;z-index:2;
+}
+.desk-game-achievement-view .desk-game-heading .game-poster{
+  grid-column:1;grid-row:1 / 3;align-self:start;
+}
+.desk-game-achievement-view .desk-game-title{
+  grid-column:2;grid-row:1;align-self:start;
 }
 .desk-game-achievement-view .desk-game-metrics>div{
   display:grid;gap:5px;padding-right:15px;
@@ -2035,7 +2041,9 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
   .desk-game-achievement-view .desk-game-title h1{font-size:1.26rem}
   .desk-game-achievement-view .desk-game-title>small{font-size:.78rem}
   .desk-game-achievement-view .desk-game-links{margin-top:7px}
-  .desk-game-achievement-view .desk-game-metrics{grid-column:1/-1;grid-row:auto;margin-top:2px;gap:11px}
+  .desk-game-achievement-view .desk-game-metrics{grid-column:1/-1;grid-row:3;margin-top:2px;gap:11px}
+  .desk-game-achievement-view .desk-game-heading .game-poster{grid-column:1;grid-row:1/3}
+  .desk-game-achievement-view .desk-game-title{grid-column:2;grid-row:1/3}
   .desk-game-achievement-view .desk-game-metrics dt{font-size:.68rem}
   .desk-game-achievement-view .desk-game-metrics dd{font-size:.77rem}
   .desk-game-achievement-view .af-game-ach-progress{padding:12px 14px}
