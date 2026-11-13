@@ -256,6 +256,7 @@ function normalizeGame(value, fallbackId, fallbackTimestamp) {
     startedAt,
     finishedAt,
     hours: number(game.hours, 'Часы', 0, 100000, 0),
+    playthroughCount: number(game.playthroughCount, 'Количество прохождений', 0, Number.MAX_SAFE_INTEGER, 0, true),
     notes: text(game.notes, 'Заметки', 5000),
     tags: strings(game.tags, 'Теги', 20, 40),
     collectionIds: strings(game.collectionIds, 'Коллекции игры', 500, 96)

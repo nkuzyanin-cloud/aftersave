@@ -942,6 +942,24 @@ dialog.desk-collection-dialog{width:min(560px,calc(100vw - 24px))}
 .desk-game-metrics dt{color:var(--desk-muted);font-size:.69rem}
 .desk-game-metrics dd{margin:3px 0 0;color:var(--desk-text);font-size:.87rem;font-weight:800}
 .desk-game-body{padding-top:12px}
+.desk-playthrough{
+  display:inline-flex;align-items:center;gap:7px;width:fit-content;max-width:100%;
+  margin-top:12px;padding:3px 8px;border:1px solid #45596f8c;border-radius:8px;
+  background:#19283866;color:#c5d4e3;font-size:.76rem;cursor:text;
+  transition:border-color .18s,background .18s;
+}
+.desk-playthrough:hover,.desk-playthrough:focus-within{border-color:#7cb4d7;background:#20364a}
+.desk-playthrough svg{color:#92bfdb;flex:none;pointer-events:none}
+.desk-playthrough input{
+  box-sizing:content-box;appearance:textfield;field-sizing:content;min-width:2ch;max-width:16ch;
+  padding:3px 4px;border:0;border-bottom:1px solid #7595ac8c;border-radius:0;
+  background:transparent;color:#f1f8ff;font:inherit;font-weight:750;font-variant-numeric:tabular-nums;
+  text-align:center;box-shadow:none;
+}
+.desk-playthrough input:focus-visible{outline:none;border-bottom-color:#a4d4f0}
+.desk-playthrough input::-webkit-inner-spin-button,.desk-playthrough input::-webkit-outer-spin-button{
+  -webkit-appearance:none;margin:0;
+}
 .desk-store-heading{display:flex;align-items:baseline;justify-content:space-between;gap:8px 16px;flex-wrap:wrap;margin:0 0 14px}
 .desk-store-heading h1{font-size:clamp(1.25rem,2vw,1.8rem);margin:0}
 .desk-store-heading span{font-size:var(--desk-caption);color:var(--desk-muted)}
@@ -1404,13 +1422,13 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
 .achievements-v3 .ach-empty{margin:0;padding:22px;color:#b3c5cc;font-size:.84rem;border:1px dashed #31525b;border-radius:10px}
 .achievements-v3 .load-more{margin:0 0 8px}
 .achievements-v3 .load-more .btn{border-color:#31525b;background:#17303a;color:#ddf9fc}
-.achievements-v3 .ach-locked-feature{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);min-height:244px}
+.achievements-v3 .ach-locked-feature{display:grid;grid-template-columns:minmax(0,46%) minmax(0,54%);min-height:264px}
 .achievements-v3 .ach-locked-spotlight{display:flex;align-items:center;gap:18px;padding:22px;min-width:0}
-.achievements-v3 .ach-feature-cover{display:block;width:clamp(100px,12vw,146px);flex:none}
+.achievements-v3 .ach-feature-cover{display:block;width:clamp(100px,12vw,154px);flex:none}
 .achievements-v3 .ach-feature-cover .cover{width:100%;aspect-ratio:2/3;border-radius:9px;overflow:hidden}
 .achievements-v3 .ach-feature-cover .cover img{object-fit:cover}
 .achievements-v3 .ach-locked-info{min-width:0;flex:1}
-.achievements-v3 .ach-locked-info h1{margin-top:9px;font-size:clamp(1.3rem,2vw,1.75rem)}
+.achievements-v3 .ach-locked-info h1{margin:0;font-size:clamp(1.3rem,2vw,1.75rem)}
 .achievements-v3 .ach-locked-info h1 a{color:#fff;text-decoration:none;overflow-wrap:anywhere}
 .achievements-v3 .ach-locked-count{display:flex;align-items:center;gap:7px;color:#b6d3da;font-size:.78rem;margin:12px 0}
 .achievements-v3 .ach-locked-count svg{color:#7ddbe2;flex:none}
@@ -1419,23 +1437,30 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
 .achievements-v3 .ach-progress-track>i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#42a6bb,#79dfe0)}
 .achievements-v3 .ach-locked-info p{display:flex;align-items:center;gap:8px;margin-top:11px}
 .achievements-v3 .ach-locked-info p svg{color:#75cbd5;flex:none}
-.achievements-v3 .ach-locked-missing{min-width:0;padding:18px 20px;border-left:1px solid #2b5660}
+.achievements-v3 .ach-locked-missing{min-width:0;padding:17px 20px;border-left:1px solid var(--dashboard-border)}
 .achievements-v3 .ach-locked-missing h2{display:flex;gap:8px;align-items:center;margin:0 0 10px;font-size:.98rem}
 .achievements-v3 .ach-locked-missing h2 svg{color:#8de0e4;flex:none}
-.achievements-v3 .ach-missing-scroll{max-height:270px;overflow:auto;scrollbar-width:thin;scrollbar-color:#376774 #12232b}
-.achievements-v3 .ach-missing-row{display:grid;grid-template-columns:48px minmax(0,1fr) auto;gap:11px;align-items:center;
-  border-bottom:1px solid #2b4a52;padding:8px 2px}
+.achievements-v3 .ach-missing-list{display:grid;min-width:0}
+.achievements-v3 .ach-missing-row{display:grid;grid-template-columns:46px minmax(0,1fr) minmax(44px,auto);gap:11px;align-items:center;
+  border-bottom:1px solid #344254;padding:7px 0}
 .achievements-v3 .ach-missing-row:last-child{border-bottom:0}
-.achievements-v3 .ach-missing-row>.desk-trophy-icon{width:46px;height:46px;border-radius:5px}
-.achievements-v3 .ach-missing-row strong{font-size:.79rem}
-.achievements-v3 .ach-missing-row p{font-size:.71rem;margin-top:3px;overflow-wrap:anywhere}
-.achievements-v3 .ach-missing-row>span:last-child{color:#9ed3dd;font-size:.71rem;white-space:nowrap}
+.achievements-v3 .ach-missing-row>.desk-trophy-icon{width:44px;height:44px;border-radius:7px}
+.achievements-v3 .ach-missing-row strong{font-size:.86rem;line-height:1.28;overflow-wrap:anywhere}
+.achievements-v3 .ach-missing-row p{font-size:.76rem;line-height:1.35;margin:3px 0 0;overflow-wrap:anywhere}
+.achievements-v3 .ach-missing-rarity{
+  display:flex;justify-content:flex-end;align-items:center;gap:5px;
+  color:#b9def2;font-size:.82rem;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums
+}
+.achievements-v3 .ach-missing-rarity svg{color:var(--dashboard-accent)}
+.achievements-v3 .ach-missing-more{
+  display:inline-flex;align-items:center;gap:5px;margin-top:9px;color:#b9def2;font-size:.79rem
+}
+.achievements-v3 .ach-missing-more:hover{text-decoration:underline}
 .achievements-v3 .ach-locked-columns{display:grid;grid-template-columns:minmax(260px,.85fr) minmax(0,1.65fr);gap:16px;align-items:start}
 .achievements-v3 .ach-near-games,.achievements-v3 .ach-locked-all{min-width:0}
-.achievements-v3 .ach-column-heading{display:grid;gap:5px;align-items:center;margin:0 0 11px}
+.achievements-v3 .ach-column-heading{display:grid;gap:5px;align-items:center;min-height:36px;margin:0 0 10px}
 .achievements-v3 .ach-column-heading h2{display:flex;align-items:center;gap:8px}
 .achievements-v3 .ach-column-heading h2 svg{color:#88d7e0;flex:none}
-.achievements-v3 .ach-column-heading p{margin:0;color:#96b1bd;font-size:.76rem}
 .achievements-v3 .ach-near-game{display:flex;align-items:center;gap:11px;min-height:72px;margin-bottom:9px;padding:8px 10px;border:1px solid #30525c;
   background:#102b33;border-radius:10px;text-decoration:none;color:#e6f8f9}
 .achievements-v3 .ach-near-game:hover{border-color:#5ba8b3;background:#173742}
@@ -1448,13 +1473,7 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
 .achievements-v3 .ach-near-game>svg:last-child{flex:none;color:#82cad4}
 .achievements-v3 .ach-locked-list-head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .achievements-v3 .ach-locked-list-head label{font-size:.73rem;color:#b0c5cf;display:flex;align-items:center;gap:7px}
-.achievements-v3 .ach-locked-list-head select{font-size:.72rem;max-width:185px}
-.achievements-v3 .ach-locked-all .ach-item{grid-template-columns:41px minmax(0,1fr) 66px 18px;gap:9px;padding:8px 10px}
-.achievements-v3 .ach-locked-all .ach-item>.desk-trophy-icon{width:39px;height:39px}
-.achievements-v3 .ach-locked-all .ach-item-date{display:none}
-.achievements-v3 .ach-locked-all .ach-item-info strong{font-size:.78rem}
-.achievements-v3 .ach-locked-all .ach-item-info p{font-size:.7rem}
-.achievements-v3 .ach-locked-all .ach-item-rarity{font-size:.7rem}
+.achievements-v3 .ach-locked-list-head select{font-size:.78rem;min-width:124px}
 @media(max-width:1080px){
   .achievements-v3 .ach-feature-row{grid-template-columns:36px minmax(0,1fr) 78px}
   .achievements-v3 .ach-feature-date{display:none}
@@ -1467,7 +1486,7 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
   .achievements-v3 .ach-feature-row{grid-template-columns:38px minmax(0,1fr) auto}
   .achievements-v3 .ach-feature-date{display:block}
   .achievements-v3 .ach-feature-rarity{display:none}
-  .achievements-v3 .ach-locked-missing{border-left:0;border-top:1px solid #2b5660}
+  .achievements-v3 .ach-locked-missing{border-left:0;border-top:1px solid var(--dashboard-border)}
   .achievements-v3 .ach-locked-columns{grid-template-columns:1fr}
   .achievements-v3 .ach-item{grid-template-columns:42px minmax(0,1fr) auto 18px;gap:8px}
   .achievements-v3 .ach-item>.desk-trophy-icon{width:41px;height:41px}
@@ -1497,7 +1516,6 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
   .achievements-v3 .ach-missing-row>.desk-trophy-icon{width:37px;height:37px}
   .achievements-v3 .ach-missing-row strong{font-size:.72rem}
   .achievements-v3 .ach-missing-row p{font-size:.67rem}
-  .achievements-v3 .ach-locked-all .ach-item{grid-template-columns:36px minmax(0,1fr) 58px 14px}
 }
 @media(prefers-reduced-motion:reduce){.achievements-v3 .ach-item{transition:none}}
 
@@ -1516,10 +1534,11 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
 .page.page-achievements.desk-workspace{width:min(var(--desk-width),calc(100% - 50px));max-width:none}
 .achievements-v3{gap:13px;--ach-border:#32636c;--ach-cyan:#78dce3;--ach-muted:#a9c3c9}
 .achievements-v3 .ach-toolbar{margin-bottom:1px}
-.achievements-v3 .ach-tabs{gap:0}
-.achievements-v3 .ach-tab{min-height:40px;border-radius:0;padding:8px 17px;font-size:.83rem;background:#0e1e28}
-.achievements-v3 .ach-tab:first-child{border-radius:9px 0 0 9px}
-.achievements-v3 .ach-tab:last-child{border-radius:0 9px 9px 0;margin-left:-1px}
+.achievements-v3 .ach-tabs{gap:9px}
+.achievements-v3 .ach-tab{
+  min-height:40px;border-radius:10px;padding:8px 17px;font-size:.83rem;background:#0e1e28;
+  transition:background .18s,border-color .18s,color .18s
+}
 .achievements-v3 .ach-tab.is-active{position:relative;z-index:1;border-color:#5ecbd2;background:linear-gradient(180deg,#125c64,#15363e);box-shadow:inset 0 1px #b1f9f931,0 0 13px #57ced114}
 .achievements-v3 .ach-select-label select{min-height:38px;padding:6px 13px;background:#11252f;border-color:#345e66;font-size:.8rem}
 .achievements-v3 .ach-feature{border-radius:11px}
@@ -1681,28 +1700,29 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
   background:#1a2839;
   border-color:#587995;
 }
-.achievements-v3 .ach-earned-items{
-  --earned-columns:48px minmax(0,1fr) minmax(88px,14%) minmax(92px,12%) 18px;
+.achievements-v3 .ach-earned-items{--history-columns:48px minmax(0,1fr) minmax(88px,14%) minmax(92px,12%) 18px}
+.achievements-v3 .ach-locked-items{--history-columns:48px minmax(0,1fr) minmax(73px,13%) 18px}
+.achievements-v3 .ach-history-table{
   gap:0;
   border:1px solid var(--ach-border);
   border-radius:11px;
   background:var(--dashboard-surface);
 }
-.achievements-v3 .ach-earned-columns,.achievements-v3 .ach-earned-items .ach-item{
+.achievements-v3 .ach-history-columns,.achievements-v3 .ach-history-table .ach-item{
   display:grid;
-  grid-template-columns:var(--earned-columns);
+  grid-template-columns:var(--history-columns);
   align-items:center;
   gap:12px;
   padding-inline:19px;
 }
-.achievements-v3 .ach-earned-columns{
+.achievements-v3 .ach-history-columns{
   padding-block:11px;
   color:#b8c9d4;
   font-size:.83rem;
   border-bottom:1px solid #7196a34d;
 }
-.achievements-v3 .ach-earned-columns>span:first-child{grid-column:span 2}
-.achievements-v3 .ach-earned-items .ach-item{
+.achievements-v3 .ach-history-columns>span:first-child{grid-column:span 2}
+.achievements-v3 .ach-history-table .ach-item{
   min-height:61px;
   margin-inline:8px;
   padding:7px 11px;
@@ -1711,17 +1731,34 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
   border-radius:0;
   background:transparent;
 }
-.achievements-v3 .ach-earned-items .ach-item:last-child{border-bottom-color:transparent}
-.achievements-v3 .ach-earned-items .ach-item:is(:hover,:focus-within){
+.achievements-v3 .ach-history-table .ach-item:last-child{border-bottom-color:transparent}
+.achievements-v3 .ach-history-table .ach-item:is(:hover,:focus-within){
   background:#243951a6;
   border-radius:7px;
 }
-.achievements-v3 .ach-earned-items .ach-item>.desk-trophy-icon{width:46px;height:46px}
-.achievements-v3 .ach-earned-items .ach-item-info strong{font-size:.94rem}
-.achievements-v3 .ach-earned-items .ach-item-game{font-size:.81rem;color:#b2c4d0}
-.achievements-v3 .ach-earned-items .ach-item-rarity{
+.achievements-v3 .ach-history-table .ach-item>.desk-trophy-icon{width:46px;height:46px}
+.achievements-v3 .ach-history-table .ach-item-info strong{font-size:.94rem}
+.achievements-v3 .ach-history-table .ach-item-game{font-size:.81rem;color:#b2c4d0}
+.achievements-v3 .ach-history-table .ach-item-rarity{
   font-size:.86rem;
   font-variant-numeric:tabular-nums;
+}
+.achievements-v3 .ach-locked-items .ach-item{
+  min-height:72px;
+  padding-block:8px;
+}
+.achievements-v3 .ach-locked-items .ach-item-info p{
+  margin:3px 0;
+  white-space:normal;
+  overflow-wrap:anywhere;
+}
+.achievements-v3 :is(.ach-locked-items,.ach-missing-list) .desk-trophy-icon{
+  border:1px solid #475363;
+  background:#283141;
+  color:#b1bed0;
+}
+.achievements-v3 :is(.ach-locked-items,.ach-missing-list) .desk-trophy-icon img{
+  filter:grayscale(.75) brightness(1.27);
 }
 .achievements-v3 .ach-earned-items .ach-item-date{
   display:flex;
@@ -1759,8 +1796,14 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
   .achievements-v3 .ach-feature-date{grid-area:2/3;align-self:start;text-align:right;font-size:.67rem}
   .achievements-v3 .ach-feature-info strong,.achievements-v3 .ach-earned-items .ach-item-info strong{font-size:.83rem}
   .achievements-v3 .ach-feature-info small,.achievements-v3 .ach-earned-items .ach-item-game{font-size:.72rem}
-  .achievements-v3 .ach-earned-items{--earned-columns:36px minmax(0,1fr) auto 15px}
-  .achievements-v3 .ach-earned-columns{display:none}
+  .achievements-v3 .ach-earned-items{--history-columns:36px minmax(0,1fr) auto 15px}
+  .achievements-v3 .ach-earned-items .ach-history-columns{display:none}
+  .achievements-v3 .ach-locked-items{--history-columns:36px minmax(0,1fr) minmax(57px,auto) 14px}
+  .achievements-v3 .ach-locked-items .ach-history-columns{gap:8px;padding-inline:10px}
+  .achievements-v3 .ach-locked-items .ach-item{gap:8px;margin-inline:5px;padding-inline:5px}
+  .achievements-v3 .ach-locked-items .ach-item>.desk-trophy-icon{width:36px;height:36px}
+  .achievements-v3 .ach-locked-items .ach-item-rarity{grid-column:3;grid-row:1;font-size:.75rem}
+  .achievements-v3 .ach-locked-items .ach-item-open{grid-column:4;grid-row:1}
   .achievements-v3 .ach-earned-items .ach-item{margin-inline:5px;padding-inline:5px;gap:2px 8px}
   .achievements-v3 .ach-earned-items .ach-item>.desk-trophy-icon{width:36px;height:36px}
   .achievements-v3 .ach-earned-items .ach-item> :nth-child(-n+2){grid-row:span 2}
@@ -1773,8 +1816,6 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
   .achievements-v3 .ach-earned-items .ach-item-date{grid-area:2/3;align-self:start;justify-self:end;font-size:.67rem}
   .achievements-v3 .ach-earned-items .ach-item-open{grid-area:1/4/3}
 }
-.achievements-v3 .ach-locked-missing{border-left-color:#35465a}
-.achievements-v3 .ach-missing-row{border-bottom-color:#344254}
 .achievements-v3 .ach-progress-track{background:var(--dashboard-track)}
 .achievements-v3 .ach-progress-track>i{background:var(--dashboard-fill)}
 .achievements-v3 .ach-empty{border-color:#35465a}
@@ -1876,7 +1917,7 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
 .desk-game-achievement-view .af-game-ach-filters{display:flex;align-items:center;flex-wrap:wrap;gap:9px}
 .desk-game-achievement-view .af-ach-select-label{display:flex;align-items:center;gap:8px;font-size:.78rem;color:#a6b9c9}
 .desk-game-achievement-view .af-ach-select-label select{
-  min-height:42px;max-width:232px;border:1px solid #334b61;border-radius:9px;
+  min-height:42px;max-width:265px;border:1px solid #334b61;border-radius:9px;
   background:#162435;color:#eaf4fc;padding:9px 12px;font-size:.86rem;font-weight:700}
 .desk-game-achievement-view .af-ach-extra{position:relative}
 .desk-game-achievement-view .af-ach-extra>summary{
@@ -2111,7 +2152,7 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
   }
   .store-enter>*,
   .locked-enter :is(.ach-locked-feature,.ach-locked-columns),
-  .locked-list-enter .ach-locked-all .ach-items,
+  .locked-list-enter .ach-locked-items,
   .region-enter .boss-list,
   .game-achievements-enter,
   .results-enter,

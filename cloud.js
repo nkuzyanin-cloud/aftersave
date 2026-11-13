@@ -4,7 +4,7 @@ import { connected, readCloud, writeCloud } from './steam.js';
 
 const defaults = {
   status:'planned',shelf:false,favorite:false,hidden:false,wishlist:false,
-  rating:null,grade:'',gradeCleared:false,hours:0,progress:0,startedAt:'',finishedAt:'',
+  rating:null,grade:'',gradeCleared:false,hours:0,playthroughCount:0,progress:0,startedAt:'',finishedAt:'',
   notes:'',tags:[],collectionIds:[],runs:[],sessions:[],journal:[],bossProgress:{},genre:'',year:null,
   description:'',catalogId:''
 };
