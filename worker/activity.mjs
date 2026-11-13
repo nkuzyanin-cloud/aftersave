@@ -15,10 +15,11 @@ export async function recordSnapshot(database, account, timestamp, library) {
   const serialized = JSON.stringify(totals);
   await database.batch([
     database.prepare(`INSERT INTO steam_activity(account, appid, observed_from, observed_to, minutes)
-      SELECT previous.account, CAST(next.key AS INTEGER), previous.observed_at, ?1, next.value - prior.value
-      FROM steam_snapshots previous, json_each(previous.totals) prior
-      JOIN json_each(?2) next ON next.key = prior.key
-      WHERE previous.account = ?3 AND previous.observed_at < ?1 AND next.value > prior.value
+      SELECT previous.account, CAST(next.key AS INTEGER), previous.observed_at, ?1,
+        next.value - json_extract(previous.totals, '$.' || next.key)
+      FROM steam_snapshots previous, json_each(?2) next
+      WHERE previous.account = ?3 AND previous.observed_at < ?1
+        AND next.value > json_extract(previous.totals, '$.' || next.key)
       ON CONFLICT(account, appid, observed_to) DO NOTHING`).bind(timestamp, serialized, account),
     database.prepare(`INSERT INTO steam_snapshots(account, started_at, observed_at, totals) VALUES(?1, ?2, ?2, ?3)
       ON CONFLICT(account) DO UPDATE SET observed_at = excluded.observed_at, totals = (
