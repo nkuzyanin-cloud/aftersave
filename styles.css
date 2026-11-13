@@ -236,7 +236,6 @@ body{background:radial-gradient(ellipse at 80% -5%,#17231f 0%,transparent 35%),v
 .dash-panel{padding:12px 14px;min-width:0}
 .dash-empty{margin:11px 0 3px}
 
-@keyframes profile-glow{from{opacity:.5}to{opacity:.92}}
 
 /* Library */
 .library-section .section-heading{margin-bottom:14px}
@@ -250,8 +249,6 @@ body{background:radial-gradient(ellipse at 80% -5%,#17231f 0%,transparent 35%),v
 /* Game detail */
 .game-poster{width:clamp(110px,15vw,168px);aspect-ratio:2/3;flex:none;border:1px solid #54645a;border-radius:9px}
 #game-achievement-progress .progress-track{margin-top:4px;height:3px}
-#game-results{animation:content-arrive .19s ease-out both}
-@keyframes content-arrive{from{opacity:.72;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
 .journal-list{list-style:none;padding:0;margin-top:7px}
 .journal-list li{position:relative;padding:8px 39px 8px 0;border-bottom:1px solid var(--border)}
 .journal-list li:last-child{border-bottom:0}
@@ -273,7 +270,7 @@ body{background:radial-gradient(ellipse at 80% -5%,#17231f 0%,transparent 35%),v
   .game-poster{width:clamp(68px,23vw,105px)}
 }
 @media(prefers-reduced-motion:reduce){
-  #game-results{animation:none!important}
+
   .game-card:hover{transform:none}
 }
 
@@ -685,7 +682,7 @@ dialog .field input,dialog .field textarea,dialog .field select{background:#2021
 .desk-metric[data-glyph=crown] svg{color:var(--desk-platinum)}
 .desk-metric[data-glyph=flame] svg{color:#e7ae75}
 .desk-metric[data-glyph=lock] svg{color:var(--desk-muted)}
-.desk-metric,.desk-stat-value{font-variant-numeric:tabular-nums}
+.desk-metric{font-variant-numeric:tabular-nums}
 .desk-nav-row{display:flex;justify-content:space-between;gap:8px;border-bottom:1px solid var(--desk-border);margin-bottom:18px}
 .desk-tabs{display:flex;align-items:stretch;gap:14px;min-width:0;min-height:45px;overflow-x:auto;scrollbar-width:none}
 .desk-tabs>a{display:inline-flex;align-items:center;gap:5px;padding:7px 8px;border-bottom:2px solid transparent;color:var(--desk-muted);font-weight:700;font-size:.78rem;white-space:nowrap}
@@ -767,8 +764,8 @@ dialog .field input,dialog .field textarea,dialog .field select{background:#2021
 .desk-unlock footer,.desk-session footer{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:7px;padding:7px 11px;border-top:1px solid var(--desk-border);color:var(--desk-muted);font-size:var(--desk-caption)}
 .desk-unlock footer a{display:flex;align-items:center;gap:5px}
 .desk-session>div{align-items:center}
-.desk-session>div .cover,.desk-rare .cover{width:40px;aspect-ratio:1;flex:none;border-radius:4px}
-.desk-session>div .cover-fallback,.desk-rare .cover-fallback{width:100%;height:100%}
+.desk-session>div .cover{width:40px;aspect-ratio:1;flex:none;border-radius:4px}
+.desk-session>div .cover-fallback{width:100%;height:100%}
 .desk-session>div time{margin-left:auto;white-space:nowrap}
 .desk-session p{min-width:0}
 .desk-session p small{display:block}
@@ -916,35 +913,6 @@ dialog.desk-collection-dialog{width:min(560px,calc(100vw - 24px))}
 .desk-collection-members h3{font-size:var(--desk-copy)}
 .desk-collection-member-list .icon-btn{flex:none;width:33px;min-width:33px;min-height:33px}
 .desk-collection-member-list .icon-btn:hover{color:#ffb5b5;border-color:#7e414b}
-.desk-stat-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}
-.desk-stat-value{display:block;margin-top:4px;font-size:var(--desk-value);line-height:1.3}
-.desk-history{grid-column:span 2}
-.desk-timeline{position:relative;margin:12px 5px 0;touch-action:pan-y}
-.desk-timeline svg{display:block;width:100%;height:155px;overflow:visible}
-.desk-timeline input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:crosshair}
-.desk-timeline:focus-within{outline:1px solid var(--desk-blue);outline-offset:4px}
-.desk-timeline circle{fill:var(--desk-blue);stroke:var(--desk-card);stroke-width:1;vector-effect:non-scaling-stroke}
-.desk-timeline-guide{stroke:#6670ab;stroke-width:1;stroke-dasharray:3 3;vector-effect:non-scaling-stroke}
-.desk-timeline-tooltip{position:absolute;top:0;left:clamp(min(105px,50%),var(--point-x),max(50%,100% - 105px));transform:translateX(-50%);display:grid;gap:3px;width:min(210px,100%);padding:8px 10px;border:1px solid #3a3a50;border-radius:6px;background:#212232;pointer-events:none;font-size:var(--desk-copy)}
-.desk-timeline-tooltip span{color:var(--desk-muted);font-size:var(--desk-caption)}
-.desk-chart-years{position:relative;height:1.1rem;margin-inline:5px}
-.desk-chart-years small{position:absolute;transform:translateX(-50%)}
-.desk-chart-years small:first-child{transform:none}
-.desk-chart-years small:last-child:not(:first-child){transform:translateX(-100%)}
-.desk-donut{width:min(60%,144px);aspect-ratio:1;margin:16px auto;border-radius:50%;position:relative;background:conic-gradient(var(--desk-platinum) var(--perfect),#6bbdeb var(--perfect) var(--beaten),#3d3e4b var(--beaten))}
-.desk-donut::after{content:'';position:absolute;inset:14%;background:var(--desk-card);border-radius:50%}
-.desk-legend{display:flex;flex-wrap:wrap;gap:6px 11px;font-size:var(--desk-caption);color:var(--desk-muted)}
-.desk-legend span{display:flex;gap:4px;align-items:center}
-.desk-legend i{width:7px;height:7px;border-radius:2px;background:var(--desk-platinum)}.desk-legend span:nth-child(2) i{background:#6bbdeb}.desk-legend span:nth-child(3) i{background:#686a79}
-.desk-bars{height:156px;display:grid;grid-template-columns:repeat(6,1fr);gap:4px;align-items:end;margin-top:10px}
-.desk-bars>div{display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:3px;height:100%;color:var(--desk-muted);font-size:var(--desk-caption)}
-.desk-bars i{width:55%;height:calc(var(--bar)*.7);background:linear-gradient(#6a62ef,#4779e8);border-radius:4px 4px 0 0}
-.desk-bars small{font-size:inherit;white-space:nowrap}
-.desk-rare{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--desk-border);font-size:var(--desk-copy)}
-.desk-rare:last-child{border-bottom:0}
-.desk-rare .desk-trophy-icon{width:32px}
-.desk-rare>span:not(.desk-trophy-icon){display:grid;min-width:0}
-.desk-rare b{margin-left:auto;white-space:nowrap;color:#bec5ff;font-size:var(--desk-caption);font-variant-numeric:tabular-nums}
 .desk-game-page{position:relative;isolation:isolate}
 .desk-hero-art{position:absolute;top:0;left:50%;z-index:-1;transform:translateX(-50%);width:min(100%,1680px);height:auto;max-height:480px;object-fit:contain;object-position:center top;opacity:.46;pointer-events:none;mask-image:radial-gradient(ellipse 77% 89% at 52% 0%,#000 31%,transparent 92%)}
 .desk-game-inner{width:min(var(--desk-width),100% - 50px);margin:auto}
@@ -974,21 +942,6 @@ dialog.desk-collection-dialog{width:min(560px,calc(100vw - 24px))}
 .desk-game-metrics dt{color:var(--desk-muted);font-size:.69rem}
 .desk-game-metrics dd{margin:3px 0 0;color:var(--desk-text);font-size:.87rem;font-weight:800}
 .desk-game-body{padding-top:12px}
-.desk-achievement-tools,.desk-achievement-controls{display:flex;align-items:center;gap:9px}
-.desk-achievement-tools{justify-content:space-between;flex-wrap:wrap;margin:0 0 15px}
-.desk-achievement-tools .searchbox{width:min(260px,100%)}
-.desk-achievement-tools .searchbox,.desk-achievement-controls select,.desk-achievement-menu summary{
-  min-height:36px;border:1px solid var(--desk-border);border-radius:6px;background:var(--desk-card);color:var(--desk-muted);font-size:.86rem
-}
-.desk-achievement-tools .searchbox input{height:34px;min-width:0;font-size:inherit}
-.desk-achievement-controls select,.desk-achievement-menu summary{padding:5px 9px}
-.desk-achievement-reveal{display:flex;align-items:center;gap:7px;margin-right:3px;color:var(--desk-text);font-size:.84rem;cursor:pointer}
-.desk-achievement-reveal input{width:15px;height:15px;margin:0;accent-color:var(--desk-blue)}
-.desk-achievement-menu{position:relative}
-.desk-achievement-menu summary{display:flex;align-items:center;gap:6px;list-style:none;cursor:pointer}
-.desk-achievement-menu summary::-webkit-details-marker{display:none}
-.desk-achievement-menu[open] summary,.desk-achievement-menu summary:hover{border-color:#485279;color:var(--desk-text)}
-.desk-achievement-menu .desk-library-filter-panel{width:min(240px,calc(100vw - 24px))}
 .desk-store-heading{display:flex;align-items:baseline;justify-content:space-between;gap:8px 16px;flex-wrap:wrap;margin:0 0 14px}
 .desk-store-heading h1{font-size:clamp(1.25rem,2vw,1.8rem);margin:0}
 .desk-store-heading span{font-size:var(--desk-caption);color:var(--desk-muted)}
@@ -1090,17 +1043,9 @@ dialog.desk-sessions-dialog{width:min(485px,100vw - 24px);background:var(--desk-
   .desk-unlock footer,.desk-session footer{padding:8px 14px}
   .desk-session>div .cover{width:46px}
   .desk-week span{width:clamp(20px,1.35vw,24px);font-size:.72rem}
-  .desk-stat-grid{gap:14px}
-  .desk-bars,.desk-timeline svg{height:190px}
-  .desk-donut{width:min(64%,180px)}
-  .desk-rare{padding-block:9px;gap:10px}
-  .desk-rare strong{overflow-wrap:anywhere}
-  .desk-rare .cover,.desk-rare .desk-trophy-icon{width:39px}
   .desk-game-title h1{font-size:1.54rem}
   .desk-game-title>small,.desk-game-links a,.desk-game-links button,.desk-game-metrics dt{font-size:var(--desk-caption)}
   .desk-game-metrics dd{font-size:var(--desk-item)}
-  .desk-achievement-tools .searchbox,.desk-achievement-controls select,.desk-achievement-menu summary{font-size:var(--desk-copy);min-height:40px}
-  .desk-achievement-reveal{font-size:var(--desk-copy)}
   .achievement-list li{min-height:110px}
   .achievement-list li strong{font-size:var(--desk-item)}
   .achievement-list li p{font-size:var(--desk-copy)}
@@ -1114,7 +1059,6 @@ dialog.desk-sessions-dialog{width:min(485px,100vw - 24px);background:var(--desk-
   .desk-overview .library-summary{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 22px}
 }
 @media(max-width:850px){
-  .desk-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .desk-game-heading{grid-template-columns:130px minmax(0,1fr)}
   .desk-game-metrics{grid-column:1/-1}
 }
@@ -1127,9 +1071,7 @@ dialog.desk-sessions-dialog{width:min(485px,100vw - 24px);background:var(--desk-
   .desk-overview .library-summary{width:100%;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
   .desk-tabs{gap:4px}
   .desk-tabs>a{padding-inline:6px}
-  .desk-split,.desk-stat-grid,.desk-collections{grid-template-columns:1fr}
-  .desk-history{grid-column:auto}
-  .desk-history .desk-year-values{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .desk-split,.desk-collections{grid-template-columns:1fr}
   .desk-library-search{width:calc(100vw - 115px);right:calc(100% + 6px)}
   .desk-nav-row:has(.desk-library-search[data-open=true]) .desk-tabs{visibility:hidden}
   .desk-columns{display:none}
@@ -1140,8 +1082,6 @@ dialog.desk-sessions-dialog{width:min(485px,100vw - 24px);background:var(--desk-
   .desk-progress{font-size:.62rem}
   .desk-activity{font-size:.63rem}
   .desk-game-heading{grid-template-columns:82px minmax(0,1fr)}
-  .desk-achievement-tools .searchbox{width:100%}
-  .desk-achievement-controls{width:100%;justify-content:space-between;flex-wrap:wrap;gap:6px}
   .achievement-list li{min-height:75px;padding:8px;gap:8px}
   .achievement-icon{width:49px;height:49px}
   .achievement-list li strong{font-size:.9rem}
@@ -1154,9 +1094,6 @@ dialog.desk-sessions-dialog{width:min(485px,100vw - 24px);background:var(--desk-
   .desk-tabs>a{flex:none;justify-content:center;min-width:32px}
   .desk-tabs>a:not([aria-current]) span{display:none}
   .desk-streak .desk-metric,.desk-year-values .desk-metric{font-size:1.06rem}
-  .desk-bars small{font-size:.7rem}
-  .desk-achievement-reveal{flex-basis:100%;margin-bottom:2px}
-  .desk-achievement-controls>select{flex:1}
   .desk-game-content .desk-achievement-date{grid-column:2/-1;max-width:none;justify-content:flex-start;text-align:left}
   .achievement-icon{grid-row:span 2;align-self:start}
 }
@@ -1245,38 +1182,49 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
 .desk-collections .desk-collection-sort-btn[aria-pressed=true]{background:#1e434b;border-color:#4d9299;color:#dffbfc}
 .desk-collections .desk-collection-sort-btn:focus-visible{outline:2px solid var(--collection-cyan);outline-offset:2px}
 
-/* Sorting-only animation. Hero posters reveal from left to right, 0.3s apart. */
+/* Cover reveal on opening or sorting collections. */
 @media(prefers-reduced-motion:no-preference){
-  .desk-collections--sort-change .collection-hero-poster.cover,
-  .desk-collections--sort-change .collection-shelf-poster.cover{
+  :is(.route-enter,.desk-collections--sort-change) .collection-hero-poster.cover,
+  :is(.route-enter,.desk-collections--sort-change) .collection-shelf-poster.cover{
     animation:collection-cover-reveal .55s cubic-bezier(.2,.65,.2,1) both;
-    animation-delay:calc(var(--reveal-order,0) * .3s);
+    animation-delay:calc(var(--reveal-order,0) * var(--collection-cover-step,110ms));
   }
-  .desk-collections--sort-change .collection-hero-poster.cover:nth-child(6){--reveal-order:0}
-  .desk-collections--sort-change .collection-hero-poster.cover:nth-child(4){--reveal-order:1}
-  .desk-collections--sort-change .collection-hero-poster.cover:nth-child(2){--reveal-order:2}
-  .desk-collections--sort-change .collection-hero-poster.cover:nth-child(1){--reveal-order:3}
-  .desk-collections--sort-change .collection-hero-poster.cover:nth-child(3){--reveal-order:4}
-  .desk-collections--sort-change .collection-hero-poster.cover:nth-child(5){--reveal-order:5}
-  .desk-collections--sort-change .collection-hero-poster.cover:nth-child(7){--reveal-order:6}
-  .desk-collections--sort-change .collection-shelf-poster.cover:nth-child(1){--reveal-order:0}
-  .desk-collections--sort-change .collection-shelf-poster.cover:nth-child(2){--reveal-order:1}
-  .desk-collections--sort-change .collection-shelf-poster.cover:nth-child(3){--reveal-order:2}
-  .desk-collections--sort-change .collection-shelf-poster.cover:nth-child(4){--reveal-order:3}
-  .desk-collections--sort-change .collection-shelf-poster.cover:nth-child(5){--reveal-order:4}
+  :is(.route-enter,.desk-collections--sort-change) .collection-hero-poster.cover:nth-child(6){--reveal-order:0}
+  :is(.route-enter,.desk-collections--sort-change) .collection-hero-poster.cover:nth-child(4){--reveal-order:1}
+  :is(.route-enter,.desk-collections--sort-change) .collection-hero-poster.cover:nth-child(2){--reveal-order:2}
+  :is(.route-enter,.desk-collections--sort-change) .collection-hero-poster.cover:nth-child(1){--reveal-order:3}
+  :is(.route-enter,.desk-collections--sort-change) .collection-hero-poster.cover:nth-child(3){--reveal-order:4}
+  :is(.route-enter,.desk-collections--sort-change) .collection-hero-poster.cover:nth-child(5){--reveal-order:5}
+  :is(.route-enter,.desk-collections--sort-change) .collection-hero-poster.cover:nth-child(7){--reveal-order:6}
+  :is(.route-enter,.desk-collections--sort-change) .collection-shelf-poster.cover:nth-child(1){--reveal-order:0}
+  :is(.route-enter,.desk-collections--sort-change) .collection-shelf-poster.cover:nth-child(2){--reveal-order:1}
+  :is(.route-enter,.desk-collections--sort-change) .collection-shelf-poster.cover:nth-child(3){--reveal-order:2}
+  :is(.route-enter,.desk-collections--sort-change) .collection-shelf-poster.cover:nth-child(4){--reveal-order:3}
+  :is(.route-enter,.desk-collections--sort-change) .collection-shelf-poster.cover:nth-child(5){--reveal-order:4}
 }
+.desk-collections--sort-change{--collection-cover-step:300ms}
 @keyframes collection-cover-reveal{
   from{opacity:0;translate:-14px 0}
   to{opacity:1;translate:0 0}
 }
 
 
-/* AFTERSAVE Statistics dashboard. Intentionally scoped: site header, tabs and other pages untouched. */
+:root{
+  --dashboard-surface:linear-gradient(125deg,#151c29,#101722);
+  --dashboard-border:#303d50;
+  --dashboard-text:#e8f0f7;
+  --dashboard-muted:#a6b5c3;
+  --dashboard-accent:#77c6e6;
+  --dashboard-track:#2d3c50;
+  --dashboard-fill:linear-gradient(90deg,#4c9bd0,#71c1e9);
+}
+
+/* Statistics dashboard */
 .page.page-stats.desk-workspace{width:min(var(--desk-width),calc(100% - 50px));max-width:none}
-.stats-dashboard{--stats-cyan:#77c6e6;--stats-platinum:#b9d0e2;--stats-muted:#a6b5c3;--stats-bg:#101722;--stats-line:#303d50;
- display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:13px;color:#e8f0f7}
+.stats-dashboard{--stats-cyan:var(--dashboard-accent);--stats-muted:var(--dashboard-muted);--stats-line:var(--dashboard-border);
+ display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:13px;color:var(--dashboard-text)}
 .stats-dashboard .stats-panel{position:relative;isolation:isolate;min-width:0;overflow:hidden;border:1px solid var(--stats-line);
- border-radius:11px;background:linear-gradient(125deg,#151c29 0%,#101722 100%);padding:19px 21px;
+ border-radius:11px;background:var(--dashboard-surface);padding:19px 21px;
  box-shadow:inset 0 1px #ffffff08,0 8px 22px #03081218}
 .stats-dashboard .stats-panel-achievements{grid-column:span 6;min-height:170px}
 .stats-dashboard .stats-panel-games{grid-column:span 6;min-height:170px}
@@ -1421,13 +1369,8 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
 .achievements-v3 .ach-earned-feature{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.15fr);min-height:240px}
 .achievements-v3 .ach-earned-intro{display:flex;flex-direction:column;justify-content:space-between;gap:14px;padding:25px 27px;
   background:radial-gradient(ellipse at 60% 70%,#19556043 0%,transparent 80%)}
-.achievements-v3 .ach-kicker{display:inline-flex;align-items:center;gap:7px;color:#9cd6dc;font-size:.77rem}
 .achievements-v3 .ach-feature h1{font-size:clamp(1.35rem,2.1vw,1.85rem);line-height:1.2;margin:11px 0 8px;letter-spacing:-.025em}
 .achievements-v3 .ach-feature p{color:var(--ach-muted);font-size:.83rem;line-height:1.5;margin:5px 0}
-.achievements-v3 .ach-streak{display:flex;align-items:center;gap:10px;color:var(--ach-cyan)}
-.achievements-v3 .ach-streak>div{display:grid;gap:4px}
-.achievements-v3 .ach-streak small{font-size:.72rem;color:var(--ach-muted)}
-.achievements-v3 .ach-streak strong{font-size:1.45rem;color:var(--ach-text);font-variant-numeric:tabular-nums}
 .achievements-v3 .ach-feature-list{display:grid;grid-auto-rows:minmax(48px,auto);align-content:center;padding:8px 17px 8px 0;min-width:0}
 .achievements-v3 .ach-feature-row{display:grid;grid-template-columns:38px minmax(0,1fr) auto minmax(78px,auto);
   gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid #274450;min-width:0}
@@ -1440,9 +1383,7 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
 .achievements-v3 .ach-feature-rarity{min-width:82px;text-align:right;color:#a7d3da}
 .achievements-v3 .ach-feature-rarity>span,.achievements-v3 .ach-item-rarity{display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
 .achievements-v3 .ach-feature-empty{padding:12px}
-.achievements-v3 .ach-list-header{display:flex;justify-content:space-between;align-items:center;gap:12px}
-.achievements-v3 .ach-list-header h2,.achievements-v3 .ach-column-heading h2{font-size:1rem;margin:0;color:#edf7f7}
-.achievements-v3 .ach-list-header span{font-size:.74rem;color:#9db7be}
+.achievements-v3 .ach-column-heading h2{font-size:1rem;margin:0;color:#edf7f7}
 .achievements-v3 .ach-items{display:grid;gap:9px;min-width:0}
 .achievements-v3 .ach-item{display:grid;grid-template-columns:49px minmax(0,1fr) minmax(88px,auto) minmax(130px,auto) 18px;
   align-items:center;gap:13px;padding:10px 14px;border:1px solid #294b56;border-radius:10px;background:linear-gradient(95deg,#102830,#101f29);
@@ -1586,8 +1527,6 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
   background:linear-gradient(105deg,#043237,#06282e 42%,#072830 71%,#07242d);border-color:#236974}
 .achievements-v3 .ach-earned-intro{position:relative;isolation:isolate;min-width:0;display:flex;justify-content:space-between;
   gap:17px;flex-direction:column;padding:30px 28px 28px;background:radial-gradient(ellipse at 45% 45%,#12606c33,transparent 65%)}
-.achievements-v3 .ach-earned-art{position:absolute;z-index:-1;inset:0;background-size:cover;background-position:center;
-  opacity:.16;filter:grayscale(.15) brightness(.65) saturate(.6);mask-image:linear-gradient(90deg,transparent 2%,#000 37%,#000 80%,transparent 100%);pointer-events:none}
 .achievements-v3 .ach-intro-copy{position:relative;z-index:1}
 .achievements-v3 .ach-intro-copy h1{font-size:clamp(1.5rem,2.25vw,2rem);margin:13px 0 8px;
   line-height:1.22;font-weight:800;color:#f1f9fb;letter-spacing:-.027em}
@@ -1595,7 +1534,7 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
 .achievements-v3 .ach-hero-metrics{display:flex;align-items:center;min-width:0;gap:0;position:relative;z-index:1}
 .achievements-v3 .ach-hero-metric{display:flex;align-items:center;gap:12px;min-width:0;padding-right:24px}
 .achievements-v3 .ach-hero-metric+.ach-hero-metric{border-left:1px solid #47838a;padding-left:25px;padding-right:0}
-.achievements-v3 .ach-hero-total>svg{width:38px;height:38px;color:#91e0e4;filter:drop-shadow(0 0 3px #3ebac51a);flex:none}
+.achievements-v3 .ach-hero-total>svg{width:38px;height:38px;color:var(--dashboard-accent);flex:none}
 .achievements-v3 .ach-hero-metric>div{display:grid;gap:4px;min-width:0}
 .achievements-v3 .ach-hero-metric strong{font-size:clamp(1.45rem,2vw,1.75rem);letter-spacing:-.03em;font-variant-numeric:tabular-nums;
   color:#fff;line-height:1.1}
@@ -1608,7 +1547,7 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
 .achievements-v3 .ach-feature-info small{font-size:.76rem}
 .achievements-v3 .ach-feature-date{font-size:.72rem;color:#c9dce0;white-space:nowrap}
 .achievements-v3 .ach-feature-rarity{border-left:1px solid #396a72;padding-left:13px;font-size:.77rem;min-width:85px;color:#c8f6f7}
-.achievements-v3 .ach-feature-rarity svg{color:#7fe8e6}
+.achievements-v3 .ach-feature-rarity svg{color:var(--dashboard-accent)}
 .achievements-v3 .ach-feature-rarity>span{display:inline-flex;align-items:center;gap:5px}
 .achievements-v3 .ach-earned-items{gap:6px}
 .achievements-v3 .ach-earned-items .ach-item{grid-template-columns:46px minmax(0,1fr) minmax(85px,auto) minmax(136px,auto) 17px;
@@ -1620,7 +1559,7 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
 .achievements-v3 .ach-earned-items .ach-item-game{font-size:.77rem;color:#b9cdd0;margin-top:4px}
 .achievements-v3 .ach-earned-items .ach-item-game svg{display:none}
 .achievements-v3 .ach-earned-items .ach-item-rarity{font-size:.86rem;color:#e5f2f3}
-.achievements-v3 .ach-earned-items .ach-item-rarity svg{color:#82e0e2}
+.achievements-v3 .ach-earned-items .ach-item-rarity svg{color:var(--dashboard-accent)}
 .achievements-v3 .ach-earned-items .ach-item-date{font-size:.77rem;border-left:1px solid #32616b;padding-left:16px;color:#c6dce0}
 .achievements-v3 .ach-earned-items .ach-item-open{color:#a9f3f3}
 @media(max-width:1070px){
@@ -1669,19 +1608,20 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
 /* Achievements feed */
 .page .achievements-v3{
   gap:16px;
-  --ach-border:#2c414c;
-  --ach-text:#eef4f8;
-  --ach-muted:#a9bcc8;
+  --ach-border:var(--dashboard-border);
+  --ach-text:var(--dashboard-text);
+  --ach-muted:var(--dashboard-muted);
 }
 .achievements-v3 .ach-feature{
   border-color:var(--ach-border);
-  background:linear-gradient(125deg,#151c29,#101722);
+  background:var(--dashboard-surface);
 }
 .achievements-v3 .ach-earned-feature{
   grid-template-columns:minmax(0,46%) minmax(0,54%);
   background:
-    linear-gradient(90deg,#09151de0 0%,#09182052 36%,#0b1722bf 58%,#0a151fef 100%),
-    url('./assets/achievements-hero.webp') center 51%/cover no-repeat #0c1922;
+    linear-gradient(90deg,#151c29eb 0%,#151c2959 35%,#142033c9 57%,#101722f5 100%),
+    url('./assets/achievements-hero.webp') center 51%/cover no-repeat #101722;
+  background-blend-mode:normal,luminosity;
 }
 .achievements-v3 .ach-earned-intro{
   padding:32px 29px 24px;
@@ -1693,7 +1633,7 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
   font-size:clamp(1.6rem,2.4vw,2.12rem);
   line-height:1.18;
 }
-.achievements-v3 .ach-intro-copy p{max-width:22rem;color:#b8cdd7}
+.achievements-v3 .ach-intro-copy p{max-width:22rem;color:var(--ach-muted)}
 .achievements-v3 .ach-hero-metric strong{font-size:clamp(1.55rem,2.15vw,1.95rem)}
 .achievements-v3 .ach-hero-metric+.ach-hero-metric{border-left-color:#7196a34d}
 .achievements-v3 .ach-feature-list{
@@ -1706,8 +1646,8 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
   padding:6px 0;
   border-bottom-color:#7196a340;
 }
-.achievements-v3 .ach-feature-info strong{font-size:.92rem}
-.achievements-v3 .ach-feature-info small{font-size:.81rem}
+.achievements-v3 .ach-feature-info strong{font-size:.92rem;color:var(--dashboard-text)}
+.achievements-v3 .ach-feature-info small{font-size:.81rem;color:var(--dashboard-muted)}
 .achievements-v3 .ach-feature-date{
   display:block;
   color:#bbccd6;
@@ -1724,17 +1664,18 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
   font-size:.82rem;
   font-variant-numeric:tabular-nums;
 }
-.achievements-v3 .ach-tab{background:#13232d;border-color:#304750;color:#c4d2dc}
+.ach-earned-content,.ach-earned-history{display:grid;gap:16px;min-width:0}
+.achievements-v3 .ach-tab{background:#151c29;border-color:var(--dashboard-border);color:#c4d2dc}
 .achievements-v3 .ach-tab.is-active{
-  background:linear-gradient(135deg,#234c61,#203949);
-  border-color:#63adc5;
+  background:linear-gradient(135deg,#234158,#1d354a);
+  border-color:#649bbf;
   box-shadow:inset 0 1px #d8f0ff1c;
 }
-.achievements-v3 .ach-tab:hover{border-color:#77bdd4}
-.achievements-v3 select{background:#151c29;border-color:#35465a}
+.achievements-v3 .ach-tab:hover{border-color:var(--dashboard-accent)}
+.achievements-v3 .ach-select-label select,.achievements-v3 select{background:#151c29;border-color:#35465a}
 .achievements-v3 .ach-item,.achievements-v3 .ach-near-game{
-  background:linear-gradient(125deg,#151c29,#101722);
-  border-color:#303d50;
+  background:var(--dashboard-surface);
+  border-color:var(--dashboard-border);
 }
 .achievements-v3 .ach-item:hover,.achievements-v3 .ach-near-game:hover{
   background:#1a2839;
@@ -1745,7 +1686,7 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
   gap:0;
   border:1px solid var(--ach-border);
   border-radius:11px;
-  background:linear-gradient(145deg,#131e28,#0e1720);
+  background:var(--dashboard-surface);
 }
 .achievements-v3 .ach-earned-columns,.achievements-v3 .ach-earned-items .ach-item{
   display:grid;
@@ -1772,7 +1713,7 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
 }
 .achievements-v3 .ach-earned-items .ach-item:last-child{border-bottom-color:transparent}
 .achievements-v3 .ach-earned-items .ach-item:is(:hover,:focus-within){
-  background:#203947a6;
+  background:#243951a6;
   border-radius:7px;
 }
 .achievements-v3 .ach-earned-items .ach-item>.desk-trophy-icon{width:46px;height:46px}
@@ -1832,43 +1773,24 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
   .achievements-v3 .ach-earned-items .ach-item-date{grid-area:2/3;align-self:start;justify-self:end;font-size:.67rem}
   .achievements-v3 .ach-earned-items .ach-item-open{grid-area:1/4/3}
 }
-@media(prefers-reduced-motion:no-preference){
-  .ach-recent-reveal .ach-feature-row{
-    animation:achievement-reveal 320ms cubic-bezier(.22,.61,.36,1) var(--reveal-delay,0ms) both;
-  }
-  .ach-recent-reveal .ach-feature-row:nth-child(2){--reveal-delay:45ms}
-  .ach-recent-reveal .ach-feature-row:nth-child(3){--reveal-delay:90ms}
-  .ach-recent-reveal .ach-feature-row:nth-child(4){--reveal-delay:135ms}
-  .ach-recent-reveal .ach-feature-row:nth-child(5){--reveal-delay:180ms}
-  .ach-recent-reveal .rare-achievement{
-    animation:achievement-frame-glint 320ms ease-out var(--reveal-delay,0ms);
-  }
-}
-@keyframes achievement-reveal{
-  from{opacity:0;transform:translateY(6px)}
-  to{opacity:1;transform:translateY(0)}
-}
-@keyframes achievement-frame-glint{
-  45%{box-shadow:0 0 9px 1px #efbd7060}
-}
 .achievements-v3 .ach-locked-missing{border-left-color:#35465a}
 .achievements-v3 .ach-missing-row{border-bottom-color:#344254}
-.achievements-v3 .ach-progress-track{background:#2d3c50}
-.achievements-v3 .ach-progress-track>i{background:linear-gradient(90deg,#4c9bd0,#71c1e9)}
+.achievements-v3 .ach-progress-track{background:var(--dashboard-track)}
+.achievements-v3 .ach-progress-track>i{background:var(--dashboard-fill)}
 .achievements-v3 .ach-empty{border-color:#35465a}
 .achievements-v3 .load-more .btn{background:#1b2b3a;border-color:#35465a}
 
-.desk-collections{--collection-cyan:#77c6e6}
+.desk-collections{--collection-cyan:var(--dashboard-accent)}
 .desk-collections .btn-primary{
   background:linear-gradient(135deg,#234158,#1d354a);
   border-color:#649bbf;color:#f0f8ff;
   box-shadow:0 0 9px #66b7e61a;
 }
 .desk-collections .btn-primary:hover{background:#284c66;border-color:#88c6e5}
-.collection-hero,.collection-shelf{border-color:#303d50;color:#e8f0f7}
+.collection-hero,.collection-shelf{border-color:var(--dashboard-border);color:var(--dashboard-text)}
 .collection-hero{
   background:radial-gradient(ellipse at 75% 35%,#25394d,transparent 60%),
-    linear-gradient(125deg,#151c29,#101722);
+    var(--dashboard-surface);
 }
 .collection-hero-background img{filter:saturate(.57) brightness(.64)}
 .collection-hero::before{
@@ -1876,14 +1798,12 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
     linear-gradient(0deg,#101722d1,transparent 62%);
 }
 .collection-hero-label{background:#233d55bd;border-color:#6198bd9c;color:#c8eafa}
-.collection-shelf{
-  background:linear-gradient(125deg,#151c29 0%,#101722 100%);
-}
+.collection-shelf{background:var(--dashboard-surface)}
 .collection-shelf:hover,.collection-hero:hover{border-color:#6fa6c3;box-shadow:0 8px 24px #02071055}
 .collection-shelf-overflow{background:#253448;border-color:#3c4c60;color:#d7e7f4}
-.collection-metrics-progress .progress-track{background:#2d3c50}
+.collection-metrics-progress .progress-track{background:var(--dashboard-track)}
 .collection-metrics-progress .progress-track>span{
-  background:linear-gradient(90deg,#4c9bd0,#71c1e9);
+  background:var(--dashboard-fill);
 }
 .desk-collection-sort-btn{background:#151c29;border-color:#303d50}
 .desk-collection-sort-btn[aria-pressed=true]{background:#243f55;border-color:#77bde5}
@@ -1947,36 +1867,6 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
 .desk-game-achievement-view .desk-game-metrics dd{font-size:.94rem;font-weight:750}
 .desk-game-achievement-view .desk-game-body{padding-top:9px}
 .desk-game-achievement-view .af-game-ach-shell{display:grid;gap:16px;min-width:0}
-.desk-game-achievement-view .af-game-ach-progress{
-  display:grid;grid-template-columns:auto minmax(0,1fr) auto;
-  gap:24px;align-items:center;
-  padding:16px 21px;border-radius:11px;
-  border:1px solid #2b526d;background:linear-gradient(115deg,#142a3a,#101a29);
-  box-shadow:inset 0 1px #e4f7ff0a;
-}
-.desk-game-achievement-view .af-game-ach-progress-heading{display:flex;align-items:center;gap:11px;white-space:nowrap}
-.desk-game-achievement-view .af-game-ach-progress-heading>svg{color:var(--af-ach-turquoise)}
-.desk-game-achievement-view .af-game-ach-progress-heading>span{font-size:1rem;font-weight:800}
-.desk-game-achievement-view .af-game-ach-progress-heading>strong{
-  margin-left:14px;font-size:1.55rem;white-space:nowrap;font-variant-numeric:tabular-nums}
-.desk-game-achievement-view .af-game-ach-progress-heading>strong small{font-size:1rem;color:#96abc0}
-.desk-game-achievement-view .af-game-ach-track{height:12px;overflow:hidden;border-radius:99px;background:#2d465e}
-.desk-game-achievement-view .af-game-ach-track span{
-  height:100%;display:block;background:linear-gradient(90deg,#429ecb,#73d6ec);
-  border-radius:inherit;transition:width .22s ease}
-.desk-game-achievement-view .af-game-ach-percent{
-  color:#8de0f1;font-size:1.34rem;font-variant-numeric:tabular-nums}
-.desk-game-achievement-view .af-game-ach-set-tabs{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
-.desk-game-achievement-view .af-ach-set-tab{
-  display:flex;align-items:center;gap:9px;
-  min-height:40px;padding:9px 15px;
-  border:1px solid #30465c;border-radius:9px;background:linear-gradient(135deg,#192536,#122031);
-  color:#b8cadd;font-size:.85rem;font-weight:700;cursor:pointer;transition:background .18s,border-color .18s}
-.desk-game-achievement-view .af-ach-set-tab:hover{background:#20364b;border-color:#5589ab}
-.desk-game-achievement-view .af-ach-set-tab[aria-pressed=true]{
-  background:linear-gradient(135deg,#1c445b,#13364a);
-  border-color:#6fcce8;color:#e9faff;box-shadow:0 0 9px #69d1ed1b}
-.desk-game-achievement-view .af-ach-set-tab>svg{color:#7ed1e8}
 .desk-game-achievement-view .af-game-ach-toolbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
 .desk-game-achievement-view .af-game-ach-toolbar>.searchbox{
   width:min(460px,100%);min-height:42px;padding-inline:14px;
@@ -2040,10 +1930,6 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
 .desk-game-achievement-view .af-ach-status time{color:#aabed1;font-size:.76rem}
 .desk-game-achievement-view .load-more .btn{border-color:#38546b;background:#192b3b;color:#d8ecf5}
 @media(max-width:950px){
-  .desk-game-achievement-view .af-game-ach-progress{grid-template-columns:1fr auto;gap:11px}
-  .desk-game-achievement-view .af-game-ach-track{grid-row:2;grid-column:1/-1}
-  .desk-game-achievement-view .af-game-ach-progress-heading{grid-column:1;grid-row:1}
-  .desk-game-achievement-view .af-game-ach-percent{grid-column:2;grid-row:1}
   .desk-game-achievement-view .af-ach-list .af-ach-row{grid-template-columns:50px minmax(0,1fr) 85px 144px;gap:9px}
   .desk-game-achievement-view .af-ach-list .af-ach-icon{width:50px;height:50px}
   .desk-game-achievement-view .af-ach-list .af-ach-copy strong{font-size:.87rem}
@@ -2061,11 +1947,6 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
   .desk-game-achievement-view .desk-game-title{grid-column:2;grid-row:1/3}
   .desk-game-achievement-view .desk-game-metrics dt{font-size:.68rem}
   .desk-game-achievement-view .desk-game-metrics dd{font-size:.77rem}
-  .desk-game-achievement-view .af-game-ach-progress{padding:12px 14px}
-  .desk-game-achievement-view .af-game-ach-progress-heading{gap:7px}
-  .desk-game-achievement-view .af-game-ach-progress-heading>strong{margin-left:3px;font-size:1.14rem}
-  .desk-game-achievement-view .af-game-ach-progress-heading>span{font-size:.84rem}
-  .desk-game-achievement-view .af-game-ach-percent{font-size:1rem}
   .desk-game-achievement-view .af-game-ach-toolbar>.searchbox{width:100%}
   .desk-game-achievement-view .af-game-ach-filters{width:100%;justify-content:space-between}
   .desk-game-achievement-view .af-ach-select-label span{display:none}
@@ -2082,9 +1963,7 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
   .desk-game-achievement-view .af-ach-status time{font-size:.71rem}
 }
 @media(prefers-reduced-motion:reduce){
-  .desk-game-achievement-view .af-ach-list .af-ach-row,
-  .desk-game-achievement-view .af-ach-set-tab,
-  .desk-game-achievement-view .af-game-ach-track span{transition:none}
+  .desk-game-achievement-view .af-ach-list .af-ach-row{transition:none}
 }
 
 
@@ -2159,3 +2038,115 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
   .desk-game-achievement-view .desk-game-metrics>div{padding-right:12px}
   .desk-game-achievement-view .desk-game-metrics dt{font-size:.68rem}
 }
+
+/* Motion runs on navigation and deliberate view changes. */
+@property --stats-library-pct{
+  syntax:"<percentage>";
+  inherits:false;
+  initial-value:0%;
+}
+@property --boss-percent{
+  syntax:"<percentage>";
+  inherits:false;
+  initial-value:0%;
+}
+
+@media(prefers-reduced-motion:no-preference){
+  :root{--motion-ease:cubic-bezier(.21,.68,.28,1)}
+  .route-enter > :is(.library-section,.desk-store-feed,.desk-collection-detail,.settings-grid,.back-link,.section-heading,.empty),
+  .route-enter .desk-game-heading,.route-enter .desk-game-crumb,.route-enter .desk-game-body,
+  .route-enter .boss-tracker-heading,.route-enter .boss-sidebar,.route-enter .boss-region{
+    animation:view-enter 360ms var(--motion-ease) backwards;
+  }
+  .route-enter .desk-game-heading,.route-enter .desk-game-body,.route-enter .boss-region{
+    animation-delay:55ms;
+  }
+  .route-enter .desk-tabs>a[aria-current=page]{animation:nav-enter 330ms ease-out}
+  .route-enter #game-results:not(.results-updated) .desk-game:nth-child(-n+5),
+  .route-enter #desk-feed:not(.feed-updated) :is(.desk-session:nth-child(-n+5),.desk-streak,.desk-year),
+  .route-enter :is(.collection-shelf,.settings-panel):nth-child(-n+5),
+  .stats-view-enter .stats-panel,
+  .route-enter :is(.ach-toolbar,.ach-locked-feature,.ach-locked-columns),
+  .route-enter .collection-hero,
+  .route-enter .ach-earned-feature{
+    animation:view-enter 390ms var(--motion-ease) var(--item-delay,0ms) backwards;
+  }
+  .route-enter :is(.desk-game,.desk-session,.collection-shelf,.settings-panel,.stats-panel):nth-child(2){--item-delay:45ms}
+  .route-enter :is(.desk-game,.desk-session,.collection-shelf,.settings-panel,.stats-panel):nth-child(3){--item-delay:90ms}
+  .route-enter :is(.desk-game,.desk-session,.collection-shelf,.settings-panel,.stats-panel):nth-child(4){--item-delay:135ms}
+  .route-enter :is(.desk-game,.desk-session,.collection-shelf,.stats-panel):nth-child(5){--item-delay:180ms}
+  .route-enter .stats-panel:nth-child(6){--item-delay:210ms}
+  .route-enter .stats-panel:nth-child(7){--item-delay:240ms}
+  .route-enter .desk-year,.route-enter .ach-locked-columns,.locked-enter .ach-locked-columns{--item-delay:90ms}
+
+  .stats-view-enter :is(.stats-track,.stats-top-track)>i,
+  .stats-charts-enter :is(.stats-track,.stats-top-track)>i,
+  .route-enter .collection-metrics-progress .progress-track>span,
+  .desk-collections--sort-change .collection-metrics-progress .progress-track>span,
+  .route-enter #game-results:not(.results-updated) .desk-progress .progress-track>span,
+  .route-enter .ach-progress-track>i,
+  .locked-enter .ach-progress-track>i{
+    transform-origin:left;
+    animation:bar-fill 680ms var(--motion-ease) 100ms backwards;
+  }
+  .stats-view-enter .stats-time-column-track i,
+  .stats-charts-enter .stats-time-column-track i,
+  .chart-enter .stats-time-column-track i{
+    transform-origin:bottom;
+    animation:chart-fill 650ms var(--motion-ease) 80ms backwards;
+  }
+  .stats-view-enter .stats-time-column:nth-child(3n+2) i,
+  .stats-charts-enter .stats-time-column:nth-child(3n+2) i,
+  .chart-enter .stats-time-column:nth-child(3n+2) i{animation-delay:125ms}
+  .stats-view-enter .stats-time-column:nth-child(3n+3) i,
+  .stats-charts-enter .stats-time-column:nth-child(3n+3) i,
+  .chart-enter .stats-time-column:nth-child(3n+3) i{animation-delay:170ms}
+  .stats-view-enter .stats-library-ring,.stats-charts-enter .stats-library-ring{
+    animation:stats-ring-fill 820ms var(--motion-ease) 125ms backwards;
+  }
+  .route-enter .boss-ring{animation:boss-ring-fill 800ms ease-out 100ms backwards}
+
+  .route-enter #desk-feed:not(.feed-updated) .desk-heatmap,dialog[open] .desk-heatmap{
+    animation:heatmap-enter 680ms ease-out 100ms backwards;
+  }
+  .store-enter>*,
+  .locked-enter :is(.ach-locked-feature,.ach-locked-columns),
+  .locked-list-enter .ach-locked-all .ach-items,
+  .region-enter .boss-list,
+  .game-achievements-enter,
+  .results-enter,
+  .boss-map-image img{
+    animation:view-enter 310ms var(--motion-ease) var(--item-delay,0ms) backwards;
+  }
+  dialog[open]{animation:dialog-enter 250ms var(--motion-ease) backwards}
+  dialog[open]::backdrop{animation:backdrop-enter 220ms ease-out backwards}
+  :is(.desk-library-filter,.desk-collection-sort,.af-ach-extra)[open]>:not(summary){
+    animation:popover-enter 170ms ease-out backwards;
+  }
+
+  .ach-recent-reveal .ach-feature-row{
+    animation:achievement-reveal 360ms var(--motion-ease)
+      calc(var(--reveal-delay,120ms) - var(--reveal-elapsed,0ms)) backwards;
+  }
+  .ach-recent-reveal .ach-feature-row:nth-child(2){--reveal-delay:370ms}
+  .ach-recent-reveal .ach-feature-row:nth-child(3){--reveal-delay:620ms}
+  .ach-recent-reveal .ach-feature-row:nth-child(4){--reveal-delay:870ms}
+  .ach-recent-reveal .ach-feature-row:nth-child(5){--reveal-delay:1120ms}
+  .ach-recent-reveal .ach-earned-history{
+    animation:history-enter 270ms var(--motion-ease)
+      calc(1480ms - var(--reveal-elapsed,0ms)) backwards;
+  }
+}
+
+@keyframes view-enter{from{opacity:0;translate:0 8px}to{opacity:1;translate:0 0}}
+@keyframes nav-enter{from{border-bottom-color:transparent}to{border-bottom-color:var(--desk-blue)}}
+@keyframes bar-fill{from{scale:0 1}to{scale:1 1}}
+@keyframes chart-fill{from{scale:1 0}to{scale:1 1}}
+@keyframes stats-ring-fill{from{--stats-library-pct:0%}}
+@keyframes boss-ring-fill{from{--boss-percent:0%}}
+@keyframes heatmap-enter{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0)}}
+@keyframes dialog-enter{from{opacity:0;translate:0 10px;scale:.985}to{opacity:1;translate:0 0;scale:1}}
+@keyframes backdrop-enter{from{opacity:0}to{opacity:1}}
+@keyframes popover-enter{from{opacity:0;translate:0 -4px}to{opacity:1;translate:0 0}}
+@keyframes achievement-reveal{from{opacity:0;translate:0 -9px}to{opacity:1;translate:0 0}}
+@keyframes history-enter{from{visibility:hidden;opacity:0;translate:0 10px}to{visibility:visible;opacity:1;translate:0 0}}

@@ -17,16 +17,16 @@ const dialog = document.querySelector('#dialog');
 const toast = document.querySelector('#toast');
 const labels = { library: 'Игры', wishlist: 'Список желаемого', achievements: 'Достижения', collections: 'Коллекции', sessions: 'Игровые сессии', stats: 'Статистика', news: 'Новости', settings: 'Настройки', game: 'Игра' };
 const deskTabs = [['library','game'],['wishlist','bookmark'],['achievements','trophy'],['collections','layers'],['sessions','clock'],['stats','chart'],['news','news']];
-const achievementOrders = [['common','По убыванию'],['rare','Редкие'],['recent','Недавно полученные']];
 const storeFeeds = new Map();
 let majorNewsOnly = false;
 const filter = { query: '', status: '' };
 const cups = { platinum: 'Платина', silver: 'Серебро', sapphire: 'Сапфир' };
 const number = new Intl.NumberFormat('ru', { maximumFractionDigits: 2 });
 const dateFormat = new Intl.DateTimeFormat('ru', { day: 'numeric', month: 'long', year: 'numeric' });
-const monthFormat = new Intl.DateTimeFormat('ru', { month:'long', year:'numeric' });
 const STEAM_AUTO_SYNC_MS = 5 * 60 * 1000;
 const STEAM_RECENT_PLAY_MS = 2 * 60 * 60 * 1000;
+// Duration of the recent rows and the history entrance in styles.css.
+const ACHIEVEMENT_REVEAL_MS = 1750;
 const openedAt = Date.now();
 const completionMemory = new Map();
 const animatedCompletions = new Set();
@@ -54,7 +54,6 @@ let steamMessage = '';
 let steamError = false;
 let displayLimit = 24;
 let achievementFilter = '';
-let achievementSetFilter = 'all';
 let achievementLimit = 24;
 let achievementView = 0;
 let summaries = new Map();
@@ -63,7 +62,7 @@ let feedLimit = 24;
 let lockedFeed = false;
 let lockedAchievementOrder = 'common';
 let achievementYear = '';
-let revealRecentAchievements = true;
+let recentRevealStartedAt = null;
 let scanningAchievements = false;
 let stopAchievementScan = false;
 let scanMessage = '';
@@ -149,9 +148,9 @@ function updateNotice() {
   </div>`;
 }
 
-function shell(content) {
+function shell(content, enter) {
   const workspace = deskTabs.some(([page]) => page === route.page);
-  return `<main id="main" tabindex="-1" class="page page-${route.page}${workspace ? ' desk-workspace' : ''}">
+  return `<main id="main" tabindex="-1" class="page page-${route.page}${workspace ? ' desk-workspace' : ''}${enter ? ' route-enter' : ''}">
     ${appUpdateReady ? updateNotice() : ''}
     ${storageError ? `<div class="alert">${icon('shield',19)}<span>${esc(storageError)}</span><a href="#settings">Восстановить данные</a></div>` : ''}
     ${workspace ? deskHeader() : route.page === 'settings' ? `<a class="back-link" href="#library">${icon('back',17)} К играм</a>` : ''}
@@ -553,10 +552,11 @@ function newsCard(item, featured = false) {
   </a>`;
 }
 
-function updateStoreFeed() {
+function updateStoreFeed(animate = false) {
   const content = app.querySelector('#store-feed-content');
   if (!content) return;
   content.innerHTML = storeFeedContent();
+  content.classList.toggle('store-enter', animate);
   imageFallbacks(content);
   const data = storeFeeds.get(route.page)?.data;
   const checked = app.querySelector('#store-feed-checked');
@@ -580,6 +580,7 @@ async function refreshStoreFeed() {
     updateStoreFeed();
     return;
   }
+  const firstLoad = !record.data?.items.length;
   record.loading = true;
   record.attempted = Date.now();
   try {
@@ -591,7 +592,7 @@ async function refreshStoreFeed() {
     record.error = /\(404\)/.test(error.message) ? 'Раздел станет доступен после обновления Cloudflare Worker.' : error.message;
   } finally {
     record.loading = false;
-    if (route.page === page && state.steam?.account === account) updateStoreFeed();
+    if (route.page === page && state.steam?.account === account) updateStoreFeed(firstLoad && Boolean(record.data?.items.length));
   }
 }
 
@@ -736,10 +737,13 @@ function achievementEarnedContent(earned, totalUnlocked) {
   const remaining=selected.slice(5);
   const since=Date.now()-7*24*60*60*1000;
   const lastWeek=earned.filter(({item})=>item.time*1000 >= since && item.time*1000 <= Date.now()).length;
-  const reveal = revealRecentAchievements && recent.length > 0;
-  if (reveal) revealRecentAchievements = false;
-  return '<section class="ach-feature ach-earned-feature' + (reveal ? ' ach-recent-reveal' : '') +
-    '" aria-label="Недавние полученные достижения">' +
+  const now = performance.now();
+  if (recent.length) recentRevealStartedAt ??= now;
+  // Keep the same timing if a background refresh replaces the feed mid-reveal.
+  const elapsed = now - (recentRevealStartedAt ?? -Infinity);
+  const reveal = recent.length > 0 && elapsed < ACHIEVEMENT_REVEAL_MS;
+  return '<div class="ach-earned-content' + (reveal ? ' ach-recent-reveal" style="--reveal-elapsed:' + elapsed + 'ms"' : '"') + '>' +
+    '<section class="ach-feature ach-earned-feature" aria-label="Недавние полученные достижения">' +
     '<div class="ach-earned-intro">' +
       '<div class="ach-intro-copy"><h1>Недавние достижения</h1>' +
         '<p>Последние разблокированные достижения<br>из ваших игр</p></div>' +
@@ -754,12 +758,13 @@ function achievementEarnedContent(earned, totalUnlocked) {
       (recent.length ? recent.map(achievementFeatureRow).join('') :
       '<p class="ach-feature-empty">В выбранном году нет полученных достижений с известной датой.</p>') +
     '</div></section>' +
+    '<div class="ach-earned-history">' +
     (remaining.length ? '<div class="ach-items ach-earned-items">' +
       '<div class="ach-earned-columns" aria-hidden="true"><span>Достижение</span><span>Редкость</span><span>Получено</span></div>' +
       remaining.slice(0,feedLimit).map(entry=>achievementItemRow(entry)).join('') + '</div>' :
       '<p class="ach-empty">' + (recent.length ? 'Других достижений за выбранный период нет.' :
       'Попробуй выбрать другой год или обновить достижения Steam.') + '</p>') +
-    feedMore(remaining.length);
+    feedMore(remaining.length) + '</div></div>';
 }
 
 function achievementLockedContent(locked) {
@@ -994,7 +999,6 @@ function statsPage() {
   const completed = linked.filter(game => completionFor(game) === 'perfect').length;
   const beaten = linked.filter(game => completionFor(game) === 'beaten').length;
   const other = Math.max(0,linked.length-completed-beaten);
-  const gameCount = Math.max(1,linked.length);
   const unlocked = totals.unlocked, total = totals.total;
   const completionRate = total ? unlocked/total*100 : 0;
   const finished = completed+beaten;
@@ -1083,79 +1087,6 @@ function statsPage() {
   '</div>';
 }
 
-function achievementTimeline(months) {
-  const now = new Date();
-  const last = now.getFullYear()*12+now.getMonth();
-  const keys = [...months.keys()].filter(month => month >= 2003*12 && month <= last);
-  if (!keys.length) return '<p class="desk-muted">Достижения с датами пока не загружены.</p>';
-  const first = Math.min(...keys), length = last-first+1;
-  const total = keys.reduce((sum,key) => sum+months.get(key),0);
-  let cumulative = 0;
-  const points = Array.from({length},(_,index) => {
-    const month = first+index, count = months.get(month) ?? 0;
-    cumulative += count;
-    const x = (length === 1 ? 300 : index/(length-1)*600).toFixed(2);
-    const y = (151-cumulative/total*136).toFixed(2);
-    return {x,y,count,cumulative,label:monthFormat.format(new Date(Math.floor(month/12),month%12,1))};
-  });
-  const firstYear = Math.floor(first/12), lastYear = Math.floor(last/12);
-  const step = Math.max(1,Math.ceil((lastYear-firstYear)/6));
-  const ticks = Array.from({length:lastYear-firstYear+1},(_,index) => firstYear+index)
-    .filter(year => year === lastYear || (year-firstYear)%step === 0 && lastYear-year >= step);
-  return `<div class="desk-timeline" data-timeline>
-    <svg viewBox="0 0 600 165" preserveAspectRatio="none" aria-hidden="true">
-      <path d="M0 40H600M0 78H600M0 116H600M0 153H600" stroke="#303340" stroke-dasharray="4 4"/>
-      <polyline points="${length === 1 ? `0,${points[0].y} 600,${points[0].y}` : points.map(({x,y}) => x+','+y).join(' ')}" fill="none" stroke="#6875ff" stroke-width="2" vector-effect="non-scaling-stroke"/>
-      ${points.map(({x,y,count,cumulative,label},index) => `<circle cx="${x}" cy="${y}" r="3.5" hidden
-        data-timeline-point="${index}" data-period="${label}" data-month-count="${numeric(count)}" data-total-count="${numeric(cumulative)}"/>`).join('')}
-      <line class="desk-timeline-guide" y1="10" y2="153" hidden/>
-    </svg>
-    <input type="range" min="0" max="${length-1}" value="${length-1}" aria-label="Месяц на графике достижений">
-    <div class="desk-timeline-tooltip" hidden><strong></strong><span></span></div>
-  </div><div class="desk-chart-years">${ticks.map((year,index) => {
-    const x = index === 0 ? 0 : year === lastYear ? 100 : (year*12-first)/(length-1)*100;
-    return `<small style="left:${x}%">${year}</small>`;
-  }).join('')}</div>`;
-}
-
-function showTimelinePoint(graph, index) {
-  const input = graph.querySelector('input');
-  const point = graph.querySelector(`[data-timeline-point="${index}"]`);
-  if (!point) return;
-  const previous = graph.querySelector('[data-timeline-point]:not([hidden])');
-  if (previous === point) return;
-  if (previous && previous !== point) previous.setAttribute('hidden','');
-  point.removeAttribute('hidden');
-  const x = Number(point.getAttribute('cx'));
-  const guide = graph.querySelector('line');
-  guide.setAttribute('x1',x);
-  guide.setAttribute('x2',x);
-  guide.removeAttribute('hidden');
-  const tooltip = graph.querySelector('.desk-timeline-tooltip');
-  const detail = `За месяц: ${point.dataset.monthCount} · Всего: ${point.dataset.totalCount}`;
-  tooltip.querySelector('strong').textContent = point.dataset.period;
-  tooltip.querySelector('span').textContent = detail;
-  tooltip.style.setProperty('--point-x',x/6+'%');
-  tooltip.hidden = false;
-  input.value = index;
-  input.setAttribute('aria-valuetext',point.dataset.period+' '+detail);
-}
-
-app.addEventListener('pointermove',event => {
-  const graph = event.target.closest('[data-timeline]');
-  if (!graph) return;
-  const bounds = graph.getBoundingClientRect();
-  const max = Number(graph.querySelector('input').max);
-  showTimelinePoint(graph,Math.round(percent((event.clientX-bounds.left)/bounds.width*100)/100*max));
-});
-app.addEventListener('input',event => {
-  const graph = event.target.closest('[data-timeline]');
-  if (graph) showTimelinePoint(graph,Number(event.target.value));
-});
-app.addEventListener('focusin',event => {
-  const graph = event.target.closest('[data-timeline]');
-  if (graph) showTimelinePoint(graph,Number(event.target.value));
-});
 function showHeatDay(event) {
   const cell = event.target.closest('[data-heat-day]');
   if (!cell) return;
@@ -1195,13 +1126,16 @@ document.addEventListener('keydown',event => {
   next.focus();
 });
 
-function refreshDeskFeed() {
+function refreshDeskFeed(motionClass) {
   const feed = app.querySelector('#desk-feed');
   if (!feed) return;
   const view = route.page === 'achievements' ? achievementsPage() : route.page === 'stats' ? statsPage() :
     sessionsPage(route.page === 'game' ? findByRoute(games()) : undefined);
   feed.outerHTML = view;
-  imageFallbacks(app.querySelector('#desk-feed'));
+  const updated = app.querySelector('#desk-feed');
+  updated.classList.add('feed-updated');
+  if (motionClass) updated.classList.add(motionClass);
+  imageFallbacks(updated);
 }
 
 
@@ -1350,10 +1284,11 @@ function settingsPage() {
     </div>`;
 }
 
-function render(focusMain = false) {
+function render(focusMain = false, enter = false) {
   const views = { library, wishlist:storeFeedPage, news:storeFeedPage, collections: collectionsPage, achievements: achievementsPage, sessions: sessionsPage, stats: statsPage, settings: settingsPage, game: gamePage };
   const regionOffset = app.querySelector('.boss-region-index')?.scrollTop;
-  app.innerHTML = shell(views[route.page]());
+  app.innerHTML = shell(views[route.page](), enter);
+  if (enter) app.querySelector('.stats-dashboard')?.classList.add('stats-view-enter');
   restoreBossRegionScroll(regionOffset);
   const currentTab = app.querySelector('.desk-tabs [aria-current="page"]');
   if (currentTab) {
@@ -1371,12 +1306,15 @@ function render(focusMain = false) {
   if (focusMain) app.querySelector('#main').focus({ preventScroll: true });
 }
 
-function renderResults(more = false) {
+function renderResults(more = false, animate = false) {
   if (!more) displayLimit = 24;
   const current = document.querySelector('#game-results');
   if (current) {
     current.outerHTML = gameResults(sourceForPage());
-    imageFallbacks(document.querySelector('#game-results'));
+    const updated = document.querySelector('#game-results');
+    updated.classList.add('results-updated');
+    if (animate) updated.classList.add('results-enter');
+    imageFallbacks(updated);
   }
 }
 
@@ -1519,38 +1457,33 @@ function dateStamp(now = new Date()) {
 
 const actions = {
   'news-category': control => {
-    majorNewsOnly = control.dataset.major === 'true';
+    const major = control.dataset.major === 'true';
+    if (major === majorNewsOnly) return;
+    majorNewsOnly = major;
     for (const button of control.parentElement.querySelectorAll('button')) {
       button.setAttribute('aria-pressed',String(button === control));
     }
-    updateStoreFeed();
-  },
-  'achievement-order': control => {
-    achievementSort = control.dataset.value;
-    achievementLimit = 24;
-    const menu = control.closest('details');
-    for (const button of menu.querySelectorAll('[data-action="achievement-order"]')) {
-      button.setAttribute('aria-pressed',String(button === control));
-    }
-    menu.open = false;
-    menu.querySelector('summary').focus({preventScroll:true});
-    updateAchievementRows();
+    updateStoreFeed(true);
   },
   'stats-time-period': control => {
     const mode = control.dataset.value;
     if (!['months','years'].includes(mode) || mode === statsTimeMode) return;
     statsTimeMode = mode;
-    refreshDeskFeed();
-    app.querySelector('[data-action="stats-time-period"][aria-pressed="true"]')?.focus({preventScroll:true});
+    const chart = app.querySelector('.stats-time-chart, .stats-time-chart-empty');
+    chart.outerHTML = statsHourChart(sessionContext().events);
+    app.querySelector('.stats-time-chart')?.classList.add('chart-enter');
+    for (const button of control.parentElement.querySelectorAll('button')) {
+      button.setAttribute('aria-pressed',String(button === control));
+    }
   },
   'desk-feed-more': () => { feedLimit += 24; refreshDeskFeed(); },
   'desk-locked': control => {
     const next = control.dataset.value === 'locked';
     if (lockedFeed === next) return;
     lockedFeed = next;
-    if (!lockedFeed) revealRecentAchievements = true;
+    if (!lockedFeed) recentRevealStartedAt = null;
     feedLimit = 24;
-    refreshDeskFeed();
+    refreshDeskFeed(lockedFeed ? 'locked-enter' : undefined);
     app.querySelector('.ach-tab.is-active')?.focus({preventScroll:true});
   },
   'desk-heat-year': openHeatYear,
@@ -1603,21 +1536,12 @@ const actions = {
     summary.dataset.active = String(Boolean(filter.status || libraryHidden));
     menu.open = false;
     summary.focus({preventScroll:true});
-    renderResults();
+    renderResults(false, true);
   },
   'pick-collection': openCollectionPicker,
   'achievement-more': () => {
     achievementLimit += 24;
     updateAchievementRows(true);
-  },
-  'achievement-set': control => {
-    const key = control.dataset.value;
-    const record = displayedAchievements;
-    if (!record || (key !== 'all' && !achievementGroups(record).some(group => group.id === key))) return;
-    achievementSetFilter = key;
-    achievementLimit = 24;
-    drawAchievements(document.querySelector('#steam-achievements'),record);
-    document.querySelector('.af-ach-set-tab[aria-pressed="true"]')?.focus({preventScroll:true});
   },
   'restore-game': control => {
     const game = games().find(item => item.id === control.dataset.id && item.hidden);
@@ -1689,7 +1613,7 @@ const actions = {
 };
 
 document.addEventListener('click', event => {
-  for (const menu of app.querySelectorAll('.desk-achievement-menu[open], .desk-library-filter[open]')) {
+  for (const menu of app.querySelectorAll('.desk-library-filter[open], .desk-collection-sort[open], .af-ach-extra[open]')) {
     if (!menu.contains(event.target)) menu.open = false;
   }
   const control = event.target.closest('[data-action]');
@@ -1699,7 +1623,7 @@ document.addEventListener('click', event => {
 
 document.addEventListener('keydown', event => {
   if (event.key !== 'Escape' || event.defaultPrevented || dialog.open) return;
-  const menu = app.querySelector('.desk-achievement-menu[open], .desk-library-filter[open]');
+  const menu = app.querySelector('.desk-library-filter[open], .desk-collection-sort[open], .af-ach-extra[open]');
   if (menu) {
     menu.open = false;
     menu.querySelector('summary').focus({ preventScroll: true });
@@ -1736,7 +1660,7 @@ app.addEventListener('change', async event => {
   }
   if (field.id === 'desk-unlock-year') {
     achievementYear = field.value;
-    revealRecentAchievements = true;
+    recentRevealStartedAt = null;
     feedLimit = 24;
     refreshDeskFeed();
     app.querySelector('#desk-unlock-year')?.focus({preventScroll:true});
@@ -1745,19 +1669,19 @@ app.addEventListener('change', async event => {
     if (!['common','rare'].includes(field.value)) return;
     lockedAchievementOrder = field.value;
     feedLimit = 24;
-    refreshDeskFeed();
+    refreshDeskFeed('locked-list-enter');
     app.querySelector('#ach-locked-order')?.focus({preventScroll:true});
   }
   if (field.id === 'achievement-order') {
     if (!['rare','common','recent'].includes(field.value)) return;
     achievementSort = field.value;
     achievementLimit = 24;
-    updateAchievementRows();
+    updateAchievementRows(false, true);
   }
   if (field.id === 'achievement-state') {
     achievementFilter = field.value;
     achievementLimit = 24;
-    updateAchievementRows();
+    updateAchievementRows(false, true);
   }
   if (field.id === 'achievement-reveal') {
     revealHidden = field.checked;
@@ -1767,7 +1691,7 @@ app.addEventListener('change', async event => {
     libraryHidden = field.checked;
     const icon = app.querySelector('.desk-library-filter summary');
     if (icon) icon.dataset.active = String(Boolean(filter.status || libraryHidden));
-    renderResults();
+    renderResults(false, true);
   }
   if (field.id !== 'backup-file' || !field.files.length) return;
   const file = field.files[0];
@@ -1836,7 +1760,7 @@ window.addEventListener('hashchange', () => {
   displayLimit = 24;
   feedLimit = 24;
   lockedFeed = false;
-  revealRecentAchievements = true;
+  recentRevealStartedAt = null;
   achievementYear = '';
   achievementFilter = '';
   achievementQuery = '';
@@ -1847,7 +1771,7 @@ window.addEventListener('hashchange', () => {
   }
   window.scrollTo(0, 0);
   if (dialog.open) dialog.close();
-  render(!searchPending);
+  render(!searchPending, true);
   if (searchPending) {
     toggleLibrarySearch(true);
     searchPending = false;
@@ -2018,13 +1942,16 @@ async function refreshSteamSummaries(repaint = true) {
   const records = await achievementRecords(account);
   if (account !== (state.steam?.account ?? null)) return;
   for (const record of records) trackCompletion(record, summaryAccount === account ? summaries.get(record.appid) : null);
+  const firstLoad = summaryAccount !== account;
   summaryAccount = account;
   summaries = new Map(records.map(record => [record.appid,record]));
   if (!repaint || dialog.open) return;
   const summary = app.querySelector('#library-summary');
   if (summary) summary.outerHTML = librarySummary();
   if (['library','collections'].includes(route.page)) renderResults(true);
-  if (['achievements','sessions','stats'].includes(route.page) || route.page === 'game' && route.tab === 'sessions') refreshDeskFeed();
+  if (['achievements','sessions','stats'].includes(route.page) || route.page === 'game' && route.tab === 'sessions') {
+    refreshDeskFeed(route.page === 'stats' && firstLoad ? 'stats-charts-enter' : undefined);
+  }
   const game = route.page === 'game' ? findByRoute(games()) : null;
   if (game?.steam && displayedAchievements) {
     const box = app.querySelector('#steam-achievements');
@@ -2377,7 +2304,9 @@ function refreshBossTracker(control, clearedIndex = null) {
   const sameList = control.dataset.action !== 'boss-region' && control.dataset.action !== 'boss-area';
   const defeatedOpen = sameList && current.querySelector('.boss-defeated')?.open;
   current.outerHTML = bossTracker(game, { defeatedOpen, clearedIndex });
-  imageFallbacks(app.querySelector('#boss-tracker'));
+  const updated = app.querySelector('#boss-tracker');
+  if (!sameList) updated.querySelector('.boss-region').classList.add('region-enter');
+  imageFallbacks(updated);
   restoreBossRegionScroll(offset);
   const selector = [...control.attributes].filter(attribute => attribute.name.startsWith('data-'))
     .map(attribute => `[${attribute.name}="${CSS.escape(attribute.value)}"]`).join('');
@@ -2542,27 +2471,6 @@ async function showAchievements(force = false) {
   }
 }
 
-/* Set metadata is optional. Only expose group tabs when an exact ID-to-achievement
-   mapping exists. Steam achievements cached today may not contain sets at all. */
-function achievementGroups(record) {
-  if (!Array.isArray(record?.sets) || !Array.isArray(record.items)) return [];
-  const known = new Set(record.items.map(item => item.id));
-  const seen = new Set();
-  return record.sets.flatMap((set,index) => {
-    if (!set || typeof set !== 'object') return [];
-    const ids = set.achievementIds ?? set.ids;
-    if (!Array.isArray(ids)) return [];
-    const matching = [...new Set(ids)].filter(id => typeof id === 'string' && known.has(id));
-    if (!matching.length) return [];
-    const title = typeof set.name === 'string' ? set.name.trim() : '';
-    if (!title) return [];
-    const id = String(set.id ?? index);
-    if (seen.has(id)) return [];
-    seen.add(id);
-    return [{id,name:title,ids:new Set(matching)}];
-  });
-}
-
 function gameAchievementDate(time) {
   if (!(time > 0)) return '';
   const when = new Date(time*1000);
@@ -2588,15 +2496,11 @@ function drawAchievements(box, record, message = '', loading = false) {
     }
   }
   displayedAchievements = record;
+  const firstDraw = !box.querySelector('#achievement-rows');
   const extraOpen = box.querySelector('.af-ach-extra')?.open;
   const focusedField = box.contains(document.activeElement) ? document.activeElement.id : '';
   const total = Number(record?.total) || 0;
   const earned = Number(record?.unlocked) || 0;
-  const rate = total ? Math.round(earned / total * 1000)/10 : 0;
-  const groups = achievementGroups(record);
-  if (achievementSetFilter !== 'all' && !groups.some(group => group.id === achievementSetFilter)) {
-    achievementSetFilter = 'all';
-  }
   box.innerHTML = (message ? '<p class="dash-empty" role="status">' + esc(message) + '</p>' : '') +
     (!total && !message ? '<p class="dash-empty">' + (record ? 'Нет достижений' : 'Данные пока недоступны.') + '</p>' : '') +
     (total ? '<div class="af-game-ach-shell">' +
@@ -2621,13 +2525,13 @@ function drawAchievements(box, record, message = '', loading = false) {
       '</div>' +
       '<div id="achievement-rows"></div>' +
     '</div>' : '');
-  updateAchievementRows();
+  updateAchievementRows(false, firstDraw);
   if (focusedField) document.getElementById(focusedField)?.focus({preventScroll:true});
 }
 
 const isRare = item => Number.isFinite(item.percent) && item.percent < 10;
 
-function updateAchievementRows(more = false) {
+function updateAchievementRows(more = false, animate = false) {
   const target = document.querySelector('#achievement-rows');
   if (!target || !displayedAchievements) return;
   const query = achievementQuery.trim().toLocaleLowerCase('ru');
@@ -2668,6 +2572,7 @@ function updateAchievementRows(more = false) {
     (items.length > achievementLimit ?
       '<div class="load-more">' + button('achievement-more','Показать ещё · ' + (items.length-achievementLimit),'down') + '</div>' : '') :
     '<p class="dash-empty" role="status">Достижения по этим фильтрам не найдены.</p>';
+  if (animate) target.querySelector('.achievement-list')?.classList.add('game-achievements-enter');
   imageFallbacks(target);
   if (more) {
     const firstNew = target.querySelectorAll('li')[achievementLimit - 24];
@@ -2689,7 +2594,7 @@ const cloud = createCloudSync({
     if (route.page === 'settings' && !dialog.open) render();
   }
 });
-render();
+render(false, true);
 refreshSteamSummaries();
 refreshSteamProfile();
 window.addEventListener('online', () => { cloud.schedule(0); refreshSteamProfile(); maybeSyncSteam(); void refreshStoreFeed(); });
