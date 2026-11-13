@@ -1874,3 +1874,192 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
 .desk-collection-sort-btn[aria-pressed=true]{background:#243f55;border-color:#77bde5}
 .desk-collection-sort-btn:hover{background:#263d50;border-color:#77bde5}
 .desk-collection-empty{background:#151c29;border-color:#303d50}
+
+
+/* Game-card achievements desktop redesign. Scoped to game overview only, max content width 1200px. */
+.desk-game-achievement-view{
+  --af-ach-bg:#101722;
+  --af-ach-panel:#141d2b;
+  --af-ach-border:#304659;
+  --af-ach-turquoise:#69c9e5;
+  --af-ach-subtle:#a8bace;
+  color:#edf5fc;
+}
+.desk-game-achievement-view .desk-game-inner{width:min(var(--desk-width),calc(100% - 50px))}
+.desk-game-achievement-view .desk-game-hero{
+  position:relative;isolation:isolate;
+  min-height:247px;
+}
+.desk-game-achievement-view .desk-hero-art{
+  width:min(100%,1680px);height:100%;min-height:270px;
+  object-fit:cover;object-position:center 29%;
+  max-height:360px;opacity:.58;
+  mask-image:linear-gradient(90deg,transparent 0%,#000 35%,#000 79%,transparent 100%);
+}
+.desk-game-achievement-view .desk-game-hero::after{
+  content:"";position:absolute;z-index:-1;inset:0;pointer-events:none;
+  background:linear-gradient(90deg,#0d111bd9 0%,#111824ab 42%,#0c111bc2 100%),linear-gradient(0deg,#0d0f15 0%,transparent 80%);
+}
+.desk-game-achievement-view .desk-game-crumb{margin-bottom:12px}
+.desk-game-achievement-view .desk-game-heading{
+  grid-template-columns:124px minmax(0,1fr);align-items:start;gap:22px;
+  padding:5px 0 24px;
+}
+.desk-game-achievement-view .desk-game-heading .game-poster{
+  width:124px;height:172px;aspect-ratio:2/3;border-radius:10px;overflow:hidden;
+  border:1px solid #34495b;box-shadow:0 13px 28px #0008;
+}
+.desk-game-achievement-view .desk-game-title h1{font-size:clamp(1.5rem,2.4vw,2.05rem);line-height:1.22;letter-spacing:-.03em}
+.desk-game-achievement-view .desk-game-title>small{font-size:.92rem;margin-top:7px}
+.desk-game-achievement-view .desk-game-links{margin-top:14px}
+.desk-game-achievement-view .desk-game-metrics{
+  grid-column:2;grid-row:1;margin-top:95px;
+  justify-content:flex-start;gap:12px;
+  align-self:end;z-index:2;
+}
+.desk-game-achievement-view .desk-game-metrics>div{
+  display:grid;gap:5px;padding-right:15px;
+  border-right:1px solid #42546a;
+}
+.desk-game-achievement-view .desk-game-metrics>div:last-child{border-right:0}
+.desk-game-achievement-view .desk-game-metrics dt{font-size:.76rem}
+.desk-game-achievement-view .desk-game-metrics dd{font-size:.94rem;font-weight:750}
+.desk-game-achievement-view .desk-game-body{padding-top:9px}
+.desk-game-achievement-view .af-game-ach-shell{display:grid;gap:16px;min-width:0}
+.desk-game-achievement-view .af-game-ach-progress{
+  display:grid;grid-template-columns:auto minmax(0,1fr) auto;
+  gap:24px;align-items:center;
+  padding:16px 21px;border-radius:11px;
+  border:1px solid #2b526d;background:linear-gradient(115deg,#142a3a,#101a29);
+  box-shadow:inset 0 1px #e4f7ff0a;
+}
+.desk-game-achievement-view .af-game-ach-progress-heading{display:flex;align-items:center;gap:11px;white-space:nowrap}
+.desk-game-achievement-view .af-game-ach-progress-heading>svg{color:var(--af-ach-turquoise)}
+.desk-game-achievement-view .af-game-ach-progress-heading>span{font-size:1rem;font-weight:800}
+.desk-game-achievement-view .af-game-ach-progress-heading>strong{
+  margin-left:14px;font-size:1.55rem;white-space:nowrap;font-variant-numeric:tabular-nums}
+.desk-game-achievement-view .af-game-ach-progress-heading>strong small{font-size:1rem;color:#96abc0}
+.desk-game-achievement-view .af-game-ach-track{height:12px;overflow:hidden;border-radius:99px;background:#2d465e}
+.desk-game-achievement-view .af-game-ach-track span{
+  height:100%;display:block;background:linear-gradient(90deg,#429ecb,#73d6ec);
+  border-radius:inherit;transition:width .22s ease}
+.desk-game-achievement-view .af-game-ach-percent{
+  color:#8de0f1;font-size:1.34rem;font-variant-numeric:tabular-nums}
+.desk-game-achievement-view .af-game-ach-set-tabs{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.desk-game-achievement-view .af-ach-set-tab{
+  display:flex;align-items:center;gap:9px;
+  min-height:40px;padding:9px 15px;
+  border:1px solid #30465c;border-radius:9px;background:linear-gradient(135deg,#192536,#122031);
+  color:#b8cadd;font-size:.85rem;font-weight:700;cursor:pointer;transition:background .18s,border-color .18s}
+.desk-game-achievement-view .af-ach-set-tab:hover{background:#20364b;border-color:#5589ab}
+.desk-game-achievement-view .af-ach-set-tab[aria-pressed=true]{
+  background:linear-gradient(135deg,#1c445b,#13364a);
+  border-color:#6fcce8;color:#e9faff;box-shadow:0 0 9px #69d1ed1b}
+.desk-game-achievement-view .af-ach-set-tab>svg{color:#7ed1e8}
+.desk-game-achievement-view .af-game-ach-toolbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.desk-game-achievement-view .af-game-ach-toolbar>.searchbox{
+  width:min(460px,100%);min-height:42px;padding-inline:14px;
+  border-color:#32475a;background:#151e2b;border-radius:9px;color:#8fa9bf}
+.desk-game-achievement-view .af-game-ach-toolbar .searchbox input{min-height:40px;height:40px;font-size:.86rem}
+.desk-game-achievement-view .af-game-ach-toolbar .searchbox:focus-within{border-color:#6aaec7}
+.desk-game-achievement-view .af-game-ach-filters{display:flex;align-items:center;flex-wrap:wrap;gap:9px}
+.desk-game-achievement-view .af-ach-select-label{display:flex;align-items:center;gap:8px;font-size:.78rem;color:#a6b9c9}
+.desk-game-achievement-view .af-ach-select-label select{
+  min-height:42px;max-width:232px;border:1px solid #334b61;border-radius:9px;
+  background:#162435;color:#eaf4fc;padding:9px 12px;font-size:.86rem;font-weight:700}
+.desk-game-achievement-view .af-ach-extra{position:relative}
+.desk-game-achievement-view .af-ach-extra>summary{
+  display:grid;place-items:center;list-style:none;cursor:pointer;width:42px;height:42px;
+  border:1px solid #334b61;border-radius:9px;background:#162435;color:#b7c8d7}
+.desk-game-achievement-view .af-ach-extra>summary::-webkit-details-marker{display:none}
+.desk-game-achievement-view .af-ach-extra>label{
+  position:absolute;z-index:10;right:0;top:calc(100% + 7px);
+  display:flex;gap:8px;align-items:center;min-width:290px;padding:12px;
+  background:#162435;border:1px solid #415a70;border-radius:9px;
+  box-shadow:0 12px 30px #0009;font-size:.82rem;color:#dbe8f1}
+.desk-game-achievement-view .af-ach-extra input{accent-color:#70c5df}
+.desk-game-achievement-view .af-ach-list{
+  gap:8px;margin:0;padding:0;list-style:none;
+}
+.desk-game-achievement-view .af-ach-list .af-ach-row{
+  display:grid;grid-template-columns:58px minmax(0,1fr) 106px 187px;
+  gap:16px;align-items:center;
+  padding:9px 16px;min-height:83px;
+  border-radius:10px;border:1px solid #2c4054;
+  background:linear-gradient(110deg,#172536,#121c2a);
+  box-shadow:none;
+  transition:background .15s,border-color .15s;
+}
+.desk-game-achievement-view .af-ach-list .af-ach-row:hover{
+  background:#1d3043;border-color:#537c9c;
+}
+.desk-game-achievement-view .af-ach-list .af-ach-row:focus-within{
+  border-color:#71c5dd;
+}
+.desk-game-achievement-view .af-ach-list .af-ach-icon{
+  width:58px;height:58px;border-radius:7px;background:#1c2b3e;
+  color:#829bad;border:1px solid #324961;overflow:hidden;
+}
+.desk-game-achievement-view .af-ach-list .af-ach-row.is-locked .af-ach-icon{filter:saturate(.58)}
+.desk-game-achievement-view .af-ach-list .af-ach-copy{min-width:0}
+.desk-game-achievement-view .af-ach-list .af-ach-copy strong{
+  display:block;font-size:1rem;line-height:1.28;font-weight:800;color:#f2f7fc}
+.desk-game-achievement-view .af-ach-list .af-ach-copy p{
+  color:#b4c5d4;font-size:.85rem;line-height:1.4;margin-top:4px}
+.desk-game-achievement-view .af-ach-list .af-ach-rarity{
+  display:flex;align-items:center;gap:9px;color:#c9d9ea;
+  font-size:.91rem;font-weight:750;white-space:nowrap;font-variant-numeric:tabular-nums}
+.desk-game-achievement-view .af-ach-list .af-ach-rarity svg{color:#8cb3d1}
+.desk-game-achievement-view .af-ach-list .af-ach-status{
+  display:grid;justify-items:start;gap:6px;
+  padding-left:14px;min-height:42px;align-content:center;
+  border-left:1px solid #364d62;font-size:.81rem;white-space:nowrap}
+.desk-game-achievement-view .af-ach-status-earned{color:#a6d5e5;font-weight:750}
+.desk-game-achievement-view .af-ach-status-locked{color:#b4c2cf}
+.desk-game-achievement-view .af-ach-status time{color:#aabed1;font-size:.76rem}
+.desk-game-achievement-view .load-more .btn{border-color:#38546b;background:#192b3b;color:#d8ecf5}
+@media(max-width:950px){
+  .desk-game-achievement-view .af-game-ach-progress{grid-template-columns:1fr auto;gap:11px}
+  .desk-game-achievement-view .af-game-ach-track{grid-row:2;grid-column:1/-1}
+  .desk-game-achievement-view .af-game-ach-progress-heading{grid-column:1;grid-row:1}
+  .desk-game-achievement-view .af-game-ach-percent{grid-column:2;grid-row:1}
+  .desk-game-achievement-view .af-ach-list .af-ach-row{grid-template-columns:50px minmax(0,1fr) 85px 144px;gap:9px}
+  .desk-game-achievement-view .af-ach-list .af-ach-icon{width:50px;height:50px}
+  .desk-game-achievement-view .af-ach-list .af-ach-copy strong{font-size:.87rem}
+}
+@media(max-width:680px){
+  .desk-game-achievement-view .desk-game-inner{width:calc(100% - 24px)}
+  .desk-game-achievement-view .desk-game-hero{min-height:0}
+  .desk-game-achievement-view .desk-game-heading{grid-template-columns:82px minmax(0,1fr);gap:11px}
+  .desk-game-achievement-view .desk-game-heading .game-poster{width:82px;height:117px}
+  .desk-game-achievement-view .desk-game-title h1{font-size:1.26rem}
+  .desk-game-achievement-view .desk-game-title>small{font-size:.78rem}
+  .desk-game-achievement-view .desk-game-links{margin-top:7px}
+  .desk-game-achievement-view .desk-game-metrics{grid-column:1/-1;grid-row:auto;margin-top:2px;gap:11px}
+  .desk-game-achievement-view .desk-game-metrics dt{font-size:.68rem}
+  .desk-game-achievement-view .desk-game-metrics dd{font-size:.77rem}
+  .desk-game-achievement-view .af-game-ach-progress{padding:12px 14px}
+  .desk-game-achievement-view .af-game-ach-progress-heading{gap:7px}
+  .desk-game-achievement-view .af-game-ach-progress-heading>strong{margin-left:3px;font-size:1.14rem}
+  .desk-game-achievement-view .af-game-ach-progress-heading>span{font-size:.84rem}
+  .desk-game-achievement-view .af-game-ach-percent{font-size:1rem}
+  .desk-game-achievement-view .af-game-ach-toolbar>.searchbox{width:100%}
+  .desk-game-achievement-view .af-game-ach-filters{width:100%;justify-content:space-between}
+  .desk-game-achievement-view .af-ach-select-label span{display:none}
+  .desk-game-achievement-view .af-ach-select-label select{font-size:.78rem;min-height:38px;max-width:190px}
+  .desk-game-achievement-view .af-ach-extra>summary{height:38px;width:38px}
+  .desk-game-achievement-view .af-ach-list .af-ach-row{grid-template-columns:44px minmax(0,1fr) 72px;gap:9px;padding:9px;min-height:72px}
+  .desk-game-achievement-view .af-ach-list .af-ach-icon{width:44px;height:44px}
+  .desk-game-achievement-view .af-ach-list .af-ach-copy strong{font-size:.84rem}
+  .desk-game-achievement-view .af-ach-list .af-ach-copy p{font-size:.72rem}
+  .desk-game-achievement-view .af-ach-list .af-ach-rarity{font-size:.76rem;gap:3px}
+  .desk-game-achievement-view .af-ach-list .af-ach-status{
+    grid-column:2/-1;grid-row:2;border-left:0;padding-left:0;min-height:0;
+    display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:.72rem}
+  .desk-game-achievement-view .af-ach-status time{font-size:.71rem}
+}
+@media(prefers-reduced-motion:reduce){
+  .desk-game-achievement-view .af-ach-list .af-ach-row,
+  .desk-game-achievement-view .af-ach-set-tab,
+  .desk-game-achievement-view .af-game-ach-track span{transition:none}
+}
