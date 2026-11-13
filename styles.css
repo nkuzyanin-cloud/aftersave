@@ -2079,13 +2079,15 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
   background:#0e1015;
 }
 .desk-game-achievement-view .desk-hero-art{
-  filter:grayscale(1) saturate(0) brightness(.77);
-  opacity:.54;
+  /* Preserve Steam artwork colours; use only a subtle, neutral dimming. */
+  filter:brightness(.94);
+  opacity:.9;
 }
 .desk-game-achievement-view .desk-game-hero::after{
+  /* Additional shade behind the title; leave the game artwork visible. */
   background:
-    linear-gradient(90deg,rgba(12,13,17,.83) 0%,rgba(15,15,19,.53) 48%,rgba(12,13,17,.68) 100%),
-    linear-gradient(0deg,#0d0f15 0%,transparent 85%);
+    linear-gradient(90deg,rgba(12,13,17,.48) 0%,rgba(15,15,19,.16) 48%,rgba(12,13,17,.18) 100%),
+    linear-gradient(0deg,#0d0f15 0%,transparent 72%);
 }
 .desk-game-achievement-view .desk-game-heading>.game-poster{
   width:124px;
