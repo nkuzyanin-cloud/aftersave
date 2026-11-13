@@ -2191,3 +2191,110 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
 @keyframes popover-enter{from{opacity:0;translate:0 -4px}to{opacity:1;translate:0 0}}
 @keyframes achievement-reveal{from{opacity:0;translate:0 -9px}to{opacity:1;translate:0 0}}
 @keyframes history-enter{from{visibility:hidden;opacity:0;translate:0 10px}to{visibility:visible;opacity:1;translate:0 0}}
+
+
+/* Game sessions dashboard v2: day-aggregated data, responsive 1200px layout. */
+.session-dashboard{--session-cyan:#69cee3;--session-blue:#629ae2;--session-panel:#151c29;--session-border:#303d50;display:grid;gap:15px;min-width:0;color:#eaf3fa}
+.session-dashboard-head,.session-dashboard-actions,.session-panel-head{display:flex;justify-content:space-between;align-items:center;gap:14px}
+.session-dashboard-head{min-height:42px}
+.session-dashboard-head h1{display:flex;align-items:center;gap:11px;margin:0;font-size:1.42rem;letter-spacing:-.035em}
+.session-dashboard-head h1 svg,.session-panel-head h2 svg{color:var(--session-cyan)}
+.session-dashboard-actions{flex-wrap:wrap;justify-content:flex-end}
+.session-dashboard-actions>.btn{color:#b6d7e9;font-weight:750}
+.session-switch{display:flex;align-items:center;gap:3px;padding:4px;border-radius:11px;background:#111a28;border:1px solid #2c3a50}
+.session-switch button{appearance:none;border:1px solid transparent;border-radius:8px;color:#b2c2d4;background:transparent;padding:8px 13px;font:inherit;font-size:.81rem;font-weight:750;cursor:pointer;white-space:nowrap}
+.session-switch button[aria-pressed=true]{color:#effaff;background:#253f60;border-color:#5f99d0;box-shadow:0 1px 8px #04091255}
+.session-switch button:hover{color:#fff;background:#25374a}
+.session-card{min-width:0;border-radius:11px;border:1px solid var(--session-border);background:linear-gradient(125deg,#151c29 0%,#101722 100%);box-shadow:inset 0 1px #fff00008}
+.session-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.session-kpi{min-height:105px;padding:17px;display:flex;align-items:center;gap:14px}
+.session-kpi-icon{width:45px;height:45px;flex:none;display:grid;place-items:center;border-radius:12px;background:#193144;color:var(--session-cyan)}
+.session-kpi>div:last-child{display:grid;gap:4px;min-width:0}
+.session-kpi small{color:#b4c6d6;font-size:.78rem;line-height:1.3}
+.session-kpi strong{color:#f5faff;font-weight:850;font-size:clamp(1.02rem,1.6vw,1.43rem);line-height:1.25;font-variant-numeric:tabular-nums}
+.session-kpi span{color:#88a6ba;font-size:.71rem;line-height:1.4}
+.session-main-grid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(300px,1fr);gap:13px}
+.session-bottom-grid{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(340px,1fr);gap:13px}
+.session-chart-panel,.session-top-panel,.session-recent-panel,.session-share-panel{padding:17px 19px}
+.session-panel-head{margin-bottom:14px}
+.session-panel-head h2{display:flex;align-items:center;gap:9px;margin:0;font-size:1.04rem;letter-spacing:-.015em;line-height:1.3}
+.session-panel-head .session-switch{padding:2px}
+.session-panel-head .session-switch button{font-size:.72rem;padding:6px 10px}
+.session-chart-scroll{width:100%;overflow-x:auto;overflow-y:hidden;padding-bottom:2px}
+.session-bars{--session-bars:7;display:grid;grid-template-columns:repeat(var(--session-bars),minmax(9px,1fr));gap:clamp(4px,.6vw,9px);align-items:end;min-height:238px;padding:14px 1px 0}
+.session-bar-col{display:grid;grid-template-rows:minmax(0,1fr) auto;gap:9px;align-items:end;height:220px;min-width:0}
+.session-bar-track{position:relative;height:180px;border-bottom:1px solid #3a5267;background:repeating-linear-gradient(to top,transparent 0,transparent calc(25% - 1px),#33475b66 calc(25% - 1px),#33475b66 25%)}
+.session-bar-track i{display:block;position:absolute;bottom:0;left:8%;width:84%;background:linear-gradient(180deg,#7ecbea,#3176bb);border-radius:5px 5px 0 0;box-shadow:inset 0 1px #d3f7ff55;transition:height .22s ease}
+.session-bar-col:hover i{filter:brightness(1.17)}
+.session-bar-col small{text-align:center;line-height:1.25;color:#99adbd;font-size:.63rem;white-space:nowrap}
+.session-chart-note{margin:10px 0 0;color:#819aaf;font-size:.69rem;line-height:1.5}
+.session-top-list{display:grid;gap:0;list-style:none;padding:0;margin:0}
+.session-top-list li{display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid #2d3b4c;min-width:0}
+.session-top-list li:last-child{border-bottom:0}
+.session-rank{font-size:.81rem;color:#8a9eaf;width:16px;text-align:right;flex:none}
+.session-top-game{display:flex;align-items:center;gap:9px;min-width:0;flex:1;color:#e8f2fa;text-decoration:none}
+.session-top-game:hover strong{text-decoration:underline;text-decoration-color:#70c0df}
+.session-top-game>.cover{flex:none;width:32px;height:42px;border-radius:5px;overflow:hidden;background:#283447}
+.session-top-game>.cover img{width:100%;height:100%;object-fit:cover}
+.session-top-copy{min-width:0;display:grid;gap:2px;flex:1}
+.session-top-copy strong{font-size:.78rem;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.session-top-copy small{font-size:.68rem;color:#9cb3c6}
+.session-top-bar{height:5px;background:#2e4157;border-radius:10px;overflow:hidden;margin-top:3px}
+.session-top-bar i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#437fce,#78cfe4)}
+.session-top-time{font-size:.73rem;white-space:nowrap;font-variant-numeric:tabular-nums}
+.session-text-action{display:inline-flex;align-items:center;gap:4px;border:0;background:none;color:#a3d1ed;font-size:.75rem;font-weight:700;cursor:pointer;padding:4px}
+.session-text-action:hover{color:#eff9ff;text-decoration:underline}
+.session-recent-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.session-recent-card{display:flex;align-items:stretch;gap:12px;padding:11px;border-radius:9px;border:1px solid #2c3c50;background:#182331;color:#e7f1fa;min-width:0;text-decoration:none;transition:border-color .15s,background .15s}
+.session-recent-card:hover{border-color:#5b9dbf;background:#1d3042}
+.session-recent-card>.cover{width:69px;min-width:69px;height:96px;border-radius:6px;overflow:hidden;background:#243247}
+.session-recent-card>.cover img{height:100%;width:100%;object-fit:cover}
+.session-recent-copy{display:grid;align-content:center;gap:7px;min-width:0}
+.session-recent-copy strong{font-size:.85rem;line-height:1.3}
+.session-recent-copy small{display:flex;align-items:center;gap:6px;font-size:.71rem;color:#a9bfd1;line-height:1.2}
+.session-recent-copy small svg{color:#84b8d5;flex:none}
+.session-share-layout{display:grid;grid-template-columns:minmax(135px,.83fr) minmax(0,1.15fr);align-items:center;gap:20px;min-height:235px}
+.session-donut{width:min(100%,210px);aspect-ratio:1;border-radius:50%;display:grid;place-items:center;padding:17%;margin:auto}
+.session-donut>div{width:100%;aspect-ratio:1;background:#131d2b;border-radius:50%;display:grid;align-content:center;justify-items:center;gap:2px;padding:7px;text-align:center}
+.session-donut strong{font-size:clamp(.84rem,1.2vw,1.23rem);line-height:1.2;white-space:nowrap}
+.session-donut small{color:#9bb0c1;font-size:.69rem}
+.session-share-list{list-style:none;display:grid;gap:12px;padding:0;margin:0}
+.session-share-list li{display:grid;grid-template-columns:9px minmax(0,1fr) auto;gap:4px 8px;align-items:center;min-width:0;font-size:.73rem}
+.session-share-list li i{grid-row:1/3;width:9px;height:9px;border-radius:50%;display:block}
+.session-share-list li span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#c9d6e3}
+.session-share-list li strong{font-variant-numeric:tabular-nums;font-size:.73rem}
+.session-share-list li small{grid-column:3;color:#8ba1b6;font-size:.65rem;text-align:right;font-variant-numeric:tabular-nums}
+.session-empty{display:grid;place-items:center;min-height:145px;color:#8faabd;text-align:center;font-size:.85rem;line-height:1.5;padding:20px}
+dialog.session-archive-dialog{width:min(760px,calc(100vw - 24px))}
+.session-archive-body{max-height:65dvh;overflow:auto;padding:16px}
+.session-archive-caption{font-size:.79rem;color:#a6b8c7;margin:0 0 12px}
+.session-archive-body .desk-session{background:#192333;border-color:#35465a}
+@media(max-width:1020px){
+  .session-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .session-main-grid,.session-bottom-grid{grid-template-columns:minmax(0,1fr)}
+  .session-share-layout{grid-template-columns:minmax(130px,.65fr) minmax(0,1fr)}
+}
+@media(max-width:620px){
+  .session-dashboard{gap:12px}
+  .session-dashboard-head{align-items:flex-start;flex-direction:column}
+  .session-dashboard-head h1{font-size:1.23rem}
+  .session-dashboard-actions{width:100%;justify-content:space-between}
+  .session-switch button{font-size:.73rem;padding:7px 10px}
+  .session-kpis{gap:8px}
+  .session-kpi{padding:12px;min-height:91px;gap:9px}
+  .session-kpi-icon{width:34px;height:34px}
+  .session-kpi-icon svg{width:21px;height:21px}
+  .session-kpi strong{font-size:1.02rem}
+  .session-chart-panel,.session-top-panel,.session-recent-panel,.session-share-panel{padding:13px}
+  .session-panel-head{gap:8px}
+  .session-panel-head h2{font-size:.91rem}
+  .session-recent-grid{grid-template-columns:1fr}
+  .session-recent-card>.cover{width:58px;min-width:58px;height:82px}
+  .session-share-layout{gap:11px;grid-template-columns:1fr}
+  .session-donut{width:170px}
+  .session-chart-scroll .session-bars{min-width:450px}
+  .session-bars{gap:5px}
+}
+@media(prefers-reduced-motion:reduce){
+  .session-bar-track i,.session-recent-card{transition:none}
+}
