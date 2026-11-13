@@ -1001,7 +1001,7 @@ function statsPage() {
     sum+(day >= today-364 && day <= today ? value : 0),0);
   const streak = streaks(days,today);
   const rarityMeasured = earned.filter(({item}) => Number.isFinite(item.percent));
-  const rareCount = rarityMeasured.filter(({item}) => item.percent < 5).length;
+  const rareCount = rarityMeasured.filter(({item}) => item.percent < 10).length;
   const top = [...linked].sort((a,b)=>(b.steam?.minutes ?? 0)-(a.steam?.minutes ?? 0)).slice(0,5);
   const topMax = top[0]?.steam?.minutes || 1;
   const sessions = sessionContext().events;
@@ -1038,7 +1038,7 @@ function statsPage() {
       '<div class="stats-total-hours"><strong>'+numeric(Math.round(totals.minutes/60))+' ч</strong>'+
         '<span>общее время Steam</span></div>'+
       statsHourChart(sessions)+
-      '<p class="stats-chart-caption">График: только учтённые игровые сессии. История до начала отслеживания недоступна.</p>'+
+      
     '</section>'+
     '<section class="stats-panel stats-panel-top-time">'+
       '<h2 class="stats-heading">'+icon('trophy',23)+'Топ игр по времени</h2>'+
@@ -1057,14 +1057,14 @@ function statsPage() {
       '<h2 class="stats-heading">'+icon('gem',23)+'Редкие достижения</h2>'+
       '<span class="stats-bottom-watermark" aria-hidden="true">'+icon('gem',108)+'</span>'+
       '<strong class="stats-bottom-value">'+(rarityMeasured.length ? numeric(rareCount) : '—')+'</strong>'+
-      '<p>Получено достижений с редкостью менее 5% игроков Steam.</p>'+
-      '<small>Данные о редкости: '+numeric(rarityMeasured.length)+' из '+numeric(earned.length)+' полученных</small>'+
+      '<p>Получено достижений с редкостью менее 10% игроков Steam.</p>'+
+      
     '</section>'+
     '<section class="stats-panel stats-panel-streak">'+
       '<h2 class="stats-heading">'+icon('flame',23)+'Серия достижений</h2>'+
       '<span class="stats-bottom-watermark" aria-hidden="true">'+icon('flame',112)+'</span>'+
       '<strong class="stats-bottom-value">'+numeric(streak.current)+' <span>дн.</span></strong>'+
-      '<p>Текущая серия дней с полученными достижениями.</p>'+
+      
       '<div class="stats-record">'+icon('trophy',17)+'Рекорд за 365 дней: <strong>'+numeric(streak.best)+' дн.</strong></div>'+
     '</section>'+
     '<section class="stats-panel stats-panel-library">'+
