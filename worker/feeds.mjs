@@ -1,9 +1,25 @@
 const DAY = 86400;
-const BATCH = 30;
+const BATCH = 36;
 const MAX_ARTICLE_AGE = 30 * DAY;
-const RETRY_AFTER = 60 * 60;
+const HOUR = 3600;
+const SLOT_HOURS = [9,16]; // 12:00 and 19:00 Moscow (UTC+3).
+const REFRESH_WINDOW = HOUR;
+const BATCH_INTERVAL = 5 * 60;
 const NEWS_FEED = 'steam_community_announcements';
-const checkedDay = time => Math.floor(time / DAY) * DAY;
+function refreshSlot(seconds) {
+  const day = Math.floor(seconds / DAY) * DAY;
+  const [noon,evening] = SLOT_HOURS.map(hour => day + hour*HOUR);
+  if (seconds >= evening) return {start:evening,next:noon+DAY};
+  if (seconds >= noon) return {start:noon,next:evening};
+  return {start:evening-DAY,next:noon};
+}
+
+function nextRead(seconds, rosterTime, complete) {
+  const {start,next} = refreshSlot(seconds);
+  return seconds < start+REFRESH_WINDOW && (rosterTime < start || !complete)
+    ? Math.min(seconds+BATCH_INTERVAL,start+REFRESH_WINDOW)
+    : next+BATCH_INTERVAL;
+}
 const appid = value => Number.isInteger(value) && value > 0 && value <= 4294967295;
 const clean = (value, max) => typeof value === 'string' ? value.trim().slice(0, max) : '';
 
@@ -84,36 +100,40 @@ async function gameNews(id, now) {
     });
 }
 
-async function refresh(db, account, kind, checked, loadRoster, loadDetails) {
-  const rows = await readRows(db,account,kind);
-  let roster = rowData(rows.get(0));
-  if ((rows.get(0)?.checked ?? 0) < checkedDay(checked)) {
+async function refresh(db, account, kind, slot, checked, loadRoster, loadDetails) {
+  const row = await db.prepare('SELECT checked,payload FROM steam_feeds WHERE account=? AND kind=? AND appid=0')
+    .bind(account,kind).first();
+  let roster = rowData(row);
+  if ((row?.checked ?? 0) < slot) {
     roster = await loadRoster();
-    const active = new Set(roster.ids ?? []);
-    const removed = [...rows.keys()].filter(id => id && !active.has(id));
-    const prune = roster.unavailable || !removed.length ? [] : [db.prepare(
-      'DELETE FROM steam_feeds WHERE account=? AND kind=? AND appid IN (SELECT value FROM json_each(?))'
-    ).bind(account,kind,JSON.stringify(removed))];
+    const active = JSON.stringify(roster.ids ?? []);
+    const prune = roster.unavailable ? [] : [db.prepare(
+      'DELETE FROM steam_feeds WHERE account=? AND kind=? AND appid>0 AND appid NOT IN (SELECT value FROM json_each(?))'
+    ).bind(account,kind,active)];
     await db.batch([saveRow(db,account,kind,0,checked,roster),...prune]);
   }
-  const due = (roster?.ids ?? []).filter(id => {
-    const row = rows.get(id);
-    return !row || row.checked < checkedDay(checked) || (!row.payload && row.checked <= checked - RETRY_AFTER);
-  });
-  const pending = due.slice(0,BATCH);
-  if (pending.length) await loadDetails(pending);
+  if (!roster?.ids?.length) return;
+  const {results} = await db.prepare(`SELECT ids.value AS appid
+    FROM json_each(?) AS ids
+    LEFT JOIN steam_feeds AS feed ON feed.account=? AND feed.kind=? AND feed.appid=ids.value
+    WHERE feed.checked IS NULL OR feed.checked < ?
+    ORDER BY CAST(ids.key AS INTEGER) LIMIT ?`).bind(JSON.stringify(roster.ids),account,kind,slot,BATCH).all();
+  if (results.length) await loadDetails(results.map(item => item.appid));
 }
 
 export async function refreshSteamFeeds(db, account, library, now) {
   const checked = Math.floor(now/1000);
+  const {start} = refreshSlot(checked);
+  if (checked >= start + REFRESH_WINDOW) return;
+
   await prepare(db);
-  // Keep the account's daily scan spread across the existing five-minute trigger.
+  // Finish each scheduled scan in bounded batches on the existing five-minute trigger.
   const results = await Promise.allSettled([
-    refresh(db,account,'wishlist',checked,() => wishRoster(account),async ids => {
-      const details = await wishDetails(ids);
-      await db.batch(ids.map(id => saveRow(db,account,'wishlist',id,checked,details.get(id) ?? null)));
+    refresh(db,account,'wishlist',start,checked,() => wishRoster(account),async ids => {
+      const details = await wishDetails(ids).catch(() => null);
+      await db.batch(ids.map(id => saveRow(db,account,'wishlist',id,checked,details?.get(id) ?? null)));
     }),
-    library && refresh(db,account,'news',checked,() => {
+    library && refresh(db,account,'news',start,checked,() => {
       const games = [...(library?.games ?? [])].filter(game => appid(game.appid))
         .sort((a,b) => (b.rtime_last_played ?? 0) - (a.rtime_last_played ?? 0));
       return {ids:[...new Set(games.map(game => game.appid))],names:Object.fromEntries(games.map(game => [game.appid,clean(game.name,180)]))};
@@ -129,6 +149,7 @@ export async function refreshSteamFeeds(db, account, library, now) {
     if (result.status === 'rejected') console.warn('Steam feed refresh failed', index === 0 ? 'wishlist' : 'news', result.reason?.name);
   }
 }
+
 
 function articleWords(text) {
   const words = text.split(' ');
@@ -171,18 +192,21 @@ export async function readSteamFeed(db, account, kind, now = Date.now()) {
   await prepare(db);
   const rows = await readRows(db,account,kind);
   const roster = rowData(rows.get(0));
-  if (!roster || roster.unavailable) return {status:roster ? 'unavailable' : 'pending',items:[]};
-  const started = rows.get(0).checked;
+  const seconds = Math.floor(now/1000);
+  const started = rows.get(0)?.checked ?? 0;
+  if (!roster || roster.unavailable) return {status:roster ? 'unavailable' : 'pending',items:[],
+    nextCheck:nextRead(seconds,started,Boolean(roster))};
+  const {start} = refreshSlot(started);
   let checked = started;
   let complete = true;
   for (const id of roster.ids) {
     const time = rows.get(id)?.checked ?? 0;
-    complete &&= time >= checkedDay(started);
+    complete &&= time >= start;
     checked = Math.max(checked,time);
   }
   const items = kind === 'wishlist' ? roster.ids.map(id => ({appid:id,...rowData(rows.get(id))})) :
     groupNews(roster.ids.flatMap(id => (rowData(rows.get(id)) ?? []).filter(item => item.date >= now/1000-MAX_ARTICLE_AGE)
       .map(item => ({...item,game:{appid:id,name:roster.names[id]}}))));
   const missing = roster.ids.some(id => !rows.get(id)?.payload);
-  return {status:!complete ? 'updating' : missing ? 'partial' : 'ready',checked,items};
+  return {status:!complete ? 'updating' : missing ? 'partial' : 'ready',checked,items,nextCheck:nextRead(seconds,started,complete)};
 }
