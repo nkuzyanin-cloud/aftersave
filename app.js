@@ -2199,7 +2199,7 @@ function gameDashboard() {
         </div>
         <div class="desk-game-heading">${route.tab === "overview" ? cover(game,"game-poster") : wideCover(game,true)}
           <div class="desk-game-title"><h1>${esc(displayName(game,true))} <span id="game-trophy">${completionBadge(status)}</span></h1>
-            <small>${game.steam ? icon('steam',14) + ' Steam' : esc(game.platform)}</small>
+            ${route.tab === 'overview' ? '' : '<small>' + (game.steam ? icon('steam',14) + ' Steam' : esc(game.platform)) + '</small>'}
             <div class="desk-game-links">
             ${game.steam ? `<a href="https://store.steampowered.com/app/${game.steam.appid}/" target="_blank" rel="noopener">${icon('upRight',14)} Страница игры</a>
               <button type="button" data-action="desk-game-sessions" aria-haspopup="dialog">${icon('clock',14)} Игровые сессии</button>` : ''}
@@ -2592,19 +2592,6 @@ function drawAchievements(box, record, message = '', loading = false) {
   box.innerHTML = (message ? '<p class="dash-empty" role="status">' + esc(message) + '</p>' : '') +
     (!total && !message ? '<p class="dash-empty">' + (record ? 'Нет достижений' : 'Данные пока недоступны.') + '</p>' : '') +
     (total ? '<div class="af-game-ach-shell">' +
-      '<div class="af-game-ach-progress">' +
-        '<div class="af-game-ach-progress-heading">' + icon('trophy',23) +
-          '<span>Достижения</span><strong>' + numeric(earned) + '<small> / ' + numeric(total) + '</small></strong></div>' +
-        '<div class="af-game-ach-track" role="progressbar" aria-label="Прогресс достижений" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + rate +
-          '"><span style="width:' + percent(rate) + '%"></span></div>' +
-        '<strong class="af-game-ach-percent">' + numeric(rate) + '%</strong></div>' +
-      '<div class="af-game-ach-set-tabs" role="group" aria-label="Наборы достижений">' +
-        '<button type="button" class="af-ach-set-tab" data-action="achievement-set" data-value="all" aria-pressed="' + (achievementSetFilter === 'all') + '">' +
-          icon('layers',16) + 'Все (' + numeric(total) + ')</button>' +
-        groups.map(group => '<button type="button" class="af-ach-set-tab" data-action="achievement-set" data-value="' + esc(group.id) +
-          '" aria-pressed="' + (achievementSetFilter === group.id) + '">' + icon('layers',16) +
-          esc(group.name) + ' (' + numeric(group.ids.size) + ')</button>').join('') +
-      '</div>' +
       '<div class="af-game-ach-toolbar">' +
         '<label class="searchbox">' + icon('search',19) +
           '<input type="search" id="achievement-query" aria-label="Поиск достижений" placeholder="Поиск достижений…" value="' + esc(achievementQuery) + '"></label>' +
@@ -2636,9 +2623,7 @@ function updateAchievementRows(more = false) {
   const target = document.querySelector('#achievement-rows');
   if (!target || !displayedAchievements) return;
   const query = achievementQuery.trim().toLocaleLowerCase('ru');
-  const group = achievementGroups(displayedAchievements).find(group => group.id === achievementSetFilter);
   const items = displayedAchievements.items.filter(item =>
-    (!group || group.ids.has(item.id)) &&
     (!achievementFilter || item.unlocked === (achievementFilter === 'yes')) &&
     (!query || (item.name + ' ' + (item.hidden && !item.unlocked && !revealHidden ? '' : item.description)).toLocaleLowerCase('ru').includes(query))
   );

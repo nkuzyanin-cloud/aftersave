@@ -2071,3 +2071,74 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
   .desk-game-achievement-view .af-ach-set-tab,
   .desk-game-achievement-view .af-game-ach-track span{transition:none}
 }
+
+
+/* Achievement detail header refinement: keep the existing card layout.
+   Avoid duplicate achievement display and unwanted hero colour cast. */
+.desk-game-achievement-view .desk-game-hero{
+  background:#0e1015;
+}
+.desk-game-achievement-view .desk-hero-art{
+  filter:grayscale(1) saturate(0) brightness(.77);
+  opacity:.54;
+}
+.desk-game-achievement-view .desk-game-hero::after{
+  background:
+    linear-gradient(90deg,rgba(12,13,17,.83) 0%,rgba(15,15,19,.53) 48%,rgba(12,13,17,.68) 100%),
+    linear-gradient(0deg,#0d0f15 0%,transparent 85%);
+}
+.desk-game-achievement-view .desk-game-heading>.game-poster{
+  width:124px;
+  height:172px;
+  aspect-ratio:auto;
+  background:#101116;
+  border:0;
+  border-radius:10px;
+  overflow:hidden;
+  isolation:isolate;
+  clip-path:inset(0 round 10px);
+  box-shadow:0 12px 28px rgba(0,0,0,.48);
+}
+.desk-game-achievement-view .desk-game-heading>.game-poster img{
+  display:block;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  object-position:center center;
+  border:0;
+  border-radius:inherit;
+}
+.desk-game-achievement-view .desk-game-heading>.game-poster .cover-fallback{
+  border-radius:inherit;
+}
+.desk-game-achievement-view .desk-game-title .desk-game-links{
+  margin-top:12px;
+}
+.desk-game-achievement-view .desk-game-metrics{
+  display:flex;
+  align-items:start;
+  gap:16px;
+  margin-top:0;
+}
+.desk-game-achievement-view .desk-game-metrics>div{
+  min-width:0;
+  padding-right:16px;
+  border-right:1px solid #474a53;
+}
+.desk-game-achievement-view .desk-game-metrics>div:last-child{
+  padding-right:0;
+  border-right:0;
+}
+.desk-game-achievement-view .desk-game-metrics dt{color:#a2a7b3}
+.desk-game-achievement-view .desk-game-body{padding-top:14px}
+.desk-game-achievement-view .af-game-ach-shell{gap:12px}
+@media(max-width:680px){
+  .desk-game-achievement-view .desk-game-heading>.game-poster{
+    width:82px;height:117px;border-radius:8px;clip-path:inset(0 round 8px);
+  }
+  .desk-game-achievement-view .desk-game-metrics{
+    grid-column:1/-1;grid-row:3;flex-wrap:wrap;gap:10px 12px;
+  }
+  .desk-game-achievement-view .desk-game-metrics>div{padding-right:12px}
+  .desk-game-achievement-view .desk-game-metrics dt{font-size:.68rem}
+}
