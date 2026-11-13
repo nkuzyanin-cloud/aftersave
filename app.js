@@ -63,6 +63,7 @@ let feedLimit = 24;
 let lockedFeed = false;
 let lockedAchievementOrder = 'common';
 let achievementYear = '';
+let revealRecentAchievements = true;
 let scanningAchievements = false;
 let stopAchievementScan = false;
 let scanMessage = '';
@@ -665,8 +666,8 @@ function achievementDays(entries) {
 
 function achievementRarityLabel(item) {
   return Number.isFinite(item.percent) ?
-    icon('trophy',14) + '<span>' + numeric(Math.round(item.percent*10)/10) + '% <small>игроков Steam</small></span>' :
-    '<span>Редкость неизвестна</span>';
+    icon('trophy',14) + '<span>' + numeric(Math.round(item.percent*10)/10) + '%</span>' :
+    '<span title="Редкость неизвестна" aria-label="Редкость неизвестна">—</span>';
 }
 
 function achievementItemRow(entry, locked = false) {
@@ -735,7 +736,10 @@ function achievementEarnedContent(earned, totalUnlocked) {
   const remaining=selected.slice(5);
   const since=Date.now()-7*24*60*60*1000;
   const lastWeek=earned.filter(({item})=>item.time*1000 >= since && item.time*1000 <= Date.now()).length;
-  return '<section class="ach-feature ach-earned-feature" aria-label="Недавние полученные достижения">' +
+  const reveal = revealRecentAchievements && recent.length > 0;
+  if (reveal) revealRecentAchievements = false;
+  return '<section class="ach-feature ach-earned-feature' + (reveal ? ' ach-recent-reveal' : '') +
+    '" aria-label="Недавние полученные достижения">' +
     '<div class="ach-earned-intro">' +
       '<div class="ach-intro-copy"><h1>Недавние достижения</h1>' +
         '<p>Последние разблокированные достижения<br>из ваших игр</p></div>' +
@@ -750,11 +754,12 @@ function achievementEarnedContent(earned, totalUnlocked) {
       (recent.length ? recent.map(achievementFeatureRow).join('') :
       '<p class="ach-feature-empty">В выбранном году нет полученных достижений с известной датой.</p>') +
     '</div></section>' +
-    '<div class="ach-items ach-earned-items">' +
-      (remaining.length ? remaining.slice(0,feedLimit).map(entry=>achievementItemRow(entry)).join('') :
+    (remaining.length ? '<div class="ach-items ach-earned-items">' +
+      '<div class="ach-earned-columns" aria-hidden="true"><span>Достижение</span><span>Редкость</span><span>Получено</span></div>' +
+      remaining.slice(0,feedLimit).map(entry=>achievementItemRow(entry)).join('') + '</div>' :
       '<p class="ach-empty">' + (recent.length ? 'Других достижений за выбранный период нет.' :
       'Попробуй выбрать другой год или обновить достижения Steam.') + '</p>') +
-    '</div>' + feedMore(remaining.length);
+    feedMore(remaining.length);
 }
 
 function achievementLockedContent(locked) {
@@ -1543,6 +1548,7 @@ const actions = {
     const next = control.dataset.value === 'locked';
     if (lockedFeed === next) return;
     lockedFeed = next;
+    if (!lockedFeed) revealRecentAchievements = true;
     feedLimit = 24;
     refreshDeskFeed();
     app.querySelector('.ach-tab.is-active')?.focus({preventScroll:true});
@@ -1730,6 +1736,7 @@ app.addEventListener('change', async event => {
   }
   if (field.id === 'desk-unlock-year') {
     achievementYear = field.value;
+    revealRecentAchievements = true;
     feedLimit = 24;
     refreshDeskFeed();
     app.querySelector('#desk-unlock-year')?.focus({preventScroll:true});
@@ -1829,6 +1836,7 @@ window.addEventListener('hashchange', () => {
   displayLimit = 24;
   feedLimit = 24;
   lockedFeed = false;
+  revealRecentAchievements = true;
   achievementYear = '';
   achievementFilter = '';
   achievementQuery = '';
