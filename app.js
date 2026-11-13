@@ -14,9 +14,14 @@ import { dayNumber, calendarDate, addDaily, streaks,
 
 const app = document.querySelector('#app');
 const dialog = document.querySelector('#dialog');
+const sectionDialog = document.querySelector('#section-dialog');
+let libraryHash = '#library';
+let sectionOpener = null;
 const toast = document.querySelector('#toast');
 const labels = { library: 'Игры', wishlist: 'Список желаемого', achievements: 'Достижения', collections: 'Коллекции', sessions: 'Игровые сессии', stats: 'Статистика', news: 'Новости', settings: 'Настройки', game: 'Игра' };
-const deskTabs = [['library','game'],['wishlist','bookmark'],['achievements','trophy'],['collections','layers'],['sessions','clock'],['stats','chart'],['news','news']];
+const sectionIcons = {wishlist:'bookmark',achievements:'trophy',collections:'layers',sessions:'clock',
+  stats:'chart',news:'news',settings:'gear'};
+const HOME_GAME_LIMIT = 6;
 const storeFeeds = new Map();
 let majorNewsOnly = false;
 const filter = { query: '', status: '' };
@@ -26,8 +31,6 @@ const achievementPlural = new Intl.PluralRules('ru');
 const dateFormat = new Intl.DateTimeFormat('ru', { day: 'numeric', month: 'long', year: 'numeric' });
 const STEAM_AUTO_SYNC_MS = 5 * 60 * 1000;
 const STEAM_RECENT_PLAY_MS = 2 * 60 * 60 * 1000;
-// Duration of the recent rows and the history entrance in styles.css.
-const ACHIEVEMENT_REVEAL_MS = 1750;
 const openedAt = Date.now();
 const completionMemory = new Map();
 const animatedCompletions = new Set();
@@ -37,7 +40,6 @@ let storageError = '';
 try { state = load(); } catch (error) { state = emptyState(); storageError = error.message; }
 let steamProfile = cachedSteamProfile(state.steam?.account);
 let loadingSteamProfile = false;
-let librarySearchOpen = false;
 let libraryHidden = false;
 let achievementQuery = '';
 let achievementSort = 'common';
@@ -55,7 +57,8 @@ let lastSteamAttempt = 0;
 let refreshingRecent = false;
 let steamMessage = '';
 let steamError = false;
-let displayLimit = 24;
+let displayLimit = HOME_GAME_LIMIT;
+let collectionLimit = 24;
 let achievementFilter = '';
 let achievementLimit = 24;
 let achievementView = 0;
@@ -65,7 +68,6 @@ let feedLimit = 24;
 let lockedFeed = false;
 let lockedAchievementOrder = 'common';
 let achievementYear = '';
-let recentRevealStartedAt = null;
 let scanningAchievements = false;
 let stopAchievementScan = false;
 let scanMessage = '';
@@ -93,10 +95,11 @@ const coverUrl = value => {
 
 function getRoute() {
   const [original, id, tab, note] = location.hash.slice(1).split('/');
-  const page = original === 'profile' ? 'settings' : original;
-  return { page: Object.hasOwn(labels, page) ? page : 'library', id,
+  const target = original === 'profile' ? 'settings' : original;
+  const section = Object.hasOwn(sectionIcons,target) ? target : '';
+  return {page:target === 'game' ? 'game' : 'library', section, id,
     tab: ['notes', 'sessions'].includes(tab) ? tab : 'overview',
-    trophy: page === 'library' && id === 'cup' && Object.hasOwn(cups, tab) ? tab : '',
+    trophy: !section && target === 'library' && id === 'cup' && Object.hasOwn(cups,tab) ? tab : '',
     ngPlus: tab === 'notes' && note === 'ng-plus' };
 }
 
@@ -152,11 +155,11 @@ function updateNotice() {
 }
 
 function shell(content, enter) {
-  const workspace = deskTabs.some(([page]) => page === route.page);
-  return `<main id="main" tabindex="-1" class="page page-${route.page}${workspace ? ' desk-workspace' : ''}${enter ? ' route-enter' : ''}">
+  const workspace = route.page === 'library';
+  return `<main id="main" tabindex="-1" class="page page-${route.page}${workspace ? ' desk-workspace home-page' : ''}${enter ? ' route-enter' : ''}">
     ${appUpdateReady ? updateNotice() : ''}
     ${storageError ? `<div class="alert">${icon('shield',19)}<span>${esc(storageError)}</span><a href="#settings">Восстановить данные</a></div>` : ''}
-    ${workspace ? deskHeader() : route.page === 'settings' ? `<a class="back-link" href="#library">${icon('back',17)} К играм</a>` : ''}
+    ${workspace ? deskHeader() : ''}
     ${content}
   </main>`;
 }
@@ -194,16 +197,11 @@ function progressBar(value) {
 
 
 
-function header(kicker, title, description, actions = '') {
-  return `<div class="section-heading"><div>${kicker ? `<div class="eyebrow"><i></i>${kicker}</div>` : ''}<h1>${title}</h1>
-    ${description ? `<p>${description}</p>` : ''}</div>${actions ? `<div class="heading-actions">${actions}</div>` : ''}</div>`;
-}
-
 const byLastPlayed = (a,b) => (b.steam?.lastPlayed ?? 0) - (a.steam?.lastPlayed ?? 0);
 
-function filtered(source) {
-  const query = route.page === 'library' ? filter.query.trim().toLocaleLowerCase('ru') : '';
-  const status = route.page === 'library' ? filter.status : '';
+function filtered(source, inLibrary) {
+  const query = inLibrary ? filter.query.trim().toLocaleLowerCase('ru') : '';
+  const status = inLibrary ? filter.status : '';
   return source.filter(game => {
     const haystack = [game.title, displayName(game), game.genre, game.platform, game.steam?.appid, ...game.tags].join(' ').toLocaleLowerCase('ru');
     return (!query || query.split(/\s+/).every(term => haystack.includes(term))) &&
@@ -215,16 +213,16 @@ function displayName(game, full = false) {
   return game.steam?.appid === 292030 ? (full ? 'Ведьмак 3: Дикая Охота' : 'Ведьмак 3') : game.title;
 }
 
-function gameCard(game) {
+function gameCard(game, inLibrary) {
   const total = summaryFor(game);
   const achieved = total?.total ? achievementPercent(total) : null;
   const status = completionFor(game,total);
   const recent = recentUnlocks(total);
-  const canRestore = route.page === 'library' && libraryHidden && game.hidden;
+  const canRestore = inLibrary && libraryHidden && game.hidden;
   const identity = `<div class="card-art">${cover(game)}</div>`;
   const name = esc(displayName(game));
   const results = `data-action="completion-results" data-id="${esc(game.id)}" aria-haspopup="dialog"`;
-  const notice = status === 'perfect' && route.page === 'library' && !canRestore && completionNotice(total);
+  const notice = status === 'perfect' && inLibrary && !canRestore && completionNotice(total);
   if (notice?.pending) {
     const key = completionKey(total) + ':' + notice.event;
     const animate = !document.hidden && !animatedCompletions.has(key);
@@ -255,20 +253,21 @@ function gameCard(game) {
   </article>`;
 }
 
-function gameList(source) {
-  const result = filtered(source);
+function gameList(source, inLibrary) {
+  const result = filtered(source,inLibrary);
   if (!result.length) {
-    const isFiltered = route.page === 'library' && Boolean(filter.query || filter.status || route.trophy || libraryHidden);
-    return `<div class="empty"><span class="empty-icon">${icon(isFiltered ? 'search' : 'game', 29)}</span>
+    const isFiltered = inLibrary && Boolean(filter.query || filter.status || route.trophy || libraryHidden);
+    return `<div class="empty"><span class="empty-icon">${icon(isFiltered ? 'search' : 'game',29)}</span>
       <h2>${isFiltered ? 'Игры не найдены' : 'Здесь пока пусто'}</h2>
       <p>${isFiltered ? 'Попробуйте другой запрос или сбросьте фильтры.' :
-        route.page === 'collections' ? 'Выбери игры из своей библиотеки.' : 'Подключи Steam в настройках, чтобы загрузить библиотеку.'}</p>
-      ${isFiltered ? button('clear-filters', 'Сбросить фильтры', 'x') :
-        route.page === 'collections' ? button('pick-collection','Выбрать игру','plus','primary') : '<a class="btn btn-primary" href="#settings">Настройки Steam</a>'}</div>`;
+        inLibrary ? 'Подключи Steam в настройках, чтобы загрузить библиотеку.' : 'Выбери игры из своей библиотеки.'}</p>
+      ${isFiltered ? button('clear-filters','Сбросить фильтры','x') : inLibrary ?
+        '<a class="btn btn-primary" href="#settings" aria-haspopup="dialog">Настройки Steam</a>' : button('pick-collection','Выбрать игру','plus','primary')}</div>`;
   }
-  return `<div class="library-columns desk-columns${route.page === 'library' && libraryHidden ? ' desk-can-restore' : ''}" aria-hidden="true"><span>Игра</span><span>Прогресс</span><span>Последние достижения</span><span>Активность</span></div>
-    <div class="game-grid list-view">${result.slice(0, displayLimit).map(gameCard).join('')}</div>
-    ${result.length > displayLimit ? `<div class="load-more">${button('more-games', 'Показать ещё игры', 'down')}</div>` : ''}`;
+  const limit = inLibrary ? displayLimit : collectionLimit;
+  return `<div class="library-columns desk-columns${inLibrary && libraryHidden ? ' desk-can-restore' : ''}" aria-hidden="true"><span>Игра</span><span>Прогресс</span><span>Последние достижения</span><span>Активность</span></div>
+    <div class="game-grid list-view">${result.slice(0,limit).map(game => gameCard(game,inLibrary)).join('')}</div>
+    ${result.length > limit ? `<div class="home-more">${button('more-games','Показать ещё','down','quiet',inLibrary ? '' : 'data-collection')}</div>` : ''}`;
 }
 
 function option(value, title, selected) {
@@ -277,10 +276,8 @@ function option(value, title, selected) {
 
 function libraryTools() {
   return `<div class="desk-library-tools">
-    <div id="desk-library-search" class="desk-library-search" data-open="${librarySearchOpen}" ${librarySearchOpen ? '' : 'inert'}>
-      <label class="searchbox">${icon('search',18)}<input type="search" id="global-search" placeholder="Поиск по библиотеке" aria-label="Поиск по библиотеке" value="${esc(filter.query)}"></label>
-    </div>
-    ${iconButton('library-search','Поиск по библиотеке','search',`aria-controls="desk-library-search" aria-expanded="${librarySearchOpen}"`)}
+    <label class="searchbox home-search">${icon('search',17)}<input type="search" id="global-search"
+      placeholder="Поиск по библиотеке" aria-label="Поиск по библиотеке" value="${esc(filter.query)}"></label>
     <details class="desk-library-filter">
       <summary class="icon-btn" aria-label="Фильтры библиотеки" title="Фильтры библиотеки" data-active="${Boolean(filter.status || libraryHidden)}">${icon('filter',18)}</summary>
       <div class="desk-library-filter-panel" role="group" aria-label="Статус игры">
@@ -294,23 +291,108 @@ function libraryTools() {
   </div>`;
 }
 
-function sourceForPage() {
-  if (route.trophy) return games().filter(game => trophyFor(summaryFor(game)) === route.trophy);
-  if (route.page === 'library') return games().filter(game => game.hidden === libraryHidden);
-  const collection = route.page === 'collections' && findByRoute(collections());
-  if (collection) return games().filter(game => game.collectionIds.includes(collection.id));
-  return games();
+function libraryGames() {
+  return route.trophy ? games().filter(game => trophyFor(summaryFor(game)) === route.trophy) :
+    games().filter(game => game.hidden === libraryHidden);
 }
 
-function gameResults(source) {
-  return `<div id="game-results">${gameList(source)}</div>`;
+function gameResults(source, inLibrary = true) {
+  return `<div id="${inLibrary ? 'game-results' : 'collection-game-results'}">${gameList(source,inLibrary)}</div>`;
+}
+
+function homeLink(page, label) {
+  return `<a class="home-action" href="#${page}" aria-haspopup="dialog">${label} ${icon('right',15)}</a>`;
+}
+
+function homePanel(page, title, action) {
+  return `<section class="home-panel home-${page}" aria-labelledby="home-${page}-title">
+    <header><h2 id="home-${page}-title">${icon(sectionIcons[page],20)}${title}</h2>${homeLink(page,action)}</header>
+    <div class="home-panel-items" data-home-feed="${page}">${homePreview(page)}</div></section>`;
+}
+
+function homePreview(page) {
+  if (page === 'achievements') {
+    const recent = achievementEntries().filter(({item}) => item.unlocked && item.time > 0)
+      .sort((a,b) => b.item.time-a.item.time).slice(0,3);
+    return recent.map(({game,item}) => homeRow(gameHref(game,'achievements'),trophyIcon(item),
+      item.name,displayName(game))).join('') || homeEmpty('Пока нет полученных достижений.');
+  }
+  if (page === 'sessions') {
+    return sessionContext().events.slice(0,3).map(({game,minutes,day}) =>
+      homeRow(gameHref(game),cover(game),displayName(game),sessionDuration(minutes),shortDay.format(calendarDate(day)))
+    ).join('') || homeEmpty('Пока нет записей об игровых сессиях.');
+  }
+  if (page === 'collections') {
+    return collectionEntries().slice(0,2).map(({item,grouped}) => {
+      const posters = collectionShowcaseGames(grouped,3).map(game => cover(game)).join('');
+      const count = grouped.length;
+      const noun = {one:'игра',few:'игры'}[achievementPlural.select(count)] ?? 'игр';
+      return homeRow('#collections/' + encodeURIComponent(item.id),
+        `<span class="home-posters" aria-hidden="true">${posters || icon('layers',22)}</span>`,
+        item.name,numeric(count) + ' ' + noun,'','aria-haspopup="dialog"');
+    }).join('') || homeEmpty('Пока нет коллекций.');
+  }
+  const record = storeFeeds.get(page);
+  const data = record?.account === state.steam?.account ? record?.data : null;
+  if (!state.steam?.account || !connected()) return homeEmpty('Подключи Steam в настройках.');
+  if (!data?.items.length) {
+    if (record?.error) return homeEmpty('Не удалось загрузить данные Steam.');
+    if (data?.status === 'unavailable') return homeEmpty('Steam не предоставил список желаемого.');
+    if (!data || ['pending','updating'].includes(data.status)) return homeEmpty('Ожидаем данные Steam…');
+    return homeEmpty(page === 'wishlist' ? 'Список желаемого пуст.' : 'Свежих публикаций пока нет.');
+  }
+  if (page === 'wishlist') {
+    return wishlistGroups(data.items).flatMap(([,rows]) => rows).slice(0,2).map(({item}) =>
+      homeRow('#wishlist',wideCover({steam:{appid:item.appid}},true),item.name,wishlistDate(item.releaseDate),'','aria-haspopup="dialog"')
+    ).join('') || homeEmpty('Данные игр пока недоступны.');
+  }
+  return data.items.slice(0,2).map(item => {
+    const url = newsUrl(item);
+    if (!url) return '';
+    const game = item.games[0];
+    const artwork = coverUrl(item.image);
+    const art = artwork ? `<span class="cover home-news-art"><img src="${esc(artwork)}" alt="" loading="lazy"></span>` :
+      cover({steam:{appid:game.appid}});
+    return homeRow(url,art,item.title,steamDate(item.date),'','target="_blank" rel="noopener noreferrer"');
+  }).join('') || homeEmpty('Свежих публикаций пока нет.');
+}
+
+function homeRow(href, art, title, subtitle, detail = '', attrs = '') {
+  return `<a class="home-row" href="${esc(href)}" ${attrs}>${art}
+    <span class="home-row-copy"><strong>${esc(title)}</strong><small>${esc(subtitle)}</small></span>
+    ${detail ? `<small class="home-row-detail">${esc(detail)}</small>` : ''}</a>`;
+}
+
+function homeEmpty(message) {
+  return `<p class="home-empty">${esc(message)}</p>`;
+}
+
+function refreshHomePreview(page) {
+  const content = app.querySelector(`[data-home-feed="${page}"]`);
+  if (!content) return;
+  content.innerHTML = homePreview(page);
+  imageFallbacks(content);
 }
 
 function library() {
-  return `<section class="library-section" aria-label="Библиотека">
-    ${route.trophy ? `<div class="cup-filter">${trophyBadge(route.trophy)} <a class="quiet-link" href="#library">${icon('x',16)} Сбросить кубок</a></div>` : ''}
-    ${gameResults(sourceForPage())}
-  </section>`;
+  return `<div class="home-dashboard">
+    <div class="home-primary">
+      <section class="library-section home-panel" aria-labelledby="home-games-title">
+        <header><h1 id="home-games-title">${icon('game',22)}Игры</h1>${libraryTools()}</header>
+        ${route.trophy ? `<div class="cup-filter">${trophyBadge(route.trophy)} <a class="quiet-link" href="#library">${icon('x',16)} Сбросить кубок</a></div>` : ''}
+        ${gameResults(libraryGames())}
+      </section>
+      <aside class="home-activity" aria-label="Последняя активность">
+        ${homePanel('achievements','Последние достижения','Все')}
+        ${homePanel('sessions','Игровые сессии','Подробнее')}
+      </aside>
+    </div>
+    <div class="home-secondary">
+      ${homePanel('collections','Коллекции','Все коллекции')}
+      ${homePanel('wishlist','Список желаемого','Весь список')}
+      ${homePanel('news','Новости','Все')}
+    </div>
+  </div>`;
 }
 
 function librarySummary() {
@@ -442,23 +524,20 @@ async function refreshSteamProfile() {
 }
 
 function deskHeader() {
-  const inLibrary = route.page === 'library';
-  return `<header class="desk-header">
-    <div class="desk-overview">${deskAccount()}</div>
-    <div class="desk-nav-row"><nav class="desk-tabs" aria-label="Разделы библиотеки">${deskTabs.map(([page,glyph]) =>
-      `<a href="#${page}" aria-label="${labels[page]}" ${route.page === page ? 'aria-current="page"' : ''}>${icon(glyph,16)}<span>${labels[page]}</span></a>`).join('')}
-    </nav>${inLibrary ? libraryTools() : ''}</div>
+  return `<header class="desk-header home-header">
+    <div class="desk-overview">${deskAccount()}
+      <div class="home-overview-metrics">${librarySummary()}${homeLink('stats','Вся статистика')}</div>
+    </div>
   </header>`;
 }
 
-function storeFeedPage() {
-  return `<section class="desk-store-feed" aria-labelledby="store-feed-title">
-    <div class="desk-store-heading"><h1 id="store-feed-title">${labels[route.page]}</h1>${route.page === 'news' ? '<span id="store-feed-checked"></span>' : ''}</div>
-    ${route.page === 'news' ? `<div class="desk-news-filters" role="group" aria-label="Виды новостей">
+function storeFeedPage(page) {
+  return `<section class="desk-store-feed" aria-label="${labels[page]}">
+    ${page === 'news' ? `<div class="home-news-tools"><div class="desk-news-filters" role="group" aria-label="Виды новостей">
       ${button('news-category','Все публикации','','quiet',`data-major="false" aria-pressed="${!majorNewsOnly}"`)}
       ${button('news-category','Крупные обновления','','quiet',`data-major="true" aria-pressed="${majorNewsOnly}"`)}
-    </div>` : ''}
-    <div id="store-feed-content"></div>
+    </div><small id="store-feed-checked"></small></div>` : ''}
+    <div id="store-feed-content">${storeFeedContent(page)}</div>
   </section>`;
 }
 
@@ -498,8 +577,11 @@ function wishlistGroups(items) {
   ];
 }
 
-function storeFeedContent() {
-  const page = route.page;
+function wishlistDate(value) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? dateLabel(value) : value || 'Дата не объявлена';
+}
+
+function storeFeedContent(page) {
   if (!state.steam?.account || !connected()) {
     return '<p class="dash-empty">Подключи Steam в <a href="#settings">настройках</a>.</p>';
   }
@@ -514,13 +596,12 @@ function storeFeedContent() {
   if (page === 'wishlist') {
     const groups = wishlistGroups(data.items);
     const shown = groups.reduce((count,[,rows]) => count + rows.length,0);
-    const release = value => /^\d{4}-\d{2}-\d{2}$/.test(value) ? dateLabel(value) : value || 'Дата не объявлена';
     return (record.error ? `<p class="dash-empty" role="status">${esc(record.error)}</p>` : '') +
       groups.filter(([,rows]) => rows.length).map(([label,rows]) => `<section class="desk-wishlist-group">
         <h2>${label}</h2>
         <ul class="desk-wishlist">${rows.map(({item}) => `<li>
           ${wideCover({steam:{appid:item.appid}},true)}
-          <strong>${esc(item.name)}</strong><span class="desk-wishlist-date">${esc(release(item.releaseDate))}</span>
+          <strong>${esc(item.name)}</strong><span class="desk-wishlist-date">${esc(wishlistDate(item.releaseDate))}</span>
         </li>`).join('')}</ul>
       </section>`).join('') +
       (data.status === 'updating' ? '<p class="dash-empty" role="status">Загружаем данные игр…</p>' :
@@ -538,10 +619,16 @@ function storeFeedContent() {
         majorNewsOnly ? 'Крупных обновлений пока нет.' : 'Свежих публикаций пока нет.'}</p>`);
 }
 
+function newsUrl(item) {
+  const first = item.games?.[0];
+  return first && Number.isInteger(first.appid) && /^\d{1,24}$/.test(item.gid) ?
+    `https://steamcommunity.com/games/${first.appid}/announcements/detail/${item.gid}` : '';
+}
+
 function newsCard(item, featured = false) {
+  const url = newsUrl(item);
+  if (!url) return '';
   const first = item.games[0];
-  if (!first || !Number.isInteger(first.appid) || !/^\d{1,24}$/.test(item.gid)) return '';
-  const url = `https://steamcommunity.com/games/${first.appid}/announcements/detail/${item.gid}`;
   const art = coverUrl(item.image) || (featured ? steamHero(first.appid) : steamHeader(first.appid));
   const gameNames = item.games.map(game => game.name).filter(Boolean);
   const names = gameNames.slice(0,2).join(', ') + (gameNames.length > 2 ? ` и ещё ${gameNames.length-2}` : '');
@@ -555,22 +642,21 @@ function newsCard(item, featured = false) {
   </a>`;
 }
 
-function updateStoreFeed(animate = false) {
-  const content = app.querySelector('#store-feed-content');
+function updateStoreFeed(page) {
+  if (route.section !== page) return;
+  const content = sectionDialog.querySelector('#store-feed-content');
   if (!content) return;
-  content.innerHTML = storeFeedContent();
-  content.classList.toggle('store-enter', animate);
+  content.innerHTML = storeFeedContent(page);
   imageFallbacks(content);
-  const data = storeFeeds.get(route.page)?.data;
-  const checked = app.querySelector('#store-feed-checked');
+  const data = storeFeeds.get(page)?.data;
+  const checked = sectionDialog.querySelector('#store-feed-checked');
   if (checked) checked.textContent = data?.status === 'updating' ? 'Проверяем новости…' :
     data?.checked ? 'Проверено · ' + fullMoment.format(data.checked*1000) : '';
 }
 
-async function refreshStoreFeed() {
-  const page = route.page;
+async function refreshStoreFeed(page) {
   const account = state.steam?.account;
-  if ((page !== 'wishlist' && page !== 'news') || !account || !connected()) return;
+  if (!account || !connected()) return;
   let record = storeFeeds.get(page);
   if (record?.account !== account) {
     record = {account};
@@ -580,25 +666,29 @@ async function refreshStoreFeed() {
   const retryAt = (record.attempted ?? 0) + (record.error ? 5 : 15)*60000;
   const nextCheck = !record.error && Number.isFinite(record.data?.nextCheck)
     ? Math.max((record.attempted ?? 0)+60000,record.data.nextCheck*1000) : retryAt;
-  if (record.loading || now < nextCheck) return;
-  if (!navigator.onLine) {
-    record.error = 'Нет соединения со Steam.';
-    updateStoreFeed();
-    return;
-  }
-  const firstLoad = !record.data?.items.length;
+  if (record.loading || now < nextCheck || !navigator.onLine) return;
   record.loading = true;
-  record.attempted = Date.now();
+  record.attempted = now;
   try {
     const data = await fetchSteamFeed(page);
     if (data?.account !== account || !Array.isArray(data.items)) throw new Error('Steam вернул некорректные данные.');
     record.data = data;
     record.error = '';
   } catch (error) {
-    record.error = /\(404\)/.test(error.message) ? 'Раздел станет доступен после обновления Cloudflare Worker.' : error.message;
+    record.error = error.message;
   } finally {
     record.loading = false;
-    if (route.page === page && state.steam?.account === account) updateStoreFeed(firstLoad && Boolean(record.data?.items.length));
+    if (state.steam?.account === account) {
+      updateStoreFeed(page);
+      refreshHomePreview(page);
+    }
+  }
+}
+
+function refreshStoreFeeds() {
+  if (route.page === 'library') {
+    void refreshStoreFeed('wishlist');
+    void refreshStoreFeed('news');
   }
 }
 
@@ -735,12 +825,7 @@ function achievementEarnedContent(earned, totalUnlocked) {
   const remaining=selected.slice(5).sort((a,b)=>compareAchievementPercent(a.item,b.item));
   const since=Date.now()-7*24*60*60*1000;
   const lastWeek=earned.filter(({item})=>item.time*1000 >= since && item.time*1000 <= Date.now()).length;
-  const now = performance.now();
-  if (recent.length) recentRevealStartedAt ??= now;
-  // Keep the same timing if a background refresh replaces the feed mid-reveal.
-  const elapsed = now - (recentRevealStartedAt ?? -Infinity);
-  const reveal = recent.length > 0 && elapsed < ACHIEVEMENT_REVEAL_MS;
-  return '<div class="ach-earned-content' + (reveal ? ' ach-recent-reveal" style="--reveal-elapsed:' + elapsed + 'ms"' : '"') + '>' +
+  return '<div class="ach-earned-content">' +
     '<section class="ach-feature ach-earned-feature" aria-label="Недавние полученные достижения">' +
     '<div class="ach-earned-intro">' +
       '<div class="ach-intro-copy"><h1>Недавние достижения</h1>' +
@@ -919,7 +1004,7 @@ function sessionYear(events, today) {
 
 function openHeatYear(control) {
   const today = dayNumber(Date.now());
-  const sessions = route.page !== 'achievements';
+  const sessions = route.section !== 'achievements';
   let days, first = -Infinity, unlocks;
   if (sessions) {
     const {events,dailyUnlocks} = sessionContext(route.page === 'game' ? findByRoute(games()) : undefined);
@@ -1145,7 +1230,7 @@ function sessionDelta(value, previous, mode) {
     ${sign}${text}</span>`;
 }
 
-function sessionsPage(game) {
+function sessionsPage(game, inSection = false) {
   if (game) return legacySessionsPage(game);
   const data = sessionDashboardData(sessionContext());
   const period = sessionPeriod === 'all' ? 'за всё время' : 'за ' + sessionPeriod + ' дней';
@@ -1156,7 +1241,7 @@ function sessionsPage(game) {
     ['trophy','Достижений за сессии','achievements','percent','Достижения, полученные в игре в день с записью']
   ];
   return `<div id="desk-feed" class="session-dashboard">
-    <div class="session-dashboard-head"><h1>${icon('clock',22)}Игровые сессии</h1>
+    <div class="session-dashboard-head">${inSection ? '' : '<h1>' + icon('clock',22) + 'Игровые сессии</h1>'}
       <div class="session-dashboard-actions">
         ${sessionSwitch('session-period','Период',[['7','7 дней'],['30','30 дней'],['all','Всё время']],sessionPeriod)}
         ${button('steam-sync','Обновить','refresh','quiet',syncingSteam ? 'disabled' : '')}</div></div>
@@ -1211,13 +1296,13 @@ function showSessionShareHover(event) {
 }
 
 for (const event of ['pointerover','pointerout','focusin','focusout']) {
-  app.addEventListener(event,showSessionChartHover);
-  app.addEventListener(event,showSessionShareHover);
+  sectionDialog.addEventListener(event,showSessionChartHover);
+  sectionDialog.addEventListener(event,showSessionShareHover);
 }
 
 
 function openSessionArchive(limit=20) {
-  if (route.page !== 'sessions') return;
+  if (route.section !== 'sessions') return;
   const context=sessionContext(),data=sessionDashboardData(context);
   const content='<div class="dialog-body session-archive-body">' +
     '<p class="session-archive-caption">Записи сгруппированы по игре и календарному дню.</p>' +
@@ -1418,17 +1503,16 @@ document.addEventListener('keydown',event => {
 });
 
 function refreshDeskFeed(motionClass) {
-  const feed = app.querySelector('#desk-feed');
+  const root = route.section ? sectionDialog : app;
+  const feed = root.querySelector('#desk-feed');
   if (!feed) return;
-  const view = route.page === 'achievements' ? achievementsPage() : route.page === 'stats' ? statsPage() :
-    sessionsPage(route.page === 'game' ? findByRoute(games()) : undefined);
+  const view = route.section === 'achievements' ? achievementsPage() : route.section === 'stats' ? statsPage() :
+    sessionsPage(route.page === 'game' ? findByRoute(games()) : undefined, route.section === 'sessions');
   feed.outerHTML = view;
-  const updated = app.querySelector('#desk-feed');
-  updated.classList.add('feed-updated');
+  const updated = root.querySelector('#desk-feed');
   if (motionClass) updated.classList.add(motionClass);
   imageFallbacks(updated);
 }
-
 
 function collectionShowcaseGames(grouped, limit = 7) {
   return [...grouped].sort((a,b) => gameHours(b) - gameHours(a) ||
@@ -1484,29 +1568,32 @@ function collectionRow(entry) {
     collectionMetrics(entry) + '</a>';
 }
 
-function collectionsPage() {
-  const collection = findByRoute(collections());
-  if (collection) {
-    const source = sourceForPage();
-    const actions = button('pick-collection', 'Выбрать игру', 'plus', 'primary') + button('edit-collection', 'Редактировать', 'edit', 'secondary', `data-id="${esc(collection.id)}"`);
-    return `<a class="back-link" href="#collections">${icon('back', 17)} Все коллекции</a>
-      <div class="desk-collection-detail">${header('', esc(collection.name), '', actions)}${gameResults(source)}</div>`;
-  }
+function collectionEntries() {
   const list = collections().map(item => {
     const grouped = games().filter(game => game.collectionIds.includes(item.id));
     const totals = collectionTotals(grouped);
-    return { item, grouped, ...totals, games: grouped.length, time: totals.minutes, achievements: totals.unlocked };
+    return {item, grouped, ...totals, games:grouped.length, time:totals.minutes, achievements:totals.unlocked};
   });
   if (collectionSort === 'achievements') {
-    const maxUnlocked = Math.max(1, ...list.map(entry => entry.unlocked));
-    const maxMinutes = Math.max(1, ...list.map(entry => entry.minutes));
-    // Weighted completion rating: 70% completion, 15% unlocked achievements, 15% playtime.
+    const maxUnlocked = Math.max(1,...list.map(entry => entry.unlocked));
+    const maxMinutes = Math.max(1,...list.map(entry => entry.minutes));
     const score = entry => 70 * (entry.total ? entry.unlocked / entry.total : 0) +
       15 * entry.unlocked / maxUnlocked + 15 * entry.minutes / maxMinutes;
-    list.sort((a, b) => score(b) - score(a) || a.item.name.localeCompare(b.item.name, 'ru'));
-  } else {
-    list.sort((a, b) => b[collectionSort] - a[collectionSort] || a.item.name.localeCompare(b.item.name, 'ru'));
+    return list.sort((a,b) => score(b) - score(a) || a.item.name.localeCompare(b.item.name,'ru'));
   }
+  return list.sort((a,b) => b[collectionSort] - a[collectionSort] || a.item.name.localeCompare(b.item.name,'ru'));
+}
+
+function collectionsPage(collection) {
+  if (collection) {
+    const source = games().filter(game => game.collectionIds.includes(collection.id));
+    const actions = button('pick-collection','Выбрать игру','plus','primary') +
+      button('edit-collection','Редактировать','edit','secondary',`data-id="${esc(collection.id)}"`);
+    return `<div class="desk-collection-detail"><div class="collection-detail-toolbar">
+      <a class="back-link" href="#collections">${icon('back',17)} Все коллекции</a>
+      <div class="heading-actions">${actions}</div></div>${gameResults(source,false)}</div>`;
+  }
+  const list = collectionEntries();
   const sorts = [['games', 'Игры', 'game'], ['time', 'Время', 'clock'], ['achievements', 'Достижения', 'trophy']];
   const featured = list[0];
   const rest = list.slice(1);
@@ -1547,8 +1634,7 @@ function wideCover(game, showFallback = false) {
 }
 
 function settingsPage() {
-  return `${header('ЛИЧНОЕ', labels.settings, 'Данные библиотеки, резервные копии и установка приложения.')}
-    <div class="settings-grid">
+  return `<div class="settings-grid">
       <section class="panel settings-panel"><span class="metric-icon violet">${icon('globe',21)}</span><h2>Облачное сохранение</h2>
         <p>Статусы, теги, избранное, коллекции и заметки на ПК и телефоне.</p>
         <div class="settings-actions">${button('cloud-toggle',cloud.enabled() ? 'Выключить на этом устройстве' : 'Включить облачное сохранение','globe','primary')}
@@ -1576,38 +1662,70 @@ function settingsPage() {
 }
 
 function render(focusMain = false, enter = false) {
-  const views = { library, wishlist:storeFeedPage, news:storeFeedPage, collections: collectionsPage, achievements: achievementsPage, sessions: sessionsPage, stats: statsPage, settings: settingsPage, game: gamePage };
   const regionOffset = app.querySelector('.boss-region-index')?.scrollTop;
-  app.innerHTML = shell(views[route.page](), enter);
-  if (enter) app.querySelector('.stats-dashboard')?.classList.add('stats-view-enter');
-  if (enter) app.querySelector('.session-dashboard')?.classList.add('session-view-enter');
+  app.innerHTML = shell(route.page === 'game' ? gamePage() : library(),enter);
   restoreBossRegionScroll(regionOffset);
-  const currentTab = app.querySelector('.desk-tabs [aria-current="page"]');
-  if (currentTab) {
-    const nav = currentTab.parentElement;
-    nav.scrollLeft = Math.max(0,currentTab.getBoundingClientRect().right - nav.getBoundingClientRect().right);
-  }
-
   imageFallbacks(app);
   if (route.page === 'game') showAchievements();
-  if (route.page === 'wishlist' || route.page === 'news') {
-    updateStoreFeed();
-    void refreshStoreFeed();
-  }
-  document.title = route.page === 'library' ? 'AFTERSAVE — игровая библиотека' : `${labels[route.page]} · AFTERSAVE`;
-  if (focusMain) app.querySelector('#main').focus({ preventScroll: true });
+  else refreshStoreFeeds();
+  document.title = route.page === 'library' ? 'AFTERSAVE — игровая библиотека' : 'Игра · AFTERSAVE';
+  if (focusMain) app.querySelector('#main').focus({preventScroll:true});
+  renderSection();
 }
 
-function renderResults(more = false, animate = false) {
-  if (!more) displayLimit = 24;
-  const current = document.querySelector('#game-results');
-  if (current) {
-    current.outerHTML = gameResults(sourceForPage());
-    const updated = document.querySelector('#game-results');
-    updated.classList.add('results-updated');
-    if (animate) updated.classList.add('results-enter');
-    imageFallbacks(updated);
+function renderSection() {
+  const page = route.section;
+  if (!page) {
+    if (sectionDialog.open) sectionDialog.close();
+    return;
   }
+  const collection = page === 'collections' ? findByRoute(collections()) : null;
+  const views = {wishlist:storeFeedPage,news:storeFeedPage,collections:() => collectionsPage(collection),
+    achievements:achievementsPage,sessions:() => sessionsPage(undefined,true),stats:statsPage,settings:settingsPage};
+  const wasOpen = sectionDialog.open;
+  const changed = sectionDialog.dataset.page !== page || sectionDialog.dataset.id !== (route.id ?? '');
+  const active = sectionDialog.contains(document.activeElement) ? document.activeElement : null;
+  const body = sectionDialog.querySelector('.section-dialog-body');
+  const scroll = changed ? 0 : body?.scrollTop ?? 0;
+  sectionDialog.dataset.page = page;
+  sectionDialog.dataset.id = route.id ?? '';
+  sectionDialog.innerHTML = `<div class="dialog-head"><h2 id="section-dialog-title">
+    ${icon(sectionIcons[page],23)}${esc(collection?.name ?? labels[page])}</h2>
+    ${iconButton('close-section','Закрыть','x')}</div>
+    <div class="dialog-body section-dialog-body page page-${page}">${views[page](page)}</div>`;
+  if (!wasOpen) sectionDialog.showModal();
+  if (!wasOpen || changed) {
+    sectionDialog.querySelector('[data-action="close-section"]').focus({preventScroll:true});
+    if (page === 'stats') sectionDialog.querySelector('.stats-dashboard').classList.add('stats-charts-enter');
+    if (page === 'sessions') sectionDialog.querySelector('.session-dashboard').classList.add('session-charts-enter');
+  } else if (active) {
+    const target = active.id ? sectionDialog.querySelector('#' + CSS.escape(active.id)) :
+      active.dataset.action ? sectionDialog.querySelector('[data-action="' + CSS.escape(active.dataset.action) + '"]') : null;
+    (target ?? sectionDialog.querySelector('[data-action="close-section"]')).focus({preventScroll:true});
+  }
+  sectionDialog.querySelector('.section-dialog-body').scrollTop = scroll;
+  if (page === 'news' || page === 'wishlist') {
+    updateStoreFeed(page);
+    void refreshStoreFeed(page);
+  }
+  imageFallbacks(sectionDialog);
+}
+
+function renderResults(more = false, inLibrary = true) {
+  const collection = !inLibrary && findByRoute(collections());
+  if (!more && inLibrary) displayLimit = HOME_GAME_LIMIT;
+  const root = inLibrary ? app : sectionDialog;
+  const selector = inLibrary ? '#game-results' : '#collection-game-results';
+  const current = root.querySelector(selector);
+  if (!current || !inLibrary && !collection) return;
+  const source = inLibrary ? libraryGames() : games().filter(game => game.collectionIds.includes(collection.id));
+  current.outerHTML = gameResults(source,inLibrary);
+  imageFallbacks(root.querySelector(selector));
+}
+
+function closeSection() {
+  history.replaceState(null,'',libraryHash);
+  updateRoute();
 }
 
 function showDialog(title, eyebrow, content, className = '') {
@@ -1706,30 +1824,9 @@ function confirmAction(title, message, confirmLabel, action, danger = false) {
 
 function clearFilters() {
   Object.assign(filter, { query: '', status: '' });
-  librarySearchOpen = false;
   libraryHidden = false;
-  displayLimit = 24;
+  displayLimit = HOME_GAME_LIMIT;
 }
-
-function toggleLibrarySearch(open) {
-  const panel = app.querySelector('#desk-library-search');
-  const control = app.querySelector('[data-action="library-search"]');
-  if (!panel || !control) return;
-  librarySearchOpen = open;
-  control.setAttribute('aria-expanded',String(open));
-  if (!open) control.focus({preventScroll:true});
-  panel.inert = !open;
-  panel.dataset.open = String(open);
-  const field = panel.querySelector('input');
-  if (open) field.focus({preventScroll:true});
-  else if (filter.query) {
-    field.value = '';
-    filter.query = '';
-    renderResults();
-  }
-}
-
-
 
 function download(name, data, mime) {
   const url = URL.createObjectURL(new Blob([data], { type: mime }));
@@ -1755,15 +1852,15 @@ const actions = {
     for (const button of control.parentElement.querySelectorAll('button')) {
       button.setAttribute('aria-pressed',String(button === control));
     }
-    updateStoreFeed(true);
+    updateStoreFeed('news');
   },
   'stats-time-period': control => {
     const mode = control.dataset.value;
     if (!['months','years'].includes(mode) || mode === statsTimeMode) return;
     statsTimeMode = mode;
-    const chart = app.querySelector('.stats-time-chart, .stats-time-chart-empty');
+    const chart = sectionDialog.querySelector('.stats-time-chart, .stats-time-chart-empty');
     chart.outerHTML = statsHourChart(sessionContext().events);
-    app.querySelector('.stats-time-chart')?.classList.add('chart-enter');
+    sectionDialog.querySelector('.stats-time-chart')?.classList.add('chart-enter');
     for (const button of control.parentElement.querySelectorAll('button')) {
       button.setAttribute('aria-pressed',String(button === control));
     }
@@ -1775,15 +1872,15 @@ const actions = {
     sessionPeriod = value;
     sessionGrouping = value === 'all' ? 'months' : 'days';
     refreshDeskFeed('session-charts-enter');
-    app.querySelector('[data-action="session-period"][aria-pressed="true"]')?.focus({preventScroll:true});
+    sectionDialog.querySelector('[data-action="session-period"][aria-pressed="true"]')?.focus({preventScroll:true});
   },
   'session-group': control => {
     const value = control.dataset.value;
     const allowed = sessionPeriod === 'all' ? ['months','years'] : ['days','weeks'];
     if (!allowed.includes(value) || sessionGrouping === value) return;
     sessionGrouping = value;
-    app.querySelector('.session-chart-panel').outerHTML = sessionActivityChart(sessionDashboardData(sessionContext()));
-    const chart = app.querySelector('.session-chart-panel');
+    sectionDialog.querySelector('.session-chart-panel').outerHTML = sessionActivityChart(sessionDashboardData(sessionContext()));
+    const chart = sectionDialog.querySelector('.session-chart-panel');
     chart.classList.add('session-charts-enter');
     chart.querySelector('[data-action="session-group"][aria-pressed="true"]')?.focus({preventScroll:true});
   },
@@ -1800,10 +1897,9 @@ const actions = {
     const next = control.dataset.value === 'locked';
     if (lockedFeed === next) return;
     lockedFeed = next;
-    if (!lockedFeed) recentRevealStartedAt = null;
     feedLimit = 24;
-    refreshDeskFeed(lockedFeed ? 'locked-enter' : undefined);
-    app.querySelector('.ach-tab.is-active')?.focus({preventScroll:true});
+    refreshDeskFeed();
+    sectionDialog.querySelector('.ach-tab.is-active')?.focus({preventScroll:true});
   },
   'desk-heat-year': openHeatYear,
   'desk-game-sessions': control => openGameSessions(findByRoute(games()),control),
@@ -1826,7 +1922,16 @@ const actions = {
     showBossMap(bossById.get(control.dataset.id));
   },
   'boss-map-place': control => showBossMap(bossById.get(control.dataset.id), Number(control.dataset.place)),
-  'more-games': () => { displayLimit += 24; renderResults(true); },
+  'more-games': control => {
+    const inLibrary = !control.hasAttribute('data-collection');
+    const root = inLibrary ? app : sectionDialog;
+    const limit = inLibrary ? displayLimit : collectionLimit;
+    if (inLibrary) displayLimit += 24;
+    else collectionLimit += 24;
+    renderResults(true,inLibrary);
+    const list = root.querySelector(inLibrary ? '#game-results' : '#collection-game-results');
+    list?.querySelectorAll('.desk-game')[limit]?.querySelector('a')?.focus({preventScroll:true});
+  },
   'completion-results': openCompletionResults,
   'steam-sync': () => steamSync(),
   'cloud-toggle': () => {
@@ -1839,12 +1944,6 @@ const actions = {
   'cloud-sync': () => cloud.sync(),
   'cloud-local': () => cloud.sync('local'),
   'cloud-remote': () => cloud.sync('remote'),
-  'top-search': () => {
-    if (route.page === 'library') return toggleLibrarySearch(true);
-    searchPending = true;
-    go('library');
-  },
-  'library-search': () => toggleLibrarySearch(!librarySearchOpen),
   'library-status': control => {
     filter.status = control.dataset.value;
     const menu = control.closest('details');
@@ -1855,7 +1954,7 @@ const actions = {
     summary.dataset.active = String(Boolean(filter.status || libraryHidden));
     menu.open = false;
     summary.focus({preventScroll:true});
-    renderResults(false, true);
+    renderResults();
   },
   'pick-collection': openCollectionPicker,
   'achievement-more': () => {
@@ -1888,9 +1987,9 @@ const actions = {
     const value = control.dataset.value;
     if (!['games', 'time', 'achievements'].includes(value) || collectionSort === value) return;
     collectionSort = value;
-    render();
-    app.querySelector('.desk-collections')?.classList.add('desk-collections--sort-change');
-    app.querySelector('.desk-collection-filter-trigger')?.focus({ preventScroll: true });
+    renderSection();
+    refreshHomePreview('collections');
+    sectionDialog.querySelector('.desk-collection-filter-trigger')?.focus({preventScroll:true});
   },
   'new-collection': () => openCollectionForm(),
   'edit-collection': control => {
@@ -1918,21 +2017,25 @@ const actions = {
       const next = state.collections.filter(collection => collection.id !== item.id);
       const updated = state.games.map(game => ({ ...game, collectionIds: game.collectionIds.filter(id => id !== item.id) }));
       if (!commit({ ...state, collections: next, games: updated }, 'Коллекция удалена')) return false;
+      refreshHomePreview('collections');
       go('collections');
       return true;
     }, true);
   },
   'export-json': () => download(`aftersave-${dateStamp()}.json`, exportJSON(state), 'application/json;charset=utf-8'),
   'export-csv': () => download(`aftersave-${dateStamp()}.csv`, exportCSV(state), 'text/csv;charset=utf-8'),
-  'import-json': () => app.querySelector('#backup-file')?.click(),
+  'import-json': () => sectionDialog.querySelector('#backup-file')?.click(),
   'reload-after-update': () => location.reload(),
   'close-dialog': () => dialog.close(),
+  'close-section': closeSection,
 
 
 };
 
 document.addEventListener('click', event => {
-  for (const menu of app.querySelectorAll('.desk-library-filter[open], .desk-collection-sort[open], .af-ach-extra[open]')) {
+  const opener = event.target.closest('#app a[aria-haspopup="dialog"]');
+  if (opener && !event.defaultPrevented && event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) sectionOpener = opener;
+  for (const menu of document.querySelectorAll('.desk-library-filter[open], .desk-collection-sort[open], .af-ach-extra[open]')) {
     if (!menu.contains(event.target)) menu.open = false;
   }
   const control = event.target.closest('[data-action]');
@@ -1949,11 +2052,11 @@ document.addEventListener('keydown', event => {
     return;
   }
   if (event.key !== 'Escape' || event.defaultPrevented || dialog.open) return;
-  const menu = app.querySelector('.desk-library-filter[open], .desk-collection-sort[open], .af-ach-extra[open]');
+  const menu = document.querySelector('.desk-library-filter[open], .desk-collection-sort[open], .af-ach-extra[open]');
   if (menu) {
     menu.open = false;
     menu.querySelector('summary').focus({ preventScroll: true });
-  } else if (librarySearchOpen && event.target.closest('#desk-library-search,[data-action="library-search"]')) toggleLibrarySearch(false);
+  }
 });
 
 document.addEventListener('input', event => {
@@ -1969,7 +2072,7 @@ document.addEventListener('input', event => {
   }
 });
 
-app.addEventListener('change', async event => {
+document.addEventListener('change', async event => {
   const field = event.target;
   if (field.id === 'steam-log-file') {
     if (field.files.length) await importSteamLog(field.files[0]);
@@ -1998,28 +2101,27 @@ app.addEventListener('change', async event => {
   }
   if (field.id === 'desk-unlock-year') {
     achievementYear = field.value;
-    recentRevealStartedAt = null;
     feedLimit = 24;
     refreshDeskFeed();
-    app.querySelector('#desk-unlock-year')?.focus({preventScroll:true});
+    sectionDialog.querySelector('#desk-unlock-year')?.focus({preventScroll:true});
   }
   if (field.id === 'ach-locked-order') {
     if (!['common','rare'].includes(field.value)) return;
     lockedAchievementOrder = field.value;
     feedLimit = 24;
-    refreshDeskFeed('locked-list-enter');
-    app.querySelector('#ach-locked-order')?.focus({preventScroll:true});
+    refreshDeskFeed();
+    sectionDialog.querySelector('#ach-locked-order')?.focus({preventScroll:true});
   }
   if (field.id === 'achievement-order') {
     if (!['rare','common','recent'].includes(field.value)) return;
     achievementSort = field.value;
     achievementLimit = 24;
-    updateAchievementRows(false, true);
+    updateAchievementRows();
   }
   if (field.id === 'achievement-state') {
     achievementFilter = field.value;
     achievementLimit = 24;
-    updateAchievementRows(false, true);
+    updateAchievementRows();
   }
   if (field.id === 'achievement-reveal') {
     revealHidden = field.checked;
@@ -2029,7 +2131,7 @@ app.addEventListener('change', async event => {
     libraryHidden = field.checked;
     const icon = app.querySelector('.desk-library-filter summary');
     if (icon) icon.dataset.active = String(Boolean(filter.status || libraryHidden));
-    renderResults(false, true);
+    renderResults();
   }
   if (field.id !== 'backup-file' || !field.files.length) return;
   const file = field.files[0];
@@ -2066,54 +2168,82 @@ dialog.addEventListener('submit', event => {
     const next = removed.size ? games().map(game => removed.has(game.id) ? setCollectionMembership(game,id,false,updatedAt) : game) : games();
     if (commit({ ...state, showDemo: false, collections: list, games:next }, 'Коллекция сохранена')) {
       dialog.close();
-      go('collections', id);
-      render();
+      refreshHomePreview('collections');
+      if (route.id === encodeURIComponent(id)) renderSection();
+      else go('collections',id);
     }
   }
 });
 
 
 
-let searchPending = false;
-window.addEventListener('hashchange', () => {
+function updateRoute() {
   if (location.hash === '#main') {
     app.querySelector('#main')?.focus();
     return;
   }
   const next = getRoute();
-  if (next.page !== route.page && next.page !== 'game' && route.page !== 'game') {
-    const query = searchPending ? filter.query : '';
-    clearFilters();
-    filter.query = query;
+  const previous = route;
+  if (!next.section && next.page === 'library') libraryHash = location.hash || '#library';
+  route = next.section && previous.page === 'library' ? {...next,trophy:previous.trophy} : next;
+  if (next.page === 'library' && previous.page === 'library' && (next.section || previous.section)) {
+    if (dialog.open) dialog.close();
+    if (!next.section && next.trophy !== previous.trophy) libraryHidden = false;
+    if (next.section !== previous.section) {
+      feedLimit = 24;
+      lockedFeed = false;
+      lockedAchievementOrder = 'common';
+      achievementYear = '';
+    }
+    if (next.id !== previous.id) collectionLimit = 24;
+    if (!next.section && next.trophy !== previous.trophy) {
+      render(false);
+      return;
+    }
+    renderSection();
+    return;
   }
-  const previousGameId = route.id;
-  route = next;
-  if (route.trophy) libraryHidden = false;
-  if (next.id !== previousGameId) {
+  if (next.page === 'library' && previous.page === 'library') displayLimit = HOME_GAME_LIMIT;
+  if (next.trophy) libraryHidden = false;
+  if (next.id !== previous.id) {
     bossRegion = 0;
     bossArea = '';
+    achievementSort = 'common';
+    revealHidden = true;
   }
-
-
-  displayLimit = 24;
   feedLimit = 24;
   lockedFeed = false;
   lockedAchievementOrder = 'common';
-  recentRevealStartedAt = null;
   achievementYear = '';
   achievementFilter = '';
   achievementQuery = '';
   achievementLimit = 24;
-  if (next.id !== previousGameId) {
-    achievementSort = 'common';
-    revealHidden = true;
-  }
-  window.scrollTo(0, 0);
   if (dialog.open) dialog.close();
-  render(!searchPending, true);
-  if (searchPending) {
-    toggleLibrarySearch(true);
-    searchPending = false;
+  if (sectionDialog.open && !next.section) sectionDialog.close();
+  window.scrollTo(0,0);
+  render(true,true);
+}
+
+window.addEventListener('hashchange',updateRoute);
+sectionDialog.addEventListener('cancel',event => {
+  event.preventDefault();
+  const menu = sectionDialog.querySelector('.desk-collection-sort[open]');
+  if (menu) {
+    menu.open = false;
+    menu.querySelector('summary').focus({preventScroll:true});
+  } else closeSection();
+});
+sectionDialog.addEventListener('close',() => {
+  if (sectionDialog.open) return;
+  if (route.page === 'library' && !route.section && sectionOpener) {
+    const target = sectionOpener.isConnected ? sectionOpener :
+      app.querySelector('a[href="' + CSS.escape(sectionOpener.getAttribute('href')) + '"]');
+    (target ?? app.querySelector('#main')).focus({preventScroll:true});
+  }
+  sectionOpener = null;
+  if (storagePending && !dialog.open) {
+    storagePending = false;
+    refreshFromStorage();
   }
 });
 
@@ -2129,7 +2259,7 @@ function refreshFromStorage() {
 
 window.addEventListener('storage', event => {
   if (event.storageArea !== localStorage || (event.key !== null && event.key !== STORAGE_KEY)) return;
-  if (dialog.open) {
+  if (dialog.open || sectionDialog.open) {
     storagePending = true;
     const form = dialog.querySelector('form');
     if (form) formError(form, 'Библиотека изменилась в другой вкладке. Закройте форму и откройте её снова.');
@@ -2139,17 +2269,18 @@ window.addEventListener('storage', event => {
 dialog.addEventListener('close', () => {
   if (dialog.open) return;
   if (!syncingSteam && dialog.querySelector('#steam-login-form')) enableCloudAfterLogin = false;
-  if (storagePending) {
+  if (storagePending && !sectionDialog.open) {
     storagePending = false;
     refreshFromStorage();
   }
 });
 
 document.addEventListener('keydown', event => {
-  if (event.key !== '/' || event.altKey || event.ctrlKey || event.metaKey || dialog.open ||
+  if (event.key !== '/' || event.altKey || event.ctrlKey || event.metaKey || dialog.open || sectionDialog.open ||
     event.target.closest('input,textarea,select,[contenteditable]')) return;
   event.preventDefault();
-  actions['top-search']();
+  if (route.page === 'library') app.querySelector('#global-search')?.focus();
+  else go('library');
 
 });
 
@@ -2228,18 +2359,20 @@ async function steamSync({background = false} = {}) {
   if (storageError) return notify('Сначала восстановите библиотеку из копии.', true);
   const originalAccount = state.steam?.account;
   let succeeded = false;
+  const syncControl = document.activeElement?.matches('[data-action="steam-sync"]');
   syncingSteam = true;
   lastSteamAttempt = Date.now();
   if (!background) {
     steamError = false;
     steamMessage = 'Подключаемся к Worker…';
-    render();
+    if (route.section) renderSection();
+    else render();
   }
   try {
     const response = await fetchLibrary(false, originalAccount, step => {
       if (background) return;
       steamMessage = step;
-      const status = app.querySelector('.steam-message');
+      const status = sectionDialog.querySelector('.steam-message');
       if (status) status.textContent = step;
     });
     if (storageError || state.steam?.account !== originalAccount) throw new Error('Библиотека изменилась во время синхронизации. Повторите попытку.');
@@ -2265,7 +2398,13 @@ async function steamSync({background = false} = {}) {
         try { cloud.toggle(); } catch { notify('Не удалось сохранить настройку облака.',true); }
       }
     }
-    if (!background || succeeded && !dialog.open && route.page === 'settings') render();
+    if (route.page === 'library') {
+      if (succeeded) refreshLibrary();
+      if (!background && route.section && !dialog.open) {
+        renderSection();
+        if (syncControl) sectionDialog.querySelector('[data-action="steam-sync"]')?.focus({preventScroll:true});
+      }
+    } else if (!background && !dialog.open) render();
   }
 }
 
@@ -2276,20 +2415,24 @@ function maybeSyncSteam() {
 }
 
 
+function refreshLibrary() {
+  const summary = app.querySelector('#library-summary');
+  if (summary) summary.outerHTML = librarySummary();
+  renderResults(true);
+  for (const page of ['achievements','sessions','collections']) refreshHomePreview(page);
+}
+
 async function refreshSteamSummaries(repaint = true) {
   const account = state.steam?.account ?? null;
   const records = await achievementRecords(account);
   if (account !== (state.steam?.account ?? null)) return;
   for (const record of records) trackCompletion(record, summaryAccount === account ? summaries.get(record.appid) : null);
-  const firstLoad = summaryAccount !== account;
   summaryAccount = account;
   summaries = new Map(records.map(record => [record.appid,record]));
   if (!repaint || dialog.open) return;
-  const summary = app.querySelector('#library-summary');
-  if (summary) summary.outerHTML = librarySummary();
-  if (['library','collections'].includes(route.page)) renderResults(true);
-  if (['achievements','sessions','stats'].includes(route.page) || route.page === 'game' && route.tab === 'sessions') {
-    refreshDeskFeed(firstLoad ? ({stats:'stats-charts-enter',sessions:'session-view-enter'})[route.page] : undefined);
+  if (route.page === 'library') refreshLibrary();
+  if (['achievements','sessions','stats'].includes(route.section) || route.page === 'game' && route.tab === 'sessions') {
+    refreshDeskFeed();
   }
   const game = route.page === 'game' ? findByRoute(games()) : null;
   if (game?.steam && displayedAchievements) {
@@ -2345,7 +2488,7 @@ async function scanAchievements() {
   let failed = 0;
   let interruption = '';
   scanMessage = 'Загружаем сводку по очереди…';
-  render();
+  renderSection();
   for (const game of linked) {
     if (stopAchievementScan || state.steam?.account !== account || !(connected())) break;
     try { await fetchAchievements(account, game.steam.appid, false, true); }
@@ -2358,14 +2501,14 @@ async function scanAchievements() {
     }
     checked++;
     scanMessage = `Проверено ${checked} из ${linked.length} · недоступно ${failed}.`;
-    const status = app.querySelector('.scan-status');
+    const status = sectionDialog.querySelector('.scan-status');
     if (status) status.textContent = scanMessage;
     await new Promise(resolve => setTimeout(resolve, 1100));
   }
   scanningAchievements = false;
   scanMessage = `${interruption ? interruption + ' ' : ''}Проверено ${checked} из ${linked.length} · недоступно ${failed}.`;
   await refreshSteamSummaries();
-  if (route.page === 'settings' && !dialog.open) render();
+  if (route.section === 'settings' && !dialog.open) renderSection();
 }
 
 function updateGame(game, changes, message) {
@@ -2742,7 +2885,11 @@ function saveCollectionChoices(form) {
   const selected = new Set(new FormData(form).getAll('game'));
   const updatedAt = new Date().toISOString();
   const next = games().map(game => setCollectionMembership(game,collection.id,selected.has(game.id),updatedAt));
-  if (commit({...state,games:next},'Коллекция сохранена')) { dialog.close(); render(); }
+  if (commit({...state,games:next},'Коллекция сохранена')) {
+    dialog.close();
+    renderResults(true,false);
+    refreshHomePreview('collections');
+  }
 }
 
 function openJournal(id) {
@@ -2841,7 +2988,6 @@ function drawAchievements(box, record, message = '', loading = false) {
     }
   }
   displayedAchievements = record;
-  const firstDraw = !box.querySelector('#achievement-rows');
   const extraOpen = box.querySelector('.af-ach-extra')?.open;
   const focusedField = box.contains(document.activeElement) ? document.activeElement.id : '';
   const total = Number(record?.total) || 0;
@@ -2870,13 +3016,13 @@ function drawAchievements(box, record, message = '', loading = false) {
       '</div>' +
       '<div id="achievement-rows"></div>' +
     '</div>' : '');
-  updateAchievementRows(false, firstDraw);
+  updateAchievementRows();
   if (focusedField) document.getElementById(focusedField)?.focus({preventScroll:true});
 }
 
 const isRare = item => Number.isFinite(item.percent) && item.percent < 10;
 
-function updateAchievementRows(more = false, animate = false) {
+function updateAchievementRows(more = false) {
   const target = document.querySelector('#achievement-rows');
   if (!target || !displayedAchievements) return;
   const query = achievementQuery.trim().toLocaleLowerCase('ru');
@@ -2914,7 +3060,6 @@ function updateAchievementRows(more = false, animate = false) {
     (items.length > achievementLimit ?
       '<div class="load-more">' + button('achievement-more','Показать ещё · ' + (items.length-achievementLimit),'down') + '</div>' : '') :
     '<p class="dash-empty" role="status">Достижения по этим фильтрам не найдены.</p>';
-  if (animate) target.querySelector('.achievement-list')?.classList.add('game-achievements-enter');
   imageFallbacks(target);
   if (more) {
     const firstNew = target.querySelectorAll('li')[achievementLimit - 24];
@@ -2926,26 +3071,32 @@ const cloud = createCloudSync({
   state: () => state,
   commit: next => {
     const ok = commit(next);
-    if (ok && !dialog.open) render();
+    if (ok && !dialog.open) {
+      if (route.page === 'library') {
+        refreshLibrary();
+        refreshStoreFeeds();
+      } else render();
+    }
     return ok;
   },
   blocked: () => Boolean(storageError || dialog.open || syncingSteam),
   status: (message, conflict) => {
     cloudMessage = message;
     cloudConflict = conflict;
-    if (route.page === 'settings' && !dialog.open) render();
+    if (route.section === 'settings' && !dialog.open) renderSection();
   }
 });
-render(false, true);
+if (!route.section && route.page === 'library') libraryHash = location.hash || '#library';
+render(false,true);
 refreshSteamSummaries();
 refreshSteamProfile();
-window.addEventListener('online', () => { cloud.schedule(0); refreshSteamProfile(); maybeSyncSteam(); void refreshStoreFeed(); });
+window.addEventListener('online', () => { cloud.schedule(0); refreshSteamProfile(); maybeSyncSteam(); refreshStoreFeeds(); });
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) { cloud.schedule(0); maybeSyncSteam(); void refreshStoreFeed(); }
+  if (!document.hidden) { cloud.schedule(0); maybeSyncSteam(); refreshStoreFeeds(); }
 });
 cloud.schedule(0);
 setInterval(() => {
-  if (!document.hidden) { cloud.schedule(0); void refreshStoreFeed(); }
+  if (!document.hidden) { cloud.schedule(0); refreshStoreFeeds(); }
 }, 60 * 1000);
 setInterval(maybeSyncSteam, 15 * 1000);
 maybeSyncSteam();
@@ -2955,7 +3106,7 @@ if ('serviceWorker' in navigator) {
     .then(registration => registration.update().catch(() => {}))
     .catch(error => console.warn('AFTERSAVE offline:', error));
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    const offline = app.querySelector('#offline-label');
+    const offline = sectionDialog.querySelector('#offline-label');
     if (offline) offline.textContent = 'Офлайн-режим готов на этом устройстве.';
     // Do not discard in-progress form edits when an update becomes active.
     if (!controlledAtStart || appUpdateReady) return;
