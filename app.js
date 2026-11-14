@@ -195,9 +195,9 @@ function progressBar(value) {
 
 const byLastPlayed = (a,b) => (b.steam?.lastPlayed ?? 0) - (a.steam?.lastPlayed ?? 0);
 
-function filtered(source, inLibrary) {
-  const query = inLibrary ? filter.query.trim().toLocaleLowerCase('ru') : '';
-  const status = inLibrary ? filter.status : '';
+function filtered(source, applyFilters) {
+  const query = applyFilters ? filter.query.trim().toLocaleLowerCase('ru') : '';
+  const status = applyFilters ? filter.status : '';
   return source.filter(game => {
     const haystack = [game.title, displayName(game), game.genre, game.platform, game.steam?.appid, ...game.tags].join(' ').toLocaleLowerCase('ru');
     return (!query || query.split(/\s+/).every(term => haystack.includes(term))) &&
@@ -209,12 +209,11 @@ function displayName(game, full = false) {
   return game.steam?.appid === 292030 ? (full ? 'Ведьмак 3: Дикая Охота' : 'Ведьмак 3') : game.title;
 }
 
-function gameCard(game, inLibrary) {
+function gameCard(game, inLibrary, canRestore) {
   const total = summaryFor(game);
   const achieved = total?.total ? achievementPercent(total) : null;
   const status = completionFor(game,total);
   const recent = recentUnlocks(total);
-  const canRestore = inLibrary && libraryHidden && game.hidden;
   const identity = `<div class="card-art">${cover(game)}</div>`;
   const name = esc(displayName(game));
   const results = `data-action="completion-results" data-id="${esc(game.id)}" aria-haspopup="dialog"`;
@@ -250,9 +249,9 @@ function gameCard(game, inLibrary) {
 }
 
 function gameList(source, inLibrary, full = false) {
-  const result = filtered(source,inLibrary);
+  const result = filtered(source,full);
   if (!result.length) {
-    const isFiltered = inLibrary && Boolean(filter.query || filter.status || route.trophy || libraryHidden);
+    const isFiltered = inLibrary && Boolean(route.trophy || (full && (filter.query || filter.status || libraryHidden)));
     return `<div class="empty"><span class="empty-icon">${icon(isFiltered ? 'search' : 'game',29)}</span>
       <h2>${isFiltered ? 'Игры не найдены' : 'Здесь пока пусто'}</h2>
       <p>${isFiltered ? 'Попробуйте другой запрос или сбросьте фильтры.' :
@@ -261,8 +260,9 @@ function gameList(source, inLibrary, full = false) {
         '<a class="btn btn-primary" href="#settings" aria-haspopup="dialog">Настройки Steam</a>' : button('pick-collection','Выбрать игру','plus','primary')}</div>`;
   }
   const limit = inLibrary ? (full ? result.length : HOME_GAME_LIMIT) : collectionLimit;
-  return `<div class="library-columns desk-columns${inLibrary && libraryHidden ? ' desk-can-restore' : ''}" aria-hidden="true"><span>Игра</span><span>Прогресс</span><span>Последние достижения</span><span>Активность</span></div>
-    <div class="game-grid list-view">${result.slice(0,limit).map(game => gameCard(game,inLibrary)).join('')}</div>
+  const showHidden = full && libraryHidden;
+  return `<div class="library-columns desk-columns${showHidden ? ' desk-can-restore' : ''}" aria-hidden="true"><span>Игра</span><span>Прогресс</span><span>Последние достижения</span><span>Активность</span></div>
+    <div class="game-grid list-view">${result.slice(0,limit).map(game => gameCard(game,inLibrary,showHidden && game.hidden)).join('')}</div>
     ${!inLibrary && result.length > limit ? `<div class="home-more">${button('more-games','Показать ещё','down','quiet')}</div>` : ''}`;
 }
 
@@ -270,8 +270,8 @@ function option(value, title, selected) {
   return `<option value="${esc(value)}" ${String(value) === String(selected) ? 'selected' : ''}>${esc(title)}</option>`;
 }
 
-function libraryTools(full = false) {
-  const id = full ? 'all-games-search' : 'global-search';
+function libraryTools() {
+  const id = 'all-games-search';
   return `<div class="desk-library-tools">
     <label class="searchbox home-search" id="${id}-box" ${librarySearchOpen ? '' : 'hidden'}>${icon('search',17)}<input type="search" id="${id}"
       data-library-search placeholder="Поиск по библиотеке" aria-label="Поиск по библиотеке" value="${esc(filter.query)}"></label>
@@ -286,42 +286,37 @@ function libraryTools(full = false) {
         ${!route.trophy && games().some(game => game.hidden) ? `<label class="desk-hidden-filter"><input type="checkbox" data-library-hidden ${libraryHidden ? 'checked' : ''}> Ранее скрытые игры</label>` : ''}
       </div>
     </details>
-    ${full ? '' : homeLink('all-games','Все игры')}
   </div>`;
 }
 
 function setLibrarySearch(open) {
+  const input = sectionDialog.querySelector('#all-games-search');
+  if (!input) return;
+  const button = sectionDialog.querySelector('[data-action="library-search"]');
   librarySearchOpen = open;
   if (!open && filter.query) {
     filter.query = '';
-    renderLibraryLists();
+    renderLibraryList(true);
   }
-  for (const tools of document.querySelectorAll('.desk-library-tools')) {
-    const input = tools.querySelector('[data-library-search]');
-    const button = tools.querySelector('[data-action="library-search"]');
-    input.value = filter.query;
-    input.closest('label').hidden = !open;
-    button.setAttribute('aria-expanded',String(open));
-    if (tools.closest('dialog') === (sectionDialog.open ? sectionDialog : null)) {
-      (open ? input : button).focus({preventScroll:true});
-    }
-  }
+  input.value = filter.query;
+  input.closest('label').hidden = !open;
+  button.setAttribute('aria-expanded',String(open));
+  (open ? input : button).focus({preventScroll:true});
 }
 
 function updateLibraryFilters() {
-  for (const menu of document.querySelectorAll('.desk-library-filter')) {
-    menu.querySelector('summary').dataset.active = String(Boolean(filter.status || libraryHidden));
-    const hidden = menu.querySelector('[data-library-hidden]');
-    if (hidden) hidden.checked = libraryHidden;
-    for (const item of menu.querySelectorAll('[data-action="library-status"]')) {
-      item.setAttribute('aria-pressed',String(item.dataset.value === filter.status));
-    }
+  const menu = sectionDialog.querySelector('.desk-library-filter');
+  menu.querySelector('summary').dataset.active = String(Boolean(filter.status || libraryHidden));
+  const hidden = menu.querySelector('[data-library-hidden]');
+  if (hidden) hidden.checked = libraryHidden;
+  for (const item of menu.querySelectorAll('[data-action="library-status"]')) {
+    item.setAttribute('aria-pressed',String(item.dataset.value === filter.status));
   }
 }
 
-function libraryGames() {
-  return route.trophy ? games().filter(game => trophyFor(summaryFor(game)) === route.trophy) :
-    games().filter(game => game.hidden === libraryHidden);
+function libraryGames(full = false) {
+  return games().filter(game => game.hidden === (full && libraryHidden) &&
+    (!route.trophy || trophyFor(summaryFor(game)) === route.trophy));
 }
 
 function gameResults(source, inLibrary = true, full = false) {
@@ -330,7 +325,7 @@ function gameResults(source, inLibrary = true, full = false) {
 }
 
 function allGamesPage() {
-  return `<div class="all-games-tools">${libraryTools(true)}</div>${gameResults(libraryGames(),true,true)}`;
+  return `<div class="all-games-tools">${libraryTools()}</div>${gameResults(libraryGames(true),true,true)}`;
 }
 
 function homeLink(page, label) {
@@ -357,7 +352,7 @@ function homePreview(page) {
   }
   if (page === 'collections') {
     return collectionEntries().slice(0,2).map(({item,grouped,total,unlocked}) => {
-      const posters = collectionShowcaseGames(grouped,4).map(game => cover(game)).join('');
+      const posters = collectionShowcaseGames(grouped,3).map(game => cover(game)).join('');
       const count = grouped.length;
       const noun = {one:'игра',few:'игры'}[achievementPlural.select(count)] ?? 'игр';
       const rate = total ? Math.round(unlocked / total * 100) : null;
@@ -380,7 +375,7 @@ function homePreview(page) {
   }
   if (page === 'wishlist') {
     return wishlistGroups(unownedWishlist(data.items)).flatMap(([,rows]) => rows).slice(0,2).map(({item}) =>
-      homeRow('#wishlist',wideCover({steam:{appid:item.appid}},true),item.name,wishlistDate(item.releaseDate),'','aria-haspopup="dialog"')
+      homeRow('#wishlist',wideCover({steam:{appid:item.appid}},true,{lazy:true}),item.name,wishlistDate(item.releaseDate),'','aria-haspopup="dialog"')
     ).join('') || homeEmpty('Список желаемого пуст.');
   }
   return data.items.slice(0,2).map(item => {
@@ -388,8 +383,7 @@ function homePreview(page) {
     if (!url) return '';
     const game = item.games[0];
     const artwork = coverUrl(item.image);
-    const art = artwork ? `<span class="cover home-news-art"><img src="${esc(artwork)}" alt="" loading="lazy"></span>` :
-      cover({steam:{appid:game.appid}});
+    const art = wideCover({steam:{appid:game.appid}},true,{lazy:true,image:artwork});
     return homeRow(url,art,item.title,steamDate(item.date),'','target="_blank" rel="noopener noreferrer"');
   }).join('') || homeEmpty('Свежих публикаций пока нет.');
 }
@@ -415,7 +409,7 @@ function library() {
   return `<div class="home-dashboard">
     <div class="home-primary">
       <section class="library-section home-panel" aria-labelledby="home-games-title">
-        <header><h1 id="home-games-title">${icon('game',22)}Игры</h1>${libraryTools()}</header>
+        <header><h1 id="home-games-title">${icon('game',22)}Игры</h1>${homeLink('all-games','Все игры')}</header>
         ${route.trophy ? `<div class="cup-filter">${trophyBadge(route.trophy)} <a class="quiet-link" href="#library">${icon('x',16)} Сбросить кубок</a></div>` : ''}
         ${gameResults(libraryGames())}
       </section>
@@ -563,7 +557,11 @@ async function refreshSteamProfile() {
 function deskHeader() {
   return `<header class="desk-header home-header">
     <div class="desk-overview">${deskAccount()}
-      <div class="home-overview-metrics">${librarySummary()}${homeLink('stats','Вся статистика')}</div>
+      <section class="home-overview-metrics" aria-label="Статистика Steam">
+        ${librarySummary()}
+        <a class="home-stats-action" href="#stats" aria-haspopup="dialog">${icon('chart',19)}
+          <span>Вся статистика</span>${icon('right',14)}</a>
+      </section>
     </div>
   </header>`;
 }
@@ -1160,6 +1158,22 @@ function sessionSwitch(action, label, options, selected) {
       aria-pressed="${selected === value}">${name}</button>`).join('')}</div>`;
 }
 
+function sessionChartTooltip(point) {
+  const multiple = point.games.length > 1;
+  const extra = point.games.slice(3);
+  const labels = multiple ? `<header><time>${esc(point.title)}</time><b>${sessionDuration(point.minutes)} всего</b></header>` : '';
+  return `<div class="session-tip-content">${labels}
+    ${point.games.slice(0,3).map(({game,minutes}) => `<div class="session-tip-game">
+      ${cover(game)}<div>
+        ${multiple ? '' : `<time>${esc(sessionGrouping === 'days' ? point.label : point.title)}</time>`}
+        <span>${esc(displayName(game))}</span>
+        <strong>${sessionDuration(minutes)}</strong>
+      </div></div>`).join('')}
+    ${extra.length ? `<footer><span>Другие игры · ${numeric(extra.length)}</span>
+      <b>${sessionDuration(extra.reduce((sum,item) => sum+item.minutes,0))}</b></footer>` : ''}
+    </div>`;
+}
+
 function sessionActivityChart(data) {
   const points = sessionChartPoints(data);
   const max = Math.max(0,...points.map(point => point.minutes));
@@ -1182,9 +1196,7 @@ function sessionActivityChart(data) {
               aria-label="${esc([point.title,sessionDuration(point.minutes),...point.games.map(({game,minutes}) =>
                 displayName(game) + ' — ' + sessionDuration(minutes))].join(', '))}"` : ''}>
               ${point.minutes ? `<i style="--session-height:${point.minutes/(divisions*step*60)*100}%;--item-delay:${Math.min(index,24)*12}ms"></i>
-                <template><header><strong>${esc(point.title)}</strong><b>${sessionDuration(point.minutes)}</b></header>
-                  <ul>${point.games.map(({game,minutes}) => `<li><span>${esc(displayName(game))}</span>
-                    <b>${sessionDuration(minutes)}</b></li>`).join('')}</ul></template>` : ''}
+                <template>${sessionChartTooltip(point)}</template>` : ''}
             </div><small aria-hidden="true">${index%labelEvery === 0 ? esc(point.label) : ''}</small></div>`).join('')}
         </div>
       </div></div><div class="session-chart-tooltip" role="tooltip" hidden></div>` :
@@ -1241,8 +1253,10 @@ function sessionGameDistribution(data) {
   const total = data.metrics.minutes;
   const top = data.ranking.slice(0,5);
   const items = top.map(({game,minutes}) => ({label:displayName(game),minutes}));
-  const other = data.ranking.slice(5).reduce((sum,item) => sum+item.minutes,0);
-  if (other) items.push({label:'Другие игры',minutes:other});
+  const rest = data.ranking.slice(5);
+  if (rest.length > 1) items.push({label:'Другие игры · '+numeric(rest.length),
+    minutes:rest.reduce((sum,item) => sum+item.minutes,0), description:'Сумма времени по играм за пределами топ-5'});
+  else if (rest.length) items.push({label:displayName(rest[0].game),minutes:rest[0].minutes});
   let start = 0;
   const segments = items.map((item,index) => {
     const end = start+item.minutes/total;
@@ -1260,9 +1274,9 @@ function sessionGameDistribution(data) {
           fill="none" stroke="white" stroke-width="42" transform="rotate(-90 100 100)"/></mask></defs>
         <g mask="url(#session-donut-mask)">${segments}</g></svg>
       <div class="session-donut-total"><strong>${sessionDuration(total)}</strong><small>всего</small></div></div>
-      <ul class="session-share-list">${items.map(({label,minutes},index) =>
+      <ul class="session-share-list">${items.map(({label,minutes,description},index) =>
         `<li data-session-share="${index}" tabindex="0"><i style="background:${colors[index]}"></i>
-          <span title="${esc(label)}">${esc(label)}</span>
+          <span title="${esc(description ? label + ' · ' + description : label)}">${esc(label)}</span>
           <strong>${numeric(Math.round(minutes/total*1000)/10)}%</strong>
           <small>${sessionDuration(minutes)}</small></li>`).join('')}</ul></div>` :
       '<p class="session-empty">Появится после записи игрового времени.</p>'}
@@ -1324,12 +1338,17 @@ function showSessionChartHover(event) {
   }
   tooltip.replaceChildren(from.querySelector('template').content.cloneNode(true));
   tooltip.hidden = false;
+  imageFallbacks(tooltip);
   const anchor = from.querySelector('i').getBoundingClientRect();
   const box = panel.getBoundingClientRect();
-  const left = anchor.left - box.left + (anchor.width-tooltip.offsetWidth)/2;
-  tooltip.style.left = Math.max(8,Math.min(left,box.width-tooltip.offsetWidth-8)) + 'px';
-  const top = anchor.top - box.top;
-  tooltip.style.top = (top-tooltip.offsetHeight-8 < 0 ? top+12 : top-tooltip.offsetHeight-8) + 'px';
+  const viewport = panel.closest('.section-dialog-body')?.getBoundingClientRect();
+  const center = anchor.left + anchor.width/2 - box.left;
+  const left = Math.max(8,Math.min(center-tooltip.offsetWidth/2,box.width-tooltip.offsetWidth-8));
+  const above = anchor.top-tooltip.offsetHeight-10 >= Math.max(0,viewport?.top ?? 0);
+  tooltip.classList.toggle('is-below',!above);
+  tooltip.style.setProperty('--session-tip-arrow',Math.max(12,Math.min(center-left,tooltip.offsetWidth-12)) + 'px');
+  tooltip.style.left = left + 'px';
+  tooltip.style.top = (above ? anchor.top-tooltip.offsetHeight-10 : anchor.top+10) - box.top + 'px';
 }
 
 function showSessionShareHover(event) {
@@ -1680,9 +1699,9 @@ function dateLabel(value) {
 
 function gamePage() { return gameDashboard(); }
 
-function wideCover(game, showFallback = false) {
+function wideCover(game, showFallback = false, {lazy = false, image = ''} = {}) {
   const id = game.steam?.appid;
-  return id ? `<div class="cover wide-cover" style="--cover-accent:#5083a7">${showFallback ? `<span class="cover-fallback">${icon('game',24)}</span>` : ''}<img src="${esc(steamHeader(id))}" alt="" decoding="async" referrerpolicy="no-referrer" data-steam-art="${id}" data-art-kind="wide"></div>` : cover(game,'wide-cover');
+  return id ? `<div class="cover wide-cover" style="--cover-accent:#5083a7">${showFallback ? `<span class="cover-fallback">${icon('game',24)}</span>` : ''}<img src="${esc(image || steamHeader(id))}" alt="" decoding="async" ${lazy ? 'loading="lazy"' : ''} referrerpolicy="no-referrer" data-steam-art="${id}" data-art-kind="wide"></div>` : cover(game,'wide-cover');
 }
 
 function settingsPage() {
@@ -1755,14 +1774,12 @@ function renderSection() {
   imageFallbacks(sectionDialog);
 }
 
-function renderLibraryLists() {
-  const source = libraryGames();
-  for (const [id,full] of [['game-results',false],['all-game-results',true]]) {
-    const current = document.getElementById(id);
-    if (!current) continue;
-    current.outerHTML = gameResults(source,true,full);
-    imageFallbacks(document.getElementById(id));
-  }
+function renderLibraryList(full = false) {
+  const id = full ? 'all-game-results' : 'game-results';
+  const current = document.getElementById(id);
+  if (!current) return;
+  current.outerHTML = gameResults(libraryGames(full),true,full);
+  imageFallbacks(document.getElementById(id));
 }
 
 function renderCollectionGames() {
@@ -1811,7 +1828,8 @@ function openCompletionResults(control) {
   const notice = completionNotice(record);
   if (notice?.pending) {
     saveCompletionNotice(record,{...notice,pending:false});
-    renderLibraryLists();
+    renderLibraryList();
+    renderLibraryList(true);
     [...(sectionDialog.open ? sectionDialog : app).querySelectorAll('.desk-results-link')].find(item => item.dataset.id === game.id)?.focus({preventScroll:true});
   }
   showDialog(esc(displayName(game,true)), '', `<div class="desk-completion-body">
@@ -1988,7 +2006,7 @@ const actions = {
     updateLibraryFilters();
     menu.open = false;
     menu.querySelector('summary').focus({preventScroll:true});
-    renderLibraryLists();
+    renderLibraryList(true);
   },
   'pick-collection': openCollectionPicker,
   'achievement-more': () => {
@@ -2016,7 +2034,16 @@ const actions = {
   'new-run': () => openRun(),
   'edit-run': control => openRun(control.dataset.id),
   'delete-run': control => deleteRun(control.dataset.id),
-  'clear-filters': () => { clearFilters(); if (route.trophy) go('library'); else render(); },
+  'clear-filters': () => {
+    clearFilters();
+    if (route.trophy) {
+      if (route.section === 'all-games') {
+        libraryHash = '#library';
+        route = {...route,trophy:''};
+        render(false);
+      } else go('library');
+    } else renderSection();
+  },
   'collection-sort': control => {
     const value = control.dataset.value;
     if (!['games', 'time', 'achievements'].includes(value) || collectionSort === value) return;
@@ -2095,6 +2122,7 @@ document.addEventListener('keydown', event => {
   const menu = document.querySelector('.desk-library-filter[open], .desk-collection-sort[open], .af-ach-extra[open]');
   if (menu) {
     menu.open = false;
+    event.preventDefault();
     menu.querySelector('summary').focus({ preventScroll: true });
   }
 });
@@ -2102,10 +2130,7 @@ document.addEventListener('keydown', event => {
 document.addEventListener('input', event => {
   if (event.target.matches('[data-library-search]')) {
     filter.query = event.target.value;
-    for (const input of document.querySelectorAll('[data-library-search]')) {
-      if (input !== event.target) input.value = filter.query;
-    }
-    renderLibraryLists();
+    renderLibraryList(true);
   }
   if (event.target.id === 'collection-query') filterCollectionChoices(event.target.value);
   if (event.target.id === 'achievement-query') {
@@ -2174,7 +2199,7 @@ document.addEventListener('change', async event => {
   if (field.matches('[data-library-hidden]')) {
     libraryHidden = field.checked;
     updateLibraryFilters();
-    renderLibraryLists();
+    renderLibraryList(true);
   }
   if (field.id !== 'backup-file' || !field.files.length) return;
   const file = field.files[0];
@@ -2289,7 +2314,7 @@ for (const modal of [sectionDialog,dialog]) {
 }
 sectionDialog.addEventListener('cancel',event => {
   event.preventDefault();
-  const menu = sectionDialog.querySelector('.desk-collection-sort[open]');
+  const menu = sectionDialog.querySelector('.desk-collection-sort[open], .desk-library-filter[open]');
   if (menu) {
     menu.open = false;
     menu.querySelector('summary').focus({preventScroll:true});
@@ -2337,12 +2362,10 @@ dialog.addEventListener('close', () => {
 });
 
 document.addEventListener('keydown', event => {
-  if (event.key !== '/' || event.altKey || event.ctrlKey || event.metaKey || dialog.open || (sectionDialog.open && route.section !== 'all-games') ||
+  if (event.key !== '/' || event.altKey || event.ctrlKey || event.metaKey || dialog.open || route.section !== 'all-games' ||
     event.target.closest('input,textarea,select,[contenteditable]')) return;
   event.preventDefault();
-  if (route.page === 'library') setLibrarySearch(true);
-  else go('library');
-
+  setLibrarySearch(true);
 });
 
 
@@ -2363,7 +2386,7 @@ function imageFallbacks(root) {
       const alternatives = image.hasAttribute('data-achievement-icon') ?
         [image.dataset.fallbackIcon, ...achievementIconAlternatives(image.src), ...achievementIconAlternatives(image.dataset.fallbackIcon)] :
         kind === 'cover' ? [portrait, artwork?.cover, artwork?.header, steamHeader(id), artwork?.hero, steamHero(id)] :
-        kind === 'wide' ? [artwork?.header, portrait, artwork?.cover] :
+        kind === 'wide' ? [steamHeader(id), artwork?.header, portrait, artwork?.cover] :
         kind === 'collection-hero' ? [steamHeader(id), artwork?.hero, artwork?.header, portrait] : [artwork?.hero];
       const next = alternatives.find(url => url && !tried.has(url));
       pending = false;
@@ -2470,7 +2493,8 @@ function maybeSyncSteam() {
 function refreshLibrary() {
   const summary = app.querySelector('#library-summary');
   if (summary) summary.outerHTML = librarySummary();
-  renderLibraryLists();
+  renderLibraryList();
+  renderLibraryList(true);
   for (const page of ['achievements','sessions','collections','wishlist']) refreshHomePreview(page);
   updateStoreFeed('wishlist');
 }
