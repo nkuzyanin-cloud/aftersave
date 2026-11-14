@@ -7,15 +7,14 @@ const paths = {
   eye: '<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="2.5"/>',
   eyeOff: '<path d="m3 3 18 18M9.5 6.3A10 10 0 0 1 12 6c6.5 0 10 6 10 6a15 15 0 0 1-3.2 3.6M6.4 7.6A15 15 0 0 0 2 12s3.5 6 10 6c1.4 0 2.7-.3 3.8-.7"/>',
   library: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
-  layers: '<path d="m12 2 9 5-9 5-9-5 9-5Zm-9 10 9 5 9-5m-18 5 9 5 9-5"/>',
-  bookmark: '<path d="M6 4h12a1 1 0 0 1 1 1v16l-7-5-7 5V5a1 1 0 0 1 1-1Z"/>',
-  chart: '<path d="M4 3v17h17M9 15v-4m5 4V7m5 8V4"/>',
-  timer: '<circle cx="12" cy="13" r="8"/><path d="M12 9v4m-2-11h4m-2 0v3m5.8 2.2L20 5"/>',
+  layers: '<rect x="11.2" y="4.65" width="8.95" height="15" rx="2" transform="rotate(10 15.7 12.15)" fill="#3d5b82" stroke="#87a9d0" /><rect x="3.7" y="3.6" width="10.8" height="16.8" rx="2.4" fill="#7399c7" stroke="#c3ddfb" /><path d="M9.1 6.8c.38 1.59 1.02 2.22 2.6 2.6-1.58.38-2.22 1.02-2.6 2.6-.38-1.58-1.01-2.22-2.6-2.6 1.59-.38 2.22-1.01 2.6-2.6Z" fill="#d9ecff" /><path d="M7.4 16.2h3.4" stroke="#203e63"/>',
+  heart: '<path d="M20.2 5.9a4.6 4.6 0 0 0-6.5 0L12 7.6l-1.7-1.7a4.6 4.6 0 1 0-6.5 6.5L12 20l8.2-7.6a4.6 4.6 0 0 0 0-6.5Z" stroke="#b9d9f6" />',
+  chart: '<path d="M4 4.5v13.7c0 .72.58 1.3 1.3 1.3h14.2" stroke="#88a9c9" /><rect x="7.1" y="13" width="2.4" height="3.75" rx=".7" fill="#7f9ac8" /><rect x="11.7" y="9" width="2.4" height="7.75" rx=".7" fill="#9abde2" /><rect x="16.3" y="5.2" width="2.4" height="11.55" rx=".7" fill="#bee4fb"/>',
   pie: '<path d="M11 3a9 9 0 1 0 10 10H11V3Zm3-1v8h8a9 9 0 0 0-8-8Z"/>',
   refresh: '<path d="M20 11a8 8 0 0 0-14-5L4 8m0-5v5h5m-5 5a8 8 0 0 0 14 5l2-2m0 5v-5h-5"/>',
-  news: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h10m-6 4h6m-6 4h6M7 12v4"/>',
+  news: '<rect x="4" y="4.5" width="16" height="15" rx="3.1" fill="#5b779a" stroke="#b7cee8" /><rect x="7.4" y="8" width="4.4" height="4.4" rx=".85" fill="#8aafda" /><path d="M14.15 8.7h2.55m-2.55 3.15h2.55M7.6 15.4h9" stroke="#c6def6"/>',
   trend: '<path d="M3 19h18M4 14l5-5 4 4 7-8m-5 0h5v5"/>',
-  crown: '<path d="m3 7 4.5 4L12 5l4.5 6L21 7l-2 10H5L3 7Zm3 13h12"/>',
+  perfect: '<path d="M3.1 7.1c-1.3 4.46.38 8.03 4.11 10.48 1.03.68 2.04 1.23 3.14 1.77m10.55-12.25c1.3 4.46-.38 8.03-4.11 10.48-1.03.68-2.04 1.23-3.14 1.77" stroke="#8fadcf" stroke-width="1.15" /><path d="M3.14 11.58c1.91.13 3.1 1.24 3.62 2.93-1.92.04-3.37-1.04-3.62-2.93Zm2.1 4.57c1.4-.64 3.06-.19 4.03 1.34-1.51.74-3.13.19-4.03-1.34Zm15.62-4.57c-1.91.13-3.1 1.24-3.62 2.93 1.92.04 3.37-1.04 3.62-2.93Zm-2.1 4.57c-1.4-.64-3.06-.19-4.03 1.34 1.51.74 3.13.19 4.03-1.34Z" fill="#9fbddd" /><path d="M11.5 3.46a.54.54 0 0 1 1 0l1.49 4.28 4.29.35a.53.53 0 0 1 .29.95l-3.47 2.69 1.11 4.16c.12.48-.41.86-.82.58L12 13.99l-3.39 2.48c-.4.28-.94-.1-.82-.58l1.11-4.16-3.47-2.69a.53.53 0 0 1 .29-.95l4.29-.35Z" fill="#edf6ff" stroke="#deefff" stroke-width=".65" /><path d="m12 3.84 1.55 4.36 4.3.35-3.84 1.98.97 4.76-2.98-1.96Z" fill="#acc6ed" /><circle cx="12" cy="20.2" r=".85" fill="#d8edff"/>',
   gem: '<path d="M7 4h10l4 5-9 11L3 9l4-5ZM3 9h18M9 9l3 11 3-11M9 9l3-5 3 5"/>',
   flame: '<path d="M12 22c-4.2 0-7-2.7-7-6.5 0-2.6 1.4-4.7 3.7-6.5-.2 1.8.5 3 1.5 3.5C12.5 9.2 13 6 12 2c4.3 2.9 7 7.8 7 13.1 0 4.1-2.8 6.9-7 6.9Z"/><path d="M12 22c-1.6 0-2.8-1.2-2.8-2.8 0-1.5 1.1-2.7 2.8-4.1 1.7 1.4 2.8 2.6 2.8 4.1 0 1.6-1.2 2.8-2.8 2.8Z"/>',
   calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M7 3v4m10-4v4m-9 7h.01m4 0h.01m4 0h.01m-8 3h.01m4 0h.01"/>',
@@ -29,9 +28,9 @@ const paths = {
   down: '<path d="m6 9 6 6 6-6"/>',
   upRight: '<path d="M6 18 18 6M7 6h11v11"/>',
   back: '<path d="M20 12H5m6-6-6 6 6 6"/>',
-  game: '<path d="M6.2 6h11.6c2 0 3.4 1.5 3.8 3.3l1.1 5.1c.5 2.5-2.2 4.2-4.1 2.5L15.4 14H8.6l-3.2 2.9c-1.9 1.7-4.6 0-4.1-2.5l1.1-5.1C2.8 7.5 4.2 6 6.2 6Z"/><path d="M7 8.5v5m-2.5-2.5h5m6.5 0h.01m3 1h.01"/>',
-  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
-  trophy: '<path d="M8 21h8m-4-4v4M7 4h10v7a5 5 0 0 1-10 0V4Zm0 2H3v2a4 4 0 0 0 4 4m10-6h4v2a4 4 0 0 1-4 4"/>',
+  game: '<path d="M8 6h8c2.35 0 4.02 1.38 4.6 3.64l1.13 4.9c.58 2.53-.38 4.09-2.03 4.09-1.04 0-1.72-.52-2.46-1.35l-1.65-1.84H8.4l-1.64 1.84c-.75.83-1.42 1.35-2.46 1.35-1.65 0-2.61-1.56-2.03-4.09l1.13-4.9C3.98 7.38 5.65 6 8 6Z" fill="#769bce" stroke="#b0c9f3" /><path d="M7.65 9.05v4.6m-2.3-2.3h4.6" stroke="#172a45" /><circle cx="16.7" cy="12.6" r="1" fill="#203a60" /><circle cx="19" cy="10.3" r="1" fill="#e6f4ff"/>',
+  clock: '<circle cx="12" cy="12.75" r="7.8" fill="#346075" stroke="#a5dcef" /><path d="M9.6 2.25h4.8m-2.4 3V2.6m5.85 4.28 1.3-1.3M12 8.7v4.15l2.65 1.65" stroke="#bce7f4" /><circle cx="12" cy="12.75" r=".9" fill="#bce7f4"/>',
+  trophy: '<path d="M6.9 6H3.5v1.5c0 2.27 1.47 3.72 3.8 3.95m9.4 0c2.33-.23 3.8-1.68 3.8-3.95V6h-3.4" stroke="#cba270" /><path d="M7.1 4.1h9.8v4.6a4.9 4.9 0 0 1-9.8 0V4.1Z" fill="#aa7952" stroke="#f3d4a7" /><path d="M12 13.8v4.7m-3.55 1.2h7.1m-5.9-13.1v2.1" stroke="#f3d4a7"/>',
   monitor: '<rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8m-4-4v4"/>',
   checklist: '<path d="m3 5 2 2 3-3m-5 8 2 2 3-3m-5 8 2 2 3-3M12 6h9m-9 7h9m-9 7h9"/>',
   pin: '<path d="M20 10c0 5.5-8 11-8 11s-8-5.5-8-11a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.6"/>',
@@ -49,5 +48,6 @@ const paths = {
 };
 
 export function icon(name, size = 20) {
-  return `<svg aria-hidden="true" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round">${paths[name] || paths.game}</svg>`;
+  const width = ['chart','clock','game','heart','layers','news','perfect','trophy'].includes(name) ? 1.55 : 1.65;
+  return `<svg aria-hidden="true" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round">${paths[name] || paths.game}</svg>`;
 }

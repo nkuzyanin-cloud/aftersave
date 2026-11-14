@@ -18,7 +18,7 @@ let libraryHash = '#library';
 let sectionOpener = null;
 const toast = document.querySelector('#toast');
 const labels = { library: 'Игры', 'all-games': 'Все игры', wishlist: 'Список желаемого', achievements: 'Достижения', collections: 'Коллекции', sessions: 'Игровые сессии', stats: 'Статистика', news: 'Новости', settings: 'Настройки', game: 'Игра' };
-const sectionIcons = {'all-games':'game',wishlist:'bookmark',achievements:'trophy',collections:'layers',sessions:'clock',
+const sectionIcons = {'all-games':'game',wishlist:'heart',achievements:'trophy',collections:'layers',sessions:'clock',
   stats:'chart',news:'news',settings:'gear'};
 const HOME_GAME_LIMIT = 6;
 const storeFeeds = new Map();
@@ -247,7 +247,7 @@ function gameCard(game, inLibrary, canRestore) {
     return `<article class="game-card desk-game perfect desk-celebration${animate ? ' desk-celebration-new' : ''}">
       <div class="card-link desk-celebration-row" aria-hidden="true">
         <div class="desk-identity">${identity}<strong>${name}</strong></div>
-        <span class="desk-celebration-message">${icon('trophy',21)} Все достижения получены</span>
+        <span class="desk-celebration-message">${icon('perfect',21)} Все достижения получены</span>
         <span class="desk-celebration-action">Посмотреть итоги ${icon('right',16)}</span>
       </div>
       <button type="button" class="desk-celebration-button" ${results} aria-label="${name}. Все достижения получены. Посмотреть итоги"></button>
@@ -381,8 +381,8 @@ function homePreview(page) {
       return `<a class="home-collection-card" href="#collections/${encodeURIComponent(item.id)}" aria-haspopup="dialog">
         <div class="home-collection-art" aria-hidden="true">${posters || icon('layers',25)}</div>
         <strong>${esc(item.name)}</strong>
-        <span class="home-collection-meta"><span>${numeric(count)} ${noun}</span>
-          ${rate === null ? '' : `<span title="Прогресс достижений">${icon('trophy',13)} ${rate}%</span>`}</span>
+        <span class="home-collection-meta"><span><b>${numeric(count)}</b> ${noun}</span>
+          ${rate === null ? '' : `<span aria-hidden="true">·</span><span><b>${numeric(rate)}%</b> достижений</span>`}</span>
       </a>`;
     }).join('') || homeEmpty('Пока нет коллекций.');
   }
@@ -455,7 +455,7 @@ function librarySummary() {
   const active = linked.filter(game => isInLibrary(game));
   const perfect = active.filter(game => trophyFor(summaryFor(game)) === 'platinum').length;
   const metrics = [[numeric(active.length),'Игр в Steam','game'],[numeric(Math.round(hours))+' ч','Время в играх','clock'],
-    [numeric(earned),'Получено достижений','trophy'],[numeric(perfect),'Идеально','crown']];
+    [numeric(earned),'Получено достижений','trophy'],[numeric(perfect),'Идеально','perfect']];
   return `<dl id="library-summary" class="library-summary" aria-label="Сводка Steam">${metrics.map(([value,label,glyph]) =>
     `<div><dt>${label}</dt><dd class="desk-metric" data-glyph="${glyph}">${icon(glyph,17)}${value}</dd></div>`).join('')}</dl>`;
 }
@@ -491,7 +491,7 @@ function completionFor(game, record = summaryFor(game)) {
 }
 
 function completionBadge(status) {
-  return status ? `<span class="desk-badge ${status}">${icon(status === 'perfect' ? 'trophy' : 'check',13)} ${status === 'perfect' ? 'Идеально' : 'Пройдено'}</span>` : '';
+  return status ? `<span class="desk-badge ${status}">${status === 'perfect' ? icon('perfect',16) : icon('check',13)} ${status === 'perfect' ? 'Идеально' : 'Пройдено'}</span>` : '';
 }
 
 function completionKey(record) {
@@ -1215,12 +1215,16 @@ function sessionDashboardData(context) {
     const minutes = entries.reduce((sum,event) => sum + event.minutes,0);
     const achievements = entries.reduce((sum,event) => sum +
       (context.unlocks.get(event.game.steam.appid + ':' + event.day)?.length ?? 0),0);
-    return {minutes, count:entries.length, average:entries.length ? minutes/entries.length : 0, achievements};
+    return {minutes, count:entries.length, achievements};
   };
   const previousStart = start - Number(sessionPeriod);
   const previous = earliest <= previousStart
     ? metrics(valid.filter(event => event.day >= previousStart && event.day < start)) : null;
-  return {today,start,events,metrics:metrics(events),previous,ranking:sessionRank(events),context};
+  const playedDays = new Set(valid.map(({day}) => day));
+  const latestDay = playedDays.has(today) ? today : today - 1;
+  let currentStreak = 0;
+  while (playedDays.has(latestDay - currentStreak)) currentStreak++;
+  return {today,start,events,metrics:{...metrics(events),currentStreak},previous,ranking:sessionRank(events),context};
 }
 
 function sessionRank(events) {
@@ -1396,11 +1400,10 @@ function sessionGameDistribution(data) {
 function sessionDelta(value, previous, mode) {
   if (!previous) return '';
   const difference = value - previous;
-  const amount = mode === 'duration' ? Math.round(Math.abs(difference)) :
-    mode === 'percent' ? Math.round(Math.abs(difference)/previous*100) : Math.abs(difference);
+  const amount = mode === 'percent' ? Math.round(Math.abs(difference)/previous*100) : Math.abs(difference);
   if (!amount) return '';
   const sign = difference > 0 ? '+' : '−';
-  const text = mode === 'duration' ? duration(amount) : numeric(amount) + (mode === 'percent' ? '%' : '');
+  const text = numeric(amount) + (mode === 'percent' ? '%' : '');
   return `<span class="session-delta ${difference < 0 ? 'is-down' : ''}" title="По сравнению с предыдущим таким же периодом">
     ${sign}${text}</span>`;
 }
@@ -1412,7 +1415,7 @@ function sessionsPage(game, inSection = false) {
   const cards = [
     ['clock','Время ' + period,'minutes','percent',''],
     ['game','Записей сессий','count','count','Одна запись на игру за календарный день'],
-    ['timer','Среднее за запись','average','duration','Среднее по записям, сгруппированным по игре и дню'],
+    ['flame','Серия игровых дней','currentStreak',null,'Дни подряд с игровым временем по всем сохранённым сессиям. Серия может продолжиться сегодня, если ты играл вчера.'],
     ['trophy','Достижений за сессии','achievements','percent','Достижения, полученные в игре в день с записью']
   ];
   return `<div id="desk-feed" class="session-dashboard">
@@ -1423,11 +1426,12 @@ function sessionsPage(game, inSection = false) {
     ${steamMessage && (syncingSteam || steamError) ? `<p class="steam-message" role="status">${esc(steamMessage)}</p>` : ''}
     <div class="session-kpis">${cards.map(([glyph,title,key,mode,tip]) => {
       const value = data.metrics[key];
-      const label = ['minutes','average'].includes(key) ? sessionDuration(value) : (key === 'achievements' && value ? '+' : '') + numeric(value);
+      const label = key === 'minutes' ? sessionDuration(value) :
+        key === 'currentStreak' ? numeric(value) + ' дн.' : (key === 'achievements' && value ? '+' : '') + numeric(value);
       return `<section class="session-card session-kpi" ${tip ? `title="${tip}"` : ''}>
         <div class="session-kpi-icon">${icon(glyph,22)}</div><div><small>${title}</small>
-          <div class="session-kpi-value"><strong>${key === 'average' && !data.metrics.count ? '—' : label}</strong>
-          ${sessionDelta(value,data.previous?.[key],mode)}</div></div></section>`;
+          <div class="session-kpi-value"><strong>${label}</strong>
+          ${mode ? sessionDelta(value,data.previous?.[key],mode) : ''}</div></div></section>`;
     }).join('')}</div>
     <div class="session-main-grid">${sessionActivityChart(data)}${sessionTopGames(data)}</div>
     <div class="session-bottom-grid">${sessionRecentCards(data)}${sessionGameDistribution(data)}</div>
@@ -1591,7 +1595,7 @@ function statsPage() {
       '<div class="stats-games-content">'+
         '<div class="stats-games-total"><strong>'+numeric(active.length)+'</strong><span>игр</span></div>'+
         '<div class="stats-games-split">'+
-          '<div><span class="stats-games-symbol">'+icon('trophy',20)+'</span><strong>'+numeric(completed)+'</strong><small>идеально</small></div>'+
+          '<div><span class="stats-games-symbol">'+icon('perfect',20)+'</span><strong>'+numeric(completed)+'</strong><small>идеально</small></div>'+
           '<div><span class="stats-games-symbol">'+icon('check',20)+'</span><strong>'+numeric(beaten)+'</strong><small>пройдено</small></div>'+
           '<div><span class="stats-games-symbol stats-unmarked-symbol" aria-hidden="true"></span><strong>'+numeric(other)+'</strong><small>без отметки</small></div>'+
         '</div></div>'+
