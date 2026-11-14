@@ -1,4 +1,6 @@
 const accentPaths = {
+  calendar: '<rect x="3.7" y="5.5" width="16.6" height="14.5" rx="2.5"/><path d="M3.7 10h16.6m-12.35-7v4.3m8.1-4.3v4.3"/>' +
+    '<path d="M8.3 14h.01m3.69 0h.01m3.69 0h.01M8.3 17h.01m3.69 0h.01" stroke="#bbf3ff" stroke-width="2"/>',
   game: '<path d="M7.5 7h9a4 4 0 0 1 3.9 3.15l1.07 4.78a2.43 2.43 0 0 1-4.06 2.29L15 15H9l-2.41 2.22a2.43 2.43 0 0 1-4.06-2.29l1.07-4.78A4 4 0 0 1 7.5 7Z"/>' +
     '<g stroke="#bbf3ff"><path d="M7.8 9.65v4.1m-2.05-2.05h4.1M16 12.45h.01m2.2-2.05h.01"/></g>',
   clock: '<circle cx="12" cy="13.5" r="7.3"/><path d="M9.8 3h4.4M12 3v3.2m5.2 1.9 1.25-1.25"/>' +
@@ -31,7 +33,6 @@ const paths = {
   refresh: '<path d="M20 11a8 8 0 0 0-14-5L4 8m0-5v5h5m-5 5a8 8 0 0 0 14 5l2-2m0 5v-5h-5"/>',
   trend: '<path d="M3 19h18M4 14l5-5 4 4 7-8m-5 0h5v5"/>',
   gem: '<path d="M7 4h10l4 5-9 11L3 9l4-5ZM3 9h18M9 9l3 11 3-11M9 9l3-5 3 5"/>',
-  calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M7 3v4m10-4v4m-9 7h.01m4 0h.01m4 0h.01m-8 3h.01m4 0h.01"/>',
   lock: '<rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 4v3"/>',
   user: '<circle cx="12" cy="8" r="4"/><path d="M4 21v-2a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v2"/>',
   settings: '<path d="M4 6h16M4 12h16M4 18h16"/><path stroke-width="4" d="M8 5v2m8 4v2m-6 4v2"/>',

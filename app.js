@@ -67,6 +67,7 @@ let feedLimit = 24;
 let lockedFeed = false;
 let lockedAchievementOrder = 'common';
 let achievementYear = '';
+let earnedAchievementOrder = 'newest';
 let recentRevealStartedAt;
 let scanningAchievements = false;
 let stopAchievementScan = false;
@@ -916,7 +917,8 @@ function achievementDays(entries) {
 
 function achievementRarityLabel(item) {
   return Number.isFinite(item.percent) ?
-    icon('trophy',14) + '<span>' + numeric(Math.round(item.percent*10)/10) + '%</span>' :
+    icon('trophy',14) + '<span' + (item.unlocked && isRare(item) ? ' class="rare-achievement-percent"' : '') + '>' +
+      numeric(Math.round(item.percent*10)/10) + '%</span>' :
     '<span title="Редкость неизвестна" aria-label="Редкость неизвестна">—</span>';
 }
 
@@ -971,11 +973,24 @@ function achievementMomentLabel(time) {
     date.getFullYear()].join('.');
 }
 
+function earnedAchievementSortButton(label, field, ascending, descending) {
+  const active = [ascending,descending].includes(earnedAchievementOrder);
+  const reverse = earnedAchievementOrder === ascending;
+  const direction = active ? (reverse ? ', по возрастанию' : ', по убыванию') : '';
+  return `<button type="button" id="earned-sort-${field}" class="ach-history-sort" data-action="earned-achievement-sort"
+    data-value="${field}" aria-pressed="${active}" aria-label="${label}${direction}">${label}
+    <span aria-hidden="true">${active ? (reverse ? '↑' : '↓') : '↕'}</span></button>`;
+}
+
 function achievementEarnedContent(earned, totalUnlocked) {
   const selected = achievementYear ? earned.filter(({item}) =>
     String(new Date(item.time*1000).getFullYear()) === achievementYear) : earned;
   const recent=selected.slice(0,5);
-  const remaining=selected.slice(5).sort((a,b)=>compareAchievementPercent(a.item,b.item));
+  const remaining=selected.slice(5);
+  if (earnedAchievementOrder === 'oldest') remaining.sort((a,b)=>a.item.time-b.item.time);
+  if (['rare','common'].includes(earnedAchievementOrder)) {
+    remaining.sort((a,b)=>compareAchievementPercent(a.item,b.item,earnedAchievementOrder));
+  }
   const since=Date.now()-7*24*60*60*1000;
   const lastWeek=earned.filter(({item})=>item.time*1000 >= since && item.time*1000 <= Date.now()).length;
   const now = performance.now();
@@ -1002,7 +1017,9 @@ function achievementEarnedContent(earned, totalUnlocked) {
     '</div></section>' +
     '<div class="ach-earned-history">' +
     (remaining.length ? '<div class="ach-items ach-history-table ach-earned-items">' +
-      '<div class="ach-history-columns" aria-hidden="true"><span>Достижение</span><span>Редкость</span><span>Получено</span></div>' +
+      '<div class="ach-history-columns"><span>Достижение</span>' +
+      earnedAchievementSortButton('Редкость','rarity','rare','common') +
+      earnedAchievementSortButton('Получено','date','oldest','newest') + '</div>' +
       remaining.slice(0,feedLimit).map(entry=>achievementItemRow(entry)).join('') + '</div>' :
       '<p class="ach-empty">' + (recent.length ? 'Других достижений за выбранный период нет.' :
       'Попробуй выбрать другой год или обновить достижения Steam.') + '</p>') +
@@ -2049,6 +2066,14 @@ const actions = {
     }
   },
   'desk-feed-more': () => { feedLimit += 24; refreshDeskFeed(); },
+  'earned-achievement-sort': control => {
+    const id = control.id;
+    earnedAchievementOrder = control.dataset.value === 'rarity' ?
+      (earnedAchievementOrder === 'rare' ? 'common' : 'rare') :
+      (earnedAchievementOrder === 'newest' ? 'oldest' : 'newest');
+    refreshDeskFeed();
+    document.getElementById(id)?.focus({preventScroll:true});
+  },
   'session-period': control => {
     const value = control.dataset.value;
     if (!['7','30','all'].includes(value) || sessionPeriod === value) return;
@@ -2378,6 +2403,7 @@ function updateRoute() {
       lockedFeed = false;
       lockedAchievementOrder = 'common';
       achievementYear = '';
+      earnedAchievementOrder = 'newest';
     }
     if (next.id !== previous.id) collectionLimit = 24;
     if (!next.section && next.trophy !== previous.trophy) {
@@ -2398,6 +2424,7 @@ function updateRoute() {
   lockedFeed = false;
   lockedAchievementOrder = 'common';
   achievementYear = '';
+  earnedAchievementOrder = 'newest';
   achievementFilter = '';
   achievementQuery = '';
   achievementLimit = 24;
@@ -2833,14 +2860,13 @@ function gameDashboard() {
             ${isEldenRing(game) ? `<a class="desk-ng-link" href="${url}/notes/ng-plus">${icon('checklist',16)} NG+</a>` : ''}
             ${game.journal.length || game.runs.length ? `<a href="${url}/notes">${icon('edit',14)} Личный журнал</a>` : ''}
             </div>
-            <label class="desk-playthrough">
-              ${icon('checklist',15)} <span>Количество прохождений</span>
-              <input id="game-playthrough-count" type="number" inputmode="numeric" min="0" max="${Number.MAX_SAFE_INTEGER}"
-                step="1" value="${game.playthroughCount}" title="Изменить количество прохождений">
-              ${icon('edit',13)}
-            </label>
           </div>
           <dl class="desk-game-metrics">
+            <div class="desk-playthrough">
+              <dt><label class="desk-icon-text" for="game-playthrough-count">${icon('checklist',15)}Прохождения</label></dt>
+              <dd><input id="game-playthrough-count" type="number" inputmode="numeric" min="0" max="${Number.MAX_SAFE_INTEGER}"
+                step="1" value="${game.playthroughCount}" title="Изменить количество прохождений"></dd>
+            </div>
             <div><dt class="desk-icon-text">${icon('trophy',15)}Достижения</dt><dd id="game-achievement-count">${summary?.total ? summary.unlocked+' / '+summary.total : 'Нет достижений'}</dd></div>
             <div><dt class="desk-icon-text">${icon('clock',15)}Время игры</dt><dd>${duration(game.steam?.minutes ?? Math.round(game.hours*60))}</dd></div>
             <div><dt class="desk-icon-text">${icon('calendar',15)}Последний запуск</dt><dd>${steamDate(game.steam?.lastPlayed)}</dd></div>
@@ -3255,8 +3281,9 @@ function updateAchievementRows(more = false, animate = false) {
     items.slice(0,achievementLimit).map(item => {
       const concealed = item.hidden && !item.unlocked && !revealHidden;
       const stamp = item.unlocked ? gameAchievementDate(item.time) : '';
+      const rare = item.unlocked && isRare(item);
       return '<li class="af-ach-row' + (item.unlocked ? ' is-earned' : ' is-locked') + '">' +
-        '<span class="achievement-icon af-ach-icon">' +
+        '<span class="achievement-icon af-ach-icon' + (rare ? ' rare-achievement' : '') + '">' +
           icon(item.unlocked ? 'trophy' : 'lock',22) +
           (item.icon && !concealed ? '<img src="' + esc(item.icon) +
             '" data-achievement-icon data-fallback-icon="' + esc(item.fallbackIcon) +
@@ -3266,7 +3293,8 @@ function updateAchievementRows(more = false, animate = false) {
           (concealed ? '<p>Скрытое условие</p>' : item.description ? '<p>' + esc(item.description) + '</p>' : '') +
         '</div>' +
         '<span class="af-ach-rarity" title="Доля игроков Steam">' +
-          icon('gem',17) + '<span>' + (Number.isFinite(item.percent) ? numeric(item.percent) + '%' : '—') +
+          '<span' + (rare ? ' class="rare-achievement-percent"' : '') + '>' +
+          (Number.isFinite(item.percent) ? numeric(item.percent) + '%' : '—') +
           '</span></span>' +
         '<span class="af-ach-status">' +
           (item.unlocked ? '<span class="af-ach-status-earned">Получено</span>' +
