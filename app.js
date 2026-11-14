@@ -5,7 +5,7 @@ import {
 import { icon } from './icons.js';
 import { bossRegions, bossById } from './elden-ring.js';
 import { bossArt } from './elden-ring-art.js';
-import { mergeSteam, fetchLibrary, connect, disconnect, connected, steamCover, steamHeader, steamHero, fetchSteamArtwork,
+import { mergeSteam, fetchLibrary, connect, disconnect, connected, steamCover, steamCover2x, steamHeader, steamHero, fetchSteamArtwork,
   fetchAchievements, cachedAchievements, achievementRecords, achievementIconAlternatives,
   cachedSteamProfile, fetchSteamProfile, fetchSteamFeed } from './steam.js';
 import { dayNumber, calendarDate, addDaily, streaks,
@@ -176,13 +176,18 @@ function trophyBadge(trophy) {
   return trophy ? `<span class="cup-label cup-${trophy}">${icon('trophy',23)}<span>${cups[trophy]}</span></span>` : '';
 }
 
-function cover(game, className = '') {
+function cover(game, className = '', {detailed = false, eager = false} = {}) {
   const id = game.steam?.appid;
-  const custom = coverUrl(game.cover);
-  const generated = id && custom === `https://cdn.cloudflare.steamstatic.com/steam/apps/${id}/library_600x900.jpg`;
-  const url = (generated ? '' : custom) || steamCover(id);
+  const stored = coverUrl(game.cover);
+  const stock = steamCover(id);
+  const original = id && stored === `https://cdn.cloudflare.steamstatic.com/steam/apps/${id}/library_600x900.jpg` ? stock : stored;
+  const bundled = id && game.catalogId && original === './assets/covers/' + game.catalogId + '.jpg';
+  const detailedUrl = detailed ? steamCover2x(id, bundled ? stock : original || stock) : '';
+  const url = detailedUrl || original || stock;
   return `<div class="cover ${className}" style="--cover-accent:${/^#[\da-f]{6}$/i.test(game.accent ?? '') ? game.accent : '#5083a7'}">
-    <span class="cover-fallback">${icon('game', 42)}</span>${url ? `<img src="${esc(url)}" alt="" decoding="async" loading="${className === 'game-poster' ? 'eager' : 'lazy'}" referrerpolicy="no-referrer" data-steam-art="${id ?? ''}" data-art-kind="cover">` : ''}</div>`;
+    <span class="cover-fallback">${icon('game', 42)}</span>${url ? `<img src="${esc(url)}" alt="" decoding="async" loading="${eager ? 'eager' : 'lazy'}"
+      referrerpolicy="no-referrer" data-steam-art="${id ?? ''}" data-art-kind="cover"${detailedUrl ? ' data-detailed-cover' : ''}
+      ${detailedUrl && original ? `data-cover-fallback="${esc(original)}"` : ''}>` : ''}</div>`;
 }
 
 function progressBar(value) {
@@ -347,12 +352,12 @@ function homePreview(page) {
   }
   if (page === 'sessions') {
     return sessionContext().events.slice(0,3).map(({game,minutes,day}) =>
-      homeRow(gameHref(game),cover(game),displayName(game),sessionDuration(minutes),shortDay.format(calendarDate(day)))
+      homeRow(gameHref(game),cover(game,'',{detailed:true}),displayName(game),sessionDuration(minutes),shortDay.format(calendarDate(day)))
     ).join('') || homeEmpty('Пока нет записей об игровых сессиях.');
   }
   if (page === 'collections') {
     return collectionEntries().slice(0,2).map(({item,grouped,total,unlocked}) => {
-      const posters = collectionShowcaseGames(grouped,3).map(game => cover(game)).join('');
+      const posters = collectionShowcaseGames(grouped,3).map(game => cover(game,'',{detailed:true})).join('');
       const count = grouped.length;
       const noun = {one:'игра',few:'игры'}[achievementPlural.select(count)] ?? 'игр';
       const rate = total ? Math.round(unlocked / total * 100) : null;
@@ -1007,7 +1012,7 @@ function sessionContext(game) {
 function sessionRows({events,launches,unlocks}, limit, modal = false) {
   if (!events.length) return `<p class="desk-panel desk-muted">${launches.length ? 'Steam передал дату последнего запуска. Длительность сессии пока неизвестна.' :
     modal ? 'Пока нет данных о запусках этой игры.' : 'Пока нет данных об игровых сессиях.'}</p>
-    ${launches.slice(0,limit).map(item => `<article class="desk-panel desk-session"><div>${cover(item)}<a href="${gameHref(item)}">${esc(displayName(item))}</a>
+    ${launches.slice(0,limit).map(item => `<article class="desk-panel desk-session"><div>${cover(item,'',{detailed:true})}<a href="${gameHref(item)}">${esc(displayName(item))}</a>
     <time class="desk-icon-text">${icon('calendar',14)}${steamDate(item.steam.lastPlayed)}</time></div></article>`).join('')}`;
   return events.slice(0,limit).map(({game,minutes,day,estimated,uncertain}) => {
     const earned = unlocks.get(game.steam.appid+':'+day) ?? [];
@@ -1015,7 +1020,7 @@ function sessionRows({events,launches,unlocks}, limit, modal = false) {
     const rounded = Math.round(minutes);
     const label = rounded ? duration(rounded) : 'меньше минуты';
     const approximate = estimated || uncertain;
-    return `<article class="desk-panel desk-session"><div>${cover(game)}<p>Играл <strong${approximate ? ' title="Прирост игрового времени в Steam между проверками"' : ''}>${label}</strong>
+    return `<article class="desk-panel desk-session"><div>${cover(game,'',{detailed:true})}<p>Играл <strong${approximate ? ' title="Прирост игрового времени в Steam между проверками"' : ''}>${label}</strong>
       ${modal ? '' : ` в <a href="${gameHref(game)}">${esc(displayName(game))}</a>`}
       ${earned.length ? `<small class="desk-icon-text">${icon('trophy',14)}Достижений за день · ${earned.length}</small>` : ''}</p><time class="desk-icon-text">${icon('calendar',14)}${date}</time></div>
       ${earned.length ? `<footer>${earned.slice(0,modal ? 12 : 6).map(item => trophyIcon(item)).join('')}${earned.length > (modal ? 12 : 6) ? `<small>ещё ${earned.length-(modal ? 12 : 6)}</small>` : ''}</footer>` : ''}</article>`;
@@ -1163,8 +1168,8 @@ function sessionChartTooltip(point) {
   const extra = point.games.slice(3);
   const labels = multiple ? `<header><time>${esc(point.title)}</time><b>${sessionDuration(point.minutes)} всего</b></header>` : '';
   return `<div class="session-tip-content">${labels}
-    ${point.games.slice(0,3).map(({game,minutes}) => `<div class="session-tip-game">
-      ${cover(game)}<div>
+    ${point.games.slice(0,3).map(({game,minutes}) => `<div class="session-tip-game${multiple ? '' : ' is-single'}">
+      ${cover(game,'',{detailed:true,eager:true})}<div>
         ${multiple ? '' : `<time>${esc(sessionGrouping === 'days' ? point.label : point.title)}</time>`}
         <span>${esc(displayName(game))}</span>
         <strong>${sessionDuration(minutes)}</strong>
@@ -1206,7 +1211,7 @@ function sessionActivityChart(data) {
 
 function sessionTopRows(ranking) {
   return `<ul class="session-top-list">${ranking.map(({game,count,minutes}) => `<li>
-    <a href="${gameHref(game)}" class="session-top-game">${cover(game)}
+    <a href="${gameHref(game)}" class="session-top-game">${cover(game,'',{detailed:true})}
       <span class="session-top-copy"><strong>${esc(displayName(game))}</strong>
         <small>${icon('clock',12)}${sessionRecordCount(count)}</small></span>
       <strong class="session-top-time">${sessionDuration(minutes)}</strong>
@@ -1228,7 +1233,7 @@ function sessionRecentCards(data) {
     </div>${data.events.length ? `<div class="session-recent-grid">
       ${data.events.slice(0,4).map(({game,day,minutes}) => {
         const earned = data.context.unlocks.get(game.steam.appid + ':' + day) ?? [];
-        return `<a class="session-recent-card" href="${gameHref(game)}">${cover(game)}
+        return `<a class="session-recent-card" href="${gameHref(game)}">${cover(game,'',{detailed:true})}
           <span class="session-recent-copy"><strong>${esc(displayName(game))}</strong>
             <small>${icon('calendar',14)}${shortDay.format(calendarDate(day))}</small>
             <small>${icon('clock',14)}<b>${sessionDuration(minutes)}</b></small>
@@ -1503,7 +1508,7 @@ function statsPage() {
         (top.length ? top.map((game,index) => {
           const minutes=game.steam?.minutes??0;
           return '<a class="stats-top-game" href="'+gameHref(game)+'">'+
-            '<span class="stats-top-index">'+(index+1)+'.</span>'+cover(game)+
+            '<span class="stats-top-index">'+(index+1)+'.</span>'+cover(game,'',{detailed:true})+
             '<div class="stats-top-game-info"><div><strong>'+esc(displayName(game))+'</strong>'+
               '<span>'+duration(minutes)+'</span></div>'+
             '<div class="stats-top-track"><i style="width:'+percent(minutes/topMax*100)+'%"></i></div>'+
@@ -1585,7 +1590,7 @@ function refreshDeskFeed(motionClass) {
   imageFallbacks(updated);
 }
 
-function collectionShowcaseGames(grouped, limit = 7) {
+function collectionShowcaseGames(grouped, limit) {
   return [...grouped].sort((a,b) => gameHours(b) - gameHours(a) ||
     displayName(a).localeCompare(displayName(b),'ru')).slice(0,limit);
 }
@@ -1611,7 +1616,7 @@ function collectionLeader(grouped) {
 
 function collectionHero(entry) {
   const { item, grouped } = entry;
-  const selected = collectionShowcaseGames(grouped,7);
+  const selected = collectionShowcaseGames(grouped,4);
   const game = selected.find(game => game.steam?.appid) || selected[0];
   const id = game?.steam?.appid;
   const backdrop = id ? steamHero(id) : (game ? coverUrl(game.cover) : '');
@@ -1623,7 +1628,7 @@ function collectionHero(entry) {
     '<h2>' + esc(item.name) + '</h2><p>' + esc(collectionLeader(grouped)) + '</p>' +
     collectionMetrics(entry,true) + '</div>' +
     '<div class="collection-hero-deck" aria-hidden="true">' +
-    selected.map(game => cover(game,'collection-hero-poster')).join('') + '</div></a>';
+    selected.map(game => cover(game,'collection-hero-poster',{detailed:true})).join('') + '</div></a>';
 }
 
 function collectionRow(entry) {
@@ -1633,7 +1638,7 @@ function collectionRow(entry) {
     '<div class="collection-shelf-title"><h2>' + esc(item.name) + '</h2>' +
     '<p title="' + esc(collectionLeader(grouped)) + '">' + esc(collectionLeader(grouped)) + '</p></div>' +
     '<div class="collection-shelf-posters" aria-hidden="true">' +
-    selection.map(game=>cover(game,'collection-shelf-poster')).join('') +
+    selection.map(game=>cover(game,'collection-shelf-poster',{detailed:true})).join('') +
     (grouped.length > selection.length ? '<span class="collection-shelf-overflow">+' +
       numeric(grouped.length - selection.length) + '</span>' : '') + '</div>' +
     collectionMetrics(entry) + '</a>';
@@ -2373,6 +2378,7 @@ function imageFallbacks(root) {
   root.querySelectorAll('img').forEach(image => {
     const id = Number(image.dataset.steamArt);
     const kind = image.dataset.artKind;
+    const detailed = image.hasAttribute('data-detailed-cover');
     const tried = new Set([image.src]);
     let artwork;
     let pending = false;
@@ -2385,7 +2391,8 @@ function imageFallbacks(root) {
       if (!image.isConnected) return;
       const alternatives = image.hasAttribute('data-achievement-icon') ?
         [image.dataset.fallbackIcon, ...achievementIconAlternatives(image.src), ...achievementIconAlternatives(image.dataset.fallbackIcon)] :
-        kind === 'cover' ? [portrait, artwork?.cover, artwork?.header, steamHeader(id), artwork?.hero, steamHero(id)] :
+        kind === 'cover' ? [portrait, image.dataset.coverFallback, detailed ? steamCover2x(id,artwork?.cover) : '',
+          artwork?.cover, artwork?.header, steamHeader(id), artwork?.hero, steamHero(id)] :
         kind === 'wide' ? [steamHeader(id), artwork?.header, portrait, artwork?.cover] :
         kind === 'collection-hero' ? [steamHeader(id), artwork?.hero, artwork?.header, portrait] : [artwork?.hero];
       const next = alternatives.find(url => url && !tried.has(url));
@@ -2692,7 +2699,7 @@ function gameDashboard() {
             ${game.steam && !['sessions','notes'].includes(route.tab) ? iconButton('achievement-reload',connected() ? 'Обновить достижения Steam' : 'Подключить Steam','cloudDownload') : ''}
           </div>
         </div>
-        <div class="desk-game-heading">${route.tab === "overview" ? cover(game,"game-poster") : wideCover(game,true)}
+        <div class="desk-game-heading">${route.tab === "overview" ? cover(game,"game-poster",{detailed:true,eager:true}) : wideCover(game,true)}
           <div class="desk-game-title"><h1>${esc(displayName(game,true))} <span id="game-trophy">${completionBadge(status)}</span></h1>
             ${route.tab === 'overview' ? '' : '<small>' + (game.steam ? icon('steam',14) + ' Steam' : esc(game.platform)) + '</small>'}
             <div class="desk-game-links">

@@ -19,6 +19,15 @@ const capsulePaths = {
 export const steamCover = id => capsulePaths[id] ?
   `https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/${id}/${capsulePaths[id]}/library_capsule.jpg` :
   appId(id) ? `https://cdn.cloudflare.steamstatic.com/steam/apps/${id}/library_600x900.jpg` : '';
+export function steamCover2x(id, url) {
+  if (!appId(id) || !url?.startsWith('https://')) return '';
+  const asset = new URL(url);
+  const approved = asset.hostname === 'cdn.cloudflare.steamstatic.com' && asset.pathname.startsWith('/steam/apps/' + id + '/') ||
+    asset.hostname === 'shared.fastly.steamstatic.com' && asset.pathname.startsWith('/store_item_assets/steam/apps/' + id + '/');
+  if (!approved || !/\/library_(?:600x900|capsule)(?:_2x)?\.jpg$/.test(asset.pathname)) return '';
+  asset.pathname = asset.pathname.replace(/(_2x)?\.jpg$/, '_2x.jpg');
+  return asset.href;
+}
 export const steamHeader = id => appId(id) ? `https://cdn.cloudflare.steamstatic.com/steam/apps/${id}/header.jpg` : '';
 export const steamHero = id => appId(id) ? `https://cdn.cloudflare.steamstatic.com/steam/apps/${id}/library_hero.jpg` : '';
 
