@@ -70,7 +70,10 @@ async function startSession(request, env) {
   const other = new Uint8Array(expected);
   const difference = new Uint8Array(actual).reduce((result, byte, i) => result | (byte ^ other[i]), 0);
   if (difference !== 0) throw new RequestError(401, 'unauthorized');
-  const refresh = env.STEAM_ACTIVITY ? await rememberDevice(env).catch(() => undefined) : undefined;
+  if (!env.STEAM_ACTIVITY) throw new RequestError(503,'session_storage_unavailable');
+  const refresh = await rememberDevice(env).catch(() => {
+    throw new RequestError(503,'session_storage_unavailable');
+  });
   return { ...await sessionResponse(env), refresh };
 }
 
@@ -271,7 +274,7 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const cors = allowedOrigin(request);
-    if (url.pathname === '/health' && request.method === 'GET') return reply({ ok: true, version: 10 }, 200, cors);
+    if (url.pathname === '/health' && request.method === 'GET') return reply({ ok: true, version: 11 }, 200, cors);
     const route = url.pathname;
     if (!['/session', '/session/refresh', '/session/forget', '/profile', '/library', '/achievements', '/artwork', '/wishlist', '/news'].includes(route)) return reply({ error: 'not_found' }, 404, cors);
     if (!cors) return reply({ error: 'origin' }, 403, false);
@@ -311,7 +314,7 @@ export default {
           await forgetDevice(env,token);
           return reply({ ok:true },200,true);
         }
-        if (!await renewDevice(env,token)) throw new RequestError(401, 'unauthorized');
+        if (!await renewDevice(env,token)) throw new RequestError(401, 'device_expired');
         return reply(await sessionResponse(env),200,true);
       }
       await authorize(request, env);

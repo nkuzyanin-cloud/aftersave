@@ -357,7 +357,15 @@ function normalizeSteam(value) {
     if (!appid || !startedAt || !endedAt || endedAt <= startedAt) throw new Error('Некорректная локальная сессия Steam.');
     return { appid, startedAt, endedAt };
   });
+  const ownedAppIds = steam.ownedAppIds == null ? null : [...new Set(
+    list(steam.ownedAppIds, 'Игры библиотеки Steam', 10000).map(id => {
+      const valid = number(id, 'AppID', 1, 4294967295, null, true);
+      if (valid === null) throw new Error('Некорректный AppID библиотеки Steam.');
+      return valid;
+    })
+  )];
   return { account: steam.account, lastSync: stamp(steam.lastSync, EPOCH), activity: normalizeActivity(steam.activity),
+    ...(ownedAppIds ? {ownedAppIds} : {}),
     ...(localSessions.length ? {localSessions} : {}) };
 }
 

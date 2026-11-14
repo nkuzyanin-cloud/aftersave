@@ -2289,18 +2289,32 @@ dialog.session-archive-dialog{width:min(700px,calc(100vw - 24px))}
 .home-primary,.home-secondary{display:grid;gap:16px;align-items:stretch}
 .home-primary{grid-template-columns:minmax(0,2.08fr) minmax(305px,1fr)}
 .home-secondary{grid-template-columns:repeat(2,minmax(0,1.04fr)) minmax(305px,1fr)}
-.home-activity{display:grid;grid-template-rows:repeat(2,minmax(0,1fr));gap:16px;min-width:0}
+.home-activity{display:grid;grid-template-rows:repeat(2,minmax(min-content,1fr));gap:16px;min-width:0;align-self:start}
+.home-activity .home-panel{display:flex;flex-direction:column}
+.home-activity .home-panel-items{display:flex;flex:1;flex-direction:column}
+.home-activity .home-row{flex:1;min-height:64px;gap:13px}
+.home-activity .home-row>.cover,.home-activity .home-row>.desk-trophy-icon{width:49px;height:49px;border-radius:7px}
+.home-activity .home-row-copy strong{font-size:.99rem}
+.home-activity .home-row-copy small,.home-activity .home-row-detail{font-size:.79rem}
 .home-panel{min-width:0;border:1px solid #303744;border-radius:9px;background:linear-gradient(145deg,#171b24,#12151c)}
 .home-panel>header{min-height:48px;display:flex;justify-content:space-between;align-items:center;gap:9px;padding:8px 14px;border-bottom:1px solid #292f3a}
 .home-panel>header h1,.home-panel>header h2{display:flex;align-items:center;gap:9px;min-width:0;margin:0;font-size:1.06rem;font-weight:760;letter-spacing:-.02em;line-height:1.2}
 .home-panel>header h1{font-size:1.29rem}
 .home-panel>header h1 svg,.home-panel>header h2 svg{flex:none;color:#b7c4d6}
-.home-panel .home-search{width:clamp(175px,23vw,300px);margin:0;background:#141821;border-color:#333b49;color:#adb8c9}
+.home-search{width:clamp(150px,19vw,270px);min-height:34px;margin:0;background:#141821;border-color:#333b49;color:#adb8c9}
+.desk-library-tools>.icon-btn,.desk-library-tools .desk-library-filter>summary{
+  width:34px;min-width:34px;min-height:34px;padding:0;border-radius:7px;background:#141821;border-color:#333b49;color:#c7cfe0
+}
+.desk-library-tools>.icon-btn:hover,.desk-library-tools>.icon-btn[aria-expanded=true],.desk-library-tools .desk-library-filter[open]>summary,
+.desk-library-tools .desk-library-filter>[data-active=true]{background:#223649;border-color:#496780;color:#def2ff}
+.desk-library-tools>.home-action{min-height:34px;margin-left:4px;padding-inline:9px;border:1px solid #3c5166;border-radius:7px;white-space:nowrap}
+.desk-library-tools>.home-action:hover{background:#223649;text-decoration:none}
+.desk-library-tools .home-search:focus-within{border-color:#7fbcdf}
+.all-games-tools{display:flex;justify-content:flex-end;margin-bottom:12px}
+#all-game-results .desk-game{content-visibility:auto;contain-intrinsic-block-size:auto 62px}
 .home-search input{height:34px;min-width:0;font-size:.86rem}
-.home-panel .desk-library-filter>summary{width:33px;min-width:33px;min-height:33px;padding:0;background:#141821;border-color:#333b49;color:#c7cfe0}
-.home-panel .desk-library-filter[open]>summary,.home-panel .desk-library-filter>[data-active=true]{background:#28304a;color:#dae3ff}
 .home-panel .desk-columns{border:0;border-radius:0;background:#1a1f29}
-.home-panel .list-view:has(.desk-game){border:0;border-radius:0}
+.home-panel .list-view:has(.desk-game){border:0;border-radius:0 0 8px 8px;overflow:hidden}
 .home-panel .list-view .desk-game,.home-panel .list-view .desk-game:nth-child(even){background:transparent;border-color:#252a34}
 .home-panel .list-view .desk-game:is(:hover,:focus-within){background:#212632}
 .home-panel .list-view .desk-game .card-link{min-height:64px;padding-block:5px}
@@ -2311,6 +2325,7 @@ dialog.session-archive-dialog{width:min(700px,calc(100vw - 24px))}
 .home-panel .desk-columns,.home-panel .list-view .desk-game .card-link{
   grid-template-columns:minmax(0,1.85fr) minmax(111px,1fr) minmax(123px,1.15fr) minmax(92px,.72fr);gap:8px
 }
+.home-primary>.library-section{align-self:start}
 .home-panel .empty{border:0;background:none}
 .home-panel .cup-filter{margin:8px 12px}
 .home-more{display:grid;justify-items:center;border-top:1px solid #292f3a}
@@ -2326,9 +2341,21 @@ dialog.session-archive-dialog{width:min(700px,calc(100vw - 24px))}
 .home-row-detail{margin-left:auto;white-space:nowrap}
 .home-row>.cover,.home-row>.desk-trophy-icon{width:39px;height:39px;flex:none;border-radius:5px;overflow:hidden}
 .home-row>.wide-cover{width:106px;height:43px}
-.home-row>.cover img,.home-posters .cover img{object-fit:cover}
-.home-posters{display:flex;gap:4px;align-items:center;min-width:38px;min-height:46px;color:#aab9cd}
-.home-posters .cover{width:31px;aspect-ratio:2/3;border-radius:4px}
+.home-row>.cover img{object-fit:cover}
+.home-collections .home-panel-items{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;padding:9px 11px 11px}
+.home-collections .home-empty{grid-column:1/-1}
+.home-collection-card{display:grid;align-content:start;min-width:0;gap:4px;padding:7px 8px 8px;border:1px solid #34465a;border-radius:7px;
+  background:linear-gradient(145deg,#1c2938,#151e29);transition:background .18s,border-color .18s}
+.home-collection-card:hover{border-color:#648dae;background:#203245}
+.home-collection-art{display:flex;align-items:stretch;justify-content:center;gap:3px;min-width:0;height:58px;padding:1px 0 3px;color:#9abfdb}
+.home-collection-art>.cover{width:min(25%,54px);border-radius:4px}
+.home-collection-art>.cover img{object-fit:cover;object-position:center 35%}
+.home-collection-art>.cover .cover-fallback{border:0;width:100%;height:100%}
+.home-collection-art>.cover .cover-fallback svg{width:20px;height:20px}
+.home-collection-art>svg{align-self:center}
+.home-collection-card>strong{font-size:.93rem;line-height:1.27;overflow-wrap:anywhere}
+.home-collection-meta{display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px;color:#adbed0;font-size:.75rem}
+.home-collection-meta>span:last-child svg{color:#87bddd}
 .home-empty{margin:0;padding:17px 1px;color:#aab6c7;font-size:.8rem}
 .home-news-tools{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 .home-news-tools #store-feed-checked{color:var(--desk-muted);font-size:.73rem}
@@ -2337,7 +2364,7 @@ dialog.session-archive-dialog{width:min(700px,calc(100vw - 24px))}
 #section-dialog{--section-width:1100px;width:min(var(--section-width),calc(100vw - 40px));max-width:none;
   max-height:calc(100dvh - 44px);overflow:hidden;background:#121820;border-color:#3c4b5e;border-radius:12px}
 #section-dialog[open]{display:flex;flex-direction:column}
-#section-dialog[data-page=sessions],#section-dialog[data-page=stats],#section-dialog[data-page=collections]{--section-width:1240px}
+#section-dialog[data-page=sessions],#section-dialog[data-page=stats],#section-dialog[data-page=collections],#section-dialog[data-page=all-games]{--section-width:1240px}
 #section-dialog[data-page=wishlist]{--section-width:870px}
 #section-dialog[data-page=news]{--section-width:960px}
 #section-dialog[data-page=settings]{--section-width:920px}
@@ -2357,9 +2384,6 @@ dialog.session-archive-dialog{width:min(700px,calc(100vw - 24px))}
 #section-dialog .desk-store-feed>h2{margin-top:0}
 #section-dialog .desk-wishlist-group:first-child h2{margin-top:0}
 
-@media(min-width:931px){
-  .home-primary:has(.desk-game:nth-child(7)) .home-activity{align-self:start;grid-template-rows:auto auto}
-}
 @media(max-width:1150px){
   .home-primary{grid-template-columns:minmax(0,1.95fr) minmax(270px,1fr)}
   .home-secondary{grid-template-columns:repeat(3,minmax(0,1fr))}
@@ -2382,12 +2406,16 @@ dialog.session-archive-dialog{width:min(700px,calc(100vw - 24px))}
   .home-overview-metrics{width:100%;justify-items:start}
   .home-overview-metrics .library-summary{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 16px}
   .home-activity,.home-secondary{grid-template-columns:minmax(0,1fr)}
-  .home-panel .home-search{width:min(100%,215px)}
+  .home-search{width:min(100%,215px)}
+  .library-section>header:has(.home-search:not([hidden])){flex-wrap:wrap}
+  .library-section>header:has(.home-search:not([hidden])) .desk-library-tools{width:100%}
+  .library-section>header .home-search{flex:1}
   .home-panel .list-view .desk-game .card-link{grid-template-columns:minmax(0,1fr) auto}
   #section-dialog{width:calc(100vw - 22px);max-height:calc(100dvh - 22px)}
   #section-dialog .dialog-head,#section-dialog .section-dialog-body{padding-inline:12px}
 }
 @media(prefers-reduced-motion:no-preference){
+  .home-search:not([hidden]){animation:popover-enter 180ms var(--motion-ease) backwards}
   #section-dialog[open]{animation:dialog-enter 270ms var(--motion-ease) backwards}
   #section-dialog[open]::backdrop{animation:backdrop-enter 230ms ease-out backwards}
 }

@@ -79,11 +79,10 @@ async function send(path, { method = 'GET', body, token } = {}) {
   finally { clearTimeout(timeout); }
 }
 
-function acceptSession(result, expected) {
+function validateSession(result, expected) {
   checkAccount(result?.account,expected);
   if (typeof result.token !== 'string' || result.token.length > 2048 ||
       !Number.isFinite(result.expiresAt) || result.expiresAt <= Date.now()) throw new Error('Некорректный ответ авторизации.');
-  session = result;
 }
 
 async function ensureSession() {
@@ -95,9 +94,16 @@ async function ensureSession() {
     renewal = (async () => {
       const response = await send('session/refresh', { method:'POST', body:{ refresh:device.refresh } });
       if (generation !== authGeneration || remembered()?.refresh !== device.refresh) throw new Error('Сеанс изменился.');
-      if (response.status === 401) remember(null);
-      if (!response.ok) throw new Error(response.status === 401 ? 'Сеанс истёк. Войди в Steam через настройки.' : 'Не удалось продлить вход.');
-      acceptSession(response.data,device.account);
+      if (!response.ok) {
+        if (response.status === 401 && response.data?.error === 'device_expired') {
+          session = undefined;
+          remember(null);
+          throw new Error('Срок сохранённого входа истёк. Подключи Steam в настройках.');
+        }
+        throw new Error('Не удалось продлить вход Steam. Попробуй чуть позже.');
+      }
+      validateSession(response.data,device.account);
+      session = response.data;
       return session;
     })().finally(()=>{ renewal = undefined; });
   }
@@ -114,7 +120,6 @@ async function request(path, { legacy = false, method = 'GET', body } = {}) {
   }
   if (response.status === 429) throw new Error('Steam временно ограничил запросы. Повтори позже.');
   if (response.status === 403 || response.data?.error === 'private') throw new Error('Steam ограничил доступ. Проверь видимость игровых данных профиля.');
-  if (response.status === 409 && path === 'personal') return { conflict:true };
   if (response.status === 401 && !legacy) session = undefined;
   if (!response.ok || !response.data) throw new Error('Сервис вернул ошибку (' + response.status + ').');
   return response.data;
@@ -131,11 +136,17 @@ export function disconnect() {
 
 export async function connect(password, expectedAccount) {
   const response = await send('session',{method:'POST',body:{password}});
-  if (!response.ok) throw new Error(response.status === 401 ? 'Пароль AFTERSAVE отклонён.' : 'Cloudflare не подтвердил вход.');
-  authGeneration++;
-  acceptSession(response.data,expectedAccount);
+  if (response.status === 401) throw new Error('Пароль AFTERSAVE отклонён.');
+  if (response.data?.error === 'session_storage_unavailable' || response.ok && !/^[a-f0-9]{64}$/.test(response.data?.refresh ?? '')) {
+    throw new Error('Сервис временно не может сохранить вход Steam. Попробуй чуть позже.');
+  }
+  if (!response.ok) throw new Error('Cloudflare не подтвердил вход.');
+  validateSession(response.data,expectedAccount);
   const {account,refresh} = response.data;
-  remember(typeof refresh === 'string' && /^[a-f0-9]{64}$/.test(refresh) ? {account,refresh} : null);
+  remember({account,refresh});
+  if (remembered()?.refresh !== refresh) throw new Error('Браузер не смог сохранить вход Steam. Проверь, разрешено ли хранение данных для AFTERSAVE.');
+  authGeneration++;
+  session = response.data;
 }
 
 export const fetchSteamFeed = page => request(page);
@@ -245,7 +256,7 @@ export function mergeSteam(state, { account, entries, activity }, lastSync = new
     }
   }
   return { state: { ...state, games, showDemo: false,
-    steam: { account, lastSync, activity: activity ?? state.steam?.activity, localSessions: state.steam?.localSessions } }, added, updated };
+    steam: { account, lastSync, ownedAppIds: unique.map(game => game.appid), activity: activity ?? state.steam?.activity, localSessions: state.steam?.localSessions } }, added, updated };
 }
 
 const TTL = 24 * 60 * 60 * 1000;
