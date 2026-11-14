@@ -13,8 +13,9 @@
   --dim:#858a9d;
   --text:#f3f4f7;
   --accent:#80c4ee;
-  --titanium-text:#adc6db;
-  --titanium-frame:linear-gradient(139deg,#c4d5e5 5%,#8da9c2 23%,#58748e 58%,#8ba7be 100%);
+  --titanium-text:#d1e4f5;
+  --titanium-frame:linear-gradient(139deg,#d3e1ef 5%,#a6bdd2 30%,#7895b0 63%,#a7bed4 100%);
+  --titanium-separator:#0a121e;
   --sidebar-width:232px;
   font-family:Manrope,system-ui,sans-serif;
   background:var(--bg);
@@ -994,8 +995,15 @@ dialog.desk-collection-dialog{width:min(560px,calc(100vw - 24px))}
   mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
   mask-composite:exclude;
 }
-.desk-game-achievement-view .af-ach-list .af-ach-icon.rare-achievement{border-color:transparent}
-.af-ach-icon.rare-achievement::after{padding:3px}
+.rare-achievement.desk-trophy-icon img{
+  inset:3px;width:calc(100% - 6px);height:calc(100% - 6px);border-radius:2px;
+}
+.desk-game-achievement-view .af-ach-list .af-ach-icon.rare-achievement{
+  border-color:var(--titanium-separator);overflow:visible;
+  box-shadow:0 0 0 3px var(--titanium-separator);
+}
+.af-ach-icon.rare-achievement img{border-radius:inherit}
+.af-ach-icon.rare-achievement::after{inset:-6px;padding:4px;border-radius:11px}
 .rare-achievement-percent{color:var(--titanium-text);font-weight:800}
 .achievement-list li strong{font-size:1rem;line-height:1.3;overflow-wrap:anywhere}
 .achievement-list li p{font-size:.87rem;margin-top:2px;color:var(--desk-muted);overflow-wrap:anywhere}
@@ -1895,8 +1903,8 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
   border-right:1px solid #42546a;
 }
 .desk-game-achievement-view .desk-game-metrics>div:last-child{border-right:0}
-.desk-game-achievement-view .desk-game-metrics dt{font-size:.76rem}
-.desk-game-achievement-view .desk-game-metrics dd{font-size:.94rem;font-weight:750}
+.desk-game-achievement-view .desk-game-metrics dt{font-size:.94rem;font-weight:650}
+.desk-game-achievement-view .desk-game-metrics dd{font-size:1.2rem;font-weight:800;line-height:1.25}
 .desk-game-achievement-view .desk-game-body{padding-top:9px}
 .desk-game-achievement-view .af-game-ach-shell{display:grid;gap:16px;min-width:0}
 .desk-game-achievement-view .af-game-ach-toolbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
@@ -1950,8 +1958,9 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
 .desk-game-achievement-view .af-ach-list .af-ach-copy p{
   color:#b4c5d4;font-size:.85rem;line-height:1.4;margin-top:4px}
 .desk-game-achievement-view .af-ach-list .af-ach-rarity{
-  display:flex;align-items:center;gap:9px;color:#c9d9ea;
-  font-size:.91rem;font-weight:750;white-space:nowrap;font-variant-numeric:tabular-nums}
+  display:flex;align-items:center;color:#adbed0;
+  font-size:.91rem;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
+.desk-game-achievement-view .af-ach-rarity .rare-achievement-percent{font-size:1.12em}
 .desk-game-achievement-view .af-ach-list .af-ach-status{
   display:grid;justify-items:start;gap:6px;
   padding-left:14px;min-height:42px;align-content:center;
@@ -1976,8 +1985,8 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
   .desk-game-achievement-view .desk-game-metrics{grid-column:1/-1;grid-row:3;margin-top:2px;gap:11px}
   .desk-game-achievement-view .desk-game-heading .game-poster{grid-column:1;grid-row:1/3}
   .desk-game-achievement-view .desk-game-title{grid-column:2;grid-row:1/3}
-  .desk-game-achievement-view .desk-game-metrics dt{font-size:.68rem}
-  .desk-game-achievement-view .desk-game-metrics dd{font-size:.77rem}
+  .desk-game-achievement-view .desk-game-metrics dt{font-size:.82rem}
+  .desk-game-achievement-view .desk-game-metrics dd{font-size:1rem}
   .desk-game-achievement-view .af-game-ach-toolbar>.searchbox{width:100%}
   .desk-game-achievement-view .af-game-ach-filters{width:100%;justify-content:space-between}
   .desk-game-achievement-view .af-ach-select-label span{display:none}
@@ -1987,7 +1996,8 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
   .desk-game-achievement-view .af-ach-list .af-ach-icon{width:44px;height:44px}
   .desk-game-achievement-view .af-ach-list .af-ach-copy strong{font-size:.84rem}
   .desk-game-achievement-view .af-ach-list .af-ach-copy p{font-size:.72rem}
-  .desk-game-achievement-view .af-ach-list .af-ach-rarity{font-size:.76rem;gap:3px}
+  .desk-game-achievement-view .af-ach-list .af-ach-rarity{font-size:.82rem}
+  .af-ach-icon.rare-achievement::after{inset:-5px;padding:3px;border-radius:10px}
   .desk-game-achievement-view .af-ach-list .af-ach-status{
     grid-column:2/-1;grid-row:2;border-left:0;padding-left:0;min-height:0;
     display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:.72rem}
@@ -2053,7 +2063,7 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
   padding-right:0;
   border-right:0;
 }
-.desk-game-achievement-view .desk-game-metrics dt{color:#a2a7b3;text-shadow:0 1px 4px #03070f}
+.desk-game-achievement-view .desk-game-metrics dt{color:#c7d6e3;text-shadow:0 1px 4px #03070f}
 .desk-game-achievement-view .desk-game-body{padding-top:14px}
 .desk-game-achievement-view .af-game-ach-shell{gap:12px}
 @media(max-width:680px){
@@ -2064,7 +2074,6 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
     grid-column:1/-1;grid-row:3;flex-wrap:wrap;gap:10px 12px;
   }
   .desk-game-achievement-view .desk-game-metrics>div{padding-right:12px}
-  .desk-game-achievement-view .desk-game-metrics dt{font-size:.68rem}
 }
 @media(max-width:480px){
   .desk-game-achievement-view .desk-game-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
