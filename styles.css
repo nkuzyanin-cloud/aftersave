@@ -724,6 +724,17 @@ dialog .field input,dialog .field textarea,dialog .field select{background:#1724
 .desk-recent>div{display:flex;align-items:center;gap:3px;min-height:20px}
 .desk-trophy-icon{display:inline-grid;place-items:center;position:relative;overflow:hidden;width:20px;aspect-ratio:1;background:#242630;color:#a6aabc;border-radius:3px;flex:none}
 .desk-trophy-icon img{position:absolute;inset:0}
+.desk-recent a.desk-trophy-icon{z-index:2;color:#a6aabc}
+.desk-trophy-icon[data-achievement-tip]:focus-visible{outline:2px solid #9ed6f2;outline-offset:1px}
+#achievement-tip{
+  position:fixed;inset:auto;z-index:50;margin:0;width:max-content;max-width:min(320px,calc(100vw - 16px));
+  padding:10px 12px;border:1px solid #394c61;border-radius:8px;background:#19222e;color:#ecf3fb;
+  box-shadow:0 6px 20px #080b14a6;font-size:.86rem;line-height:1.45;overflow-wrap:anywhere
+}
+#achievement-tip strong{display:block;font-weight:700}
+#achievement-tip p{margin:3px 0 0;color:#c5d0df}
+.achievement-tip-meta{display:flex;flex-wrap:wrap;gap:2px 12px;margin-top:6px;color:#aebfd2;font-size:.78rem}
+.achievement-tip-meta span{display:inline-flex;align-items:center;gap:5px}
 .desk-recent>div small{font-size:.67rem;margin-left:3px}
 .desk-activity strong{display:flex;align-items:center;gap:4px;white-space:nowrap;font-size:.76rem}
 .desk-panel{background:var(--desk-card);border:1px solid var(--desk-border);border-radius:7px;padding:13px;min-width:0}
@@ -2355,6 +2366,7 @@ dialog.session-archive-dialog{width:min(700px,calc(100vw - 24px))}
 .home-panel .desk-columns,.home-panel .list-view .desk-game .card-link{
   grid-template-columns:minmax(0,1.85fr) minmax(111px,1fr) minmax(123px,1.15fr) minmax(92px,.72fr);gap:8px
 }
+.home-panel .desk-columns>span:nth-child(3),.home-panel .desk-recent{padding-inline-start:clamp(8px,1vw,16px)}
 .home-primary>.library-section{display:flex;flex-direction:column;align-self:start}
 @media(min-width:931px){
   .home-primary>.library-section:has(.desk-game:nth-child(6)){align-self:stretch}

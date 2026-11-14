@@ -256,16 +256,16 @@ function gameCard(game, inLibrary, canRestore) {
   const link = `href="${gameHref(game)}" aria-label="Открыть ${name}"`;
   const perfect = status === 'perfect';
   return `<article class="game-card desk-game ${status}${canRestore ? ' desk-can-restore' : ''}">
-    ${perfect ? '<div class="card-link">' : `<a class="card-link" ${link}>`}
-      <div class="desk-identity">${identity}<div><h3>${perfect ?
-        `<a class="desk-game-stretched" ${link}>${name}</a> <button class="desk-results-link" type="button" ${results} aria-label="Идеально. Итоги игры ${name}" title="Посмотреть итоги">${completionBadge(status)}</button>` :
-        `${name} ${completionBadge(status)}`}</h3>
+    <div class="card-link">
+      <div class="desk-identity">${identity}<div><h3><a class="desk-game-stretched" ${link}>${name}</a>
+        ${perfect ? `<button class="desk-results-link" type="button" ${results} aria-label="Идеально. Итоги игры ${name}" title="Посмотреть итоги">${completionBadge(status)}</button>` :
+          completionBadge(status)}</h3>
         ${game.steam ? '' : `<small>${esc(game.platform)}</small>`}</div></div>
       <div class="desk-progress">${achieved === null ? '<span>Нет достижений</span>' : progressBar(achieved) + '<span>' + icon('trophy',13) + ' ' + total.unlocked + ' / ' + total.total + '</span>'}</div>
-      <div class="desk-recent">${recent.length ? `<div>${recent.slice(0,5).map(item => trophyIcon(item)).join('')}${recent.length > 5 ? `<small>+${recent.length-5}</small>` : ''}</div>
+      <div class="desk-recent">${recent.length ? `<div>${recent.slice(0,5).map(item => trophyIcon(item,{href:gameHref(game,'achievements')})).join('')}${recent.length > 5 ? `<small>+${recent.length-5}</small>` : ''}</div>
         ${recent[0].time ? `<small title="Дата последнего достижения">${relativeDate(recent[0].time * 1000)}</small>` : ''}` : (total?.total ? '—' : '')}</div>
       <div class="desk-activity"><strong title="Общее игровое время">${icon('clock',14)} ${duration(game.steam?.minutes ?? Math.round(gameHours(game)*60))}</strong><small title="Последний запуск">${game.steam?.lastPlayed ? relativeDate(game.steam.lastPlayed*1000) : '—'}</small></div>
-    ${perfect ? '</div>' : '</a>'}
+    </div>
     ${canRestore ? iconButton('restore-game','Вернуть в библиотеку','eye',`data-id="${esc(game.id)}"`) : ''}
   </article>`;
 }
@@ -365,7 +365,7 @@ function homePreview(page) {
     const recent = achievementEntries().filter(({item}) => item.unlocked && item.time > 0)
       .sort((a,b) => b.item.time-a.item.time).slice(0,3);
     return recent.map(({game,item}) => homeRow(gameHref(game,'achievements'),trophyIcon(item),
-      item.name,displayName(game))).join('') || homeEmpty('Пока нет полученных достижений.');
+      item.name,displayName(game),'',achievementTipAttributes(item))).join('') || homeEmpty('Пока нет полученных достижений.');
   }
   if (page === 'sessions') {
     return sessionContext().events.slice(0,3).map(({game,minutes,day}) =>
@@ -519,10 +519,98 @@ function trackCompletion(record, previous) {
   if (completionNotice(record)?.event !== event) saveCompletionNotice(record,{event,pending:true});
 }
 
-function trophyIcon(item) {
-  return `<span class="desk-trophy-icon${item.unlocked && isRare(item) ? ' rare-achievement' : ''}" title="${esc(item.name)}">${icon('trophy',14)}
-    ${item.icon ? `<img src="${esc(item.icon)}" data-achievement-icon data-fallback-icon="${esc(item.fallbackIcon)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ''}</span>`;
+function achievementTipAttributes(item) {
+  const date = item.time > 0 ? achievementMomentLabel(item.time) : '';
+  const rarity = Number.isFinite(item.percent) ? numeric(item.percent) + '% игроков' : '';
+  return `data-achievement-tip="${esc(item.name)}" data-description="${esc(item.description)}" data-earned-on="${date}" data-rarity="${rarity}"`;
 }
+
+function trophyIcon(item, {href, tip = false} = {}) {
+  const tag = href ? 'a' : 'span';
+  const attrs = href ? `href="${esc(href)}" aria-label="${esc(item.name)}" ${achievementTipAttributes(item)}` :
+    tip ? `tabindex="0" role="img" aria-label="${esc(item.name)}" ${achievementTipAttributes(item)}` : `title="${esc(item.name)}"`;
+  return `<${tag} class="desk-trophy-icon${item.unlocked && isRare(item) ? ' rare-achievement' : ''}" ${attrs}>${icon('trophy',14)}
+    ${item.icon ? `<img src="${esc(item.icon)}" data-achievement-icon data-fallback-icon="${esc(item.fallbackIcon)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ''}</${tag}>`;
+}
+
+const achievementTip = document.createElement('div');
+achievementTip.id = 'achievement-tip';
+achievementTip.setAttribute('role','tooltip');
+const nativeAchievementTip = typeof achievementTip.showPopover === 'function';
+if (nativeAchievementTip) achievementTip.setAttribute('popover','manual');
+
+let achievementTipAnchor;
+let achievementTipCloseTimer;
+const achievementTipObserver = new MutationObserver(() => {
+  if (!achievementTipAnchor?.isConnected) hideAchievementTip();
+});
+
+function hideAchievementTip() {
+  clearTimeout(achievementTipCloseTimer);
+  if (!achievementTipAnchor) return;
+  achievementTipObserver.disconnect();
+  achievementTipAnchor.removeAttribute('aria-describedby');
+  achievementTipAnchor = null;
+  if (nativeAchievementTip && achievementTip.matches(':popover-open')) achievementTip.hidePopover();
+  achievementTip.remove();
+}
+
+function showAchievementTip(anchor) {
+  clearTimeout(achievementTipCloseTimer);
+  if (achievementTipAnchor === anchor) return;
+  hideAchievementTip();
+  const {achievementTip:title,description,earnedOn,rarity} = anchor.dataset;
+  achievementTip.innerHTML = '<strong>' + esc(title) + '</strong>' +
+    (description ? '<p>' + esc(description) + '</p>' : '') +
+    (earnedOn || rarity ? '<div class="achievement-tip-meta">' +
+      (earnedOn ? '<span>' + icon('calendar',14) + esc(earnedOn) + '</span>' : '') +
+      (rarity ? '<span>' + icon('user',14) + esc(rarity) + '</span>' : '') + '</div>' : '');
+  const container = anchor.closest('dialog') ?? document.body;
+  container.append(achievementTip);
+  if (nativeAchievementTip) achievementTip.showPopover();
+  achievementTipAnchor = anchor;
+  anchor.setAttribute('aria-describedby',achievementTip.id);
+  achievementTipObserver.observe(container,{childList:true,subtree:true});
+  const target = (anchor.querySelector('.desk-trophy-icon') ?? anchor).getBoundingClientRect();
+  const width = achievementTip.offsetWidth;
+  const height = achievementTip.offsetHeight;
+  const inset = 8;
+  const left = Math.max(inset,Math.min(target.left + (target.width-width)/2,document.documentElement.clientWidth-width-inset));
+  const above = target.top - height - inset;
+  achievementTip.style.left = left + 'px';
+  achievementTip.style.top = (above >= inset ? above :
+    Math.max(inset,Math.min(target.bottom+inset,innerHeight-height-inset))) + 'px';
+}
+
+for (const type of ['pointerover','focusin']) document.addEventListener(type,event => {
+  if (type === 'pointerover' && event.pointerType === 'touch') return;
+  if (achievementTip.contains(event.target)) {
+    clearTimeout(achievementTipCloseTimer);
+    return;
+  }
+  const anchor = event.target.closest('[data-achievement-tip]');
+  if (anchor) showAchievementTip(anchor);
+});
+
+for (const type of ['pointerout','focusout']) document.addEventListener(type,event => {
+  const anchor = achievementTipAnchor;
+  if (!anchor || !(anchor.contains(event.target) || achievementTip.contains(event.target)) ||
+      anchor.contains(event.relatedTarget) || achievementTip.contains(event.relatedTarget)) return;
+  if (type === 'pointerout' && document.activeElement === anchor && anchor.matches(':focus-visible')) return;
+  clearTimeout(achievementTipCloseTimer);
+  achievementTipCloseTimer = setTimeout(hideAchievementTip,140);
+});
+
+document.addEventListener('keydown', event => {
+  if (event.key !== 'Escape' || !achievementTipAnchor) return;
+  event.preventDefault();
+  hideAchievementTip();
+}, true);
+document.addEventListener('scroll', hideAchievementTip, {capture:true,passive:true});
+window.addEventListener('resize', hideAchievementTip);
+window.addEventListener('hashchange', hideAchievementTip);
+for (const modal of [sectionDialog,dialog]) modal.addEventListener('close', hideAchievementTip);
+
 
 function gameHref(game, tab = '') {
   return '#game/' + encodeURIComponent(game.id) + (tab ? '/' + tab : '');
@@ -1040,7 +1128,7 @@ function sessionRows({events,launches,unlocks}, limit, modal = false) {
     return `<article class="desk-panel desk-session"><div>${cover(game,'',{detailed:true})}<p>Играл <strong${approximate ? ' title="Прирост игрового времени в Steam между проверками"' : ''}>${label}</strong>
       ${modal ? '' : ` в <a href="${gameHref(game)}">${esc(displayName(game))}</a>`}
       ${earned.length ? `<small class="desk-icon-text">${icon('trophy',14)}Достижений за день · ${earned.length}</small>` : ''}</p><time class="desk-icon-text">${icon('calendar',14)}${date}</time></div>
-      ${earned.length ? `<footer>${earned.slice(0,modal ? 12 : 6).map(item => trophyIcon(item)).join('')}${earned.length > (modal ? 12 : 6) ? `<small>ещё ${earned.length-(modal ? 12 : 6)}</small>` : ''}</footer>` : ''}</article>`;
+      ${earned.length ? `<footer>${earned.slice(0,modal ? 12 : 6).map(item => trophyIcon(item,{tip:true})).join('')}${earned.length > (modal ? 12 : 6) ? `<small>ещё ${earned.length-(modal ? 12 : 6)}</small>` : ''}</footer>` : ''}</article>`;
   }).join('');
 }
 
