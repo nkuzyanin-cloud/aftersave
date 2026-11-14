@@ -1,3 +1,24 @@
+const accentPaths = {
+  game: '<path d="M7.5 7h9a4 4 0 0 1 3.9 3.15l1.07 4.78a2.43 2.43 0 0 1-4.06 2.29L15 15H9l-2.41 2.22a2.43 2.43 0 0 1-4.06-2.29l1.07-4.78A4 4 0 0 1 7.5 7Z"/>' +
+    '<g stroke="#bbf3ff"><path d="M7.8 9.65v4.1m-2.05-2.05h4.1M16 12.45h.01m2.2-2.05h.01"/></g>',
+  clock: '<circle cx="12" cy="13.5" r="7.3"/><path d="M9.8 3h4.4M12 3v3.2m5.2 1.9 1.25-1.25"/>' +
+    '<g stroke="#bbf3ff"><path d="M12 10v3.7l2.4 1.4"/></g>',
+  flame: '<path d="M12 22c-4.2 0-7-2.7-7-6.5 0-2.6 1.4-4.7 3.7-6.5-.2 1.8.5 3 1.5 3.5C12.5 9.2 13 6 12 2c4.3 2.9 7 7.8 7 13.1 0 4.1-2.8 6.9-7 6.9Z"/><path d="M12 22c-1.6 0-2.8-1.2-2.8-2.8 0-1.5 1.1-2.7 2.8-4.1 1.7 1.4 2.8 2.6 2.8 4.1 0 1.6-1.2 2.8-2.8 2.8Z"/>',
+  trophy: '<path d="M7.4 4.4h9.2v5.1a4.6 4.6 0 0 1-9.2 0V4.4ZM7.4 6.4H4v1.5a3.7 3.7 0 0 0 3.8 3.7m8.4 0A3.7 3.7 0 0 0 20 7.9V6.4h-3.4M12 14.1v5.3m-3.5.15h7"/>' +
+    '<g stroke="#bbf3ff"><path d="M10.1 7.25v1.9"/></g>',
+  perfect: '<path d="M3.55 9.3c-.48 4.32 1.78 7.97 5.05 9.5m11.85-9.5c.48 4.32-1.78 7.97-5.05 9.5M3.65 13.2l2.0 1.0m-1.1 2 2.3.2m13.5-3.2-2 1m1.1 2-2.3.2"/>' +
+    '<g stroke="#f4f8ff" color="#f4f8ff"><path d="M12 3.25 13.72 7l4.09.48-3.05 2.75.82 4.05L12 12.24l-3.58 2.04.82-4.05-3.05-2.75L10.28 7 12 3.25Z"/><circle cx="12" cy="20.45" r=".78" fill="currentColor" stroke="none"/></g>',
+  layers: '<path d="M10.7 4.2h5.5a2 2 0 0 1 1.97 1.64l2.06 11.34a2 2 0 0 1-1.96 2.36h-4.9"/><rect x="3.8" y="4.1" width="10.7" height="16" rx="2.45"/>' +
+    '<g stroke="#bbf3ff"><path d="M6.8 8.15h4.7m-4.7 3h2.65m-2.65 5.2h4.7"/></g>',
+  heart: '<path d="M20.2 6.1a4.55 4.55 0 0 0-6.44 0L12 7.86l-1.76-1.76A4.55 4.55 0 1 0 3.8 12.54L12 20l8.2-7.46a4.55 4.55 0 0 0 0-6.44Z"/>',
+  chart: '<path d="M4.1 4.9v12.8a2 2 0 0 0 2 2h13.8"/>' +
+    '<g stroke="#bbf3ff"><path d="M8.2 15.85V12.5m4.6 3.35V9.5m4.6 6.35V6.2"/></g>',
+  news: '<rect x="3.9" y="5" width="16.2" height="14" rx="2.7"/>' +
+    '<g stroke="#bbf3ff"><path d="M7.3 8.6h4v3.1h-4zm7.1.15h2.35m-2.35 2.75h2.35M7.3 15.35h9.45"/></g>',
+  pie: '<path d="M10.7 4A8.2 8.2 0 1 0 20 13.3h-9.3V4Z"/>' +
+    '<g stroke="#bbf3ff"><path d="M14 3.7V10h6.3A7.35 7.35 0 0 0 14 3.7Z"/></g>',
+};
+
 const paths = {
   ribbon: '<path d="M5 2.5h14a2 2 0 0 1 2 2v16a1 1 0 0 1-1.54.84L12 16.5l-7.46 4.84A1 1 0 0 1 3 20.5v-16a2 2 0 0 1 2-2Z" fill="currentColor" stroke="none"/>',
   gear: '<circle cx="12" cy="12" r="3"/><path d="M10 3h4l.6 2.2 1.4.8 2.2-.6 2 3.5-1.6 1.6v1.7l1.6 1.6-2 3.5-2.2-.6-1.4.8-.6 2.5h-4l-.6-2.5-1.4-.8-2.2.6-2-3.5 1.6-1.6v-1.7L3.8 9l2-3.5 2.2.6 1.4-.8z" transform="translate(0 1)"/>',
@@ -7,16 +28,9 @@ const paths = {
   eye: '<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="2.5"/>',
   eyeOff: '<path d="m3 3 18 18M9.5 6.3A10 10 0 0 1 12 6c6.5 0 10 6 10 6a15 15 0 0 1-3.2 3.6M6.4 7.6A15 15 0 0 0 2 12s3.5 6 10 6c1.4 0 2.7-.3 3.8-.7"/>',
   library: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
-  layers: '<rect x="11.2" y="4.65" width="8.95" height="15" rx="2" transform="rotate(10 15.7 12.15)" fill="#3d5b82" stroke="#87a9d0" /><rect x="3.7" y="3.6" width="10.8" height="16.8" rx="2.4" fill="#7399c7" stroke="#c3ddfb" /><path d="M9.1 6.8c.38 1.59 1.02 2.22 2.6 2.6-1.58.38-2.22 1.02-2.6 2.6-.38-1.58-1.01-2.22-2.6-2.6 1.59-.38 2.22-1.01 2.6-2.6Z" fill="#d9ecff" /><path d="M7.4 16.2h3.4" stroke="#203e63"/>',
-  heart: '<path d="M20.2 5.9a4.6 4.6 0 0 0-6.5 0L12 7.6l-1.7-1.7a4.6 4.6 0 1 0-6.5 6.5L12 20l8.2-7.6a4.6 4.6 0 0 0 0-6.5Z" stroke="#b9d9f6" />',
-  chart: '<path d="M4 4.5v13.7c0 .72.58 1.3 1.3 1.3h14.2" stroke="#88a9c9" /><rect x="7.1" y="13" width="2.4" height="3.75" rx=".7" fill="#7f9ac8" /><rect x="11.7" y="9" width="2.4" height="7.75" rx=".7" fill="#9abde2" /><rect x="16.3" y="5.2" width="2.4" height="11.55" rx=".7" fill="#bee4fb"/>',
-  pie: '<path d="M11 3a9 9 0 1 0 10 10H11V3Zm3-1v8h8a9 9 0 0 0-8-8Z"/>',
   refresh: '<path d="M20 11a8 8 0 0 0-14-5L4 8m0-5v5h5m-5 5a8 8 0 0 0 14 5l2-2m0 5v-5h-5"/>',
-  news: '<rect x="4" y="4.5" width="16" height="15" rx="3.1" fill="#5b779a" stroke="#b7cee8" /><rect x="7.4" y="8" width="4.4" height="4.4" rx=".85" fill="#8aafda" /><path d="M14.15 8.7h2.55m-2.55 3.15h2.55M7.6 15.4h9" stroke="#c6def6"/>',
   trend: '<path d="M3 19h18M4 14l5-5 4 4 7-8m-5 0h5v5"/>',
-  perfect: '<path d="M3.1 7.1c-1.3 4.46.38 8.03 4.11 10.48 1.03.68 2.04 1.23 3.14 1.77m10.55-12.25c1.3 4.46-.38 8.03-4.11 10.48-1.03.68-2.04 1.23-3.14 1.77" stroke="#8fadcf" stroke-width="1.15" /><path d="M3.14 11.58c1.91.13 3.1 1.24 3.62 2.93-1.92.04-3.37-1.04-3.62-2.93Zm2.1 4.57c1.4-.64 3.06-.19 4.03 1.34-1.51.74-3.13.19-4.03-1.34Zm15.62-4.57c-1.91.13-3.1 1.24-3.62 2.93 1.92.04 3.37-1.04 3.62-2.93Zm-2.1 4.57c-1.4-.64-3.06-.19-4.03 1.34 1.51.74 3.13.19 4.03-1.34Z" fill="#9fbddd" /><path d="M11.5 3.46a.54.54 0 0 1 1 0l1.49 4.28 4.29.35a.53.53 0 0 1 .29.95l-3.47 2.69 1.11 4.16c.12.48-.41.86-.82.58L12 13.99l-3.39 2.48c-.4.28-.94-.1-.82-.58l1.11-4.16-3.47-2.69a.53.53 0 0 1 .29-.95l4.29-.35Z" fill="#edf6ff" stroke="#deefff" stroke-width=".65" /><path d="m12 3.84 1.55 4.36 4.3.35-3.84 1.98.97 4.76-2.98-1.96Z" fill="#acc6ed" /><circle cx="12" cy="20.2" r=".85" fill="#d8edff"/>',
   gem: '<path d="M7 4h10l4 5-9 11L3 9l4-5ZM3 9h18M9 9l3 11 3-11M9 9l3-5 3 5"/>',
-  flame: '<path d="M12 22c-4.2 0-7-2.7-7-6.5 0-2.6 1.4-4.7 3.7-6.5-.2 1.8.5 3 1.5 3.5C12.5 9.2 13 6 12 2c4.3 2.9 7 7.8 7 13.1 0 4.1-2.8 6.9-7 6.9Z"/><path d="M12 22c-1.6 0-2.8-1.2-2.8-2.8 0-1.5 1.1-2.7 2.8-4.1 1.7 1.4 2.8 2.6 2.8 4.1 0 1.6-1.2 2.8-2.8 2.8Z"/>',
   calendar: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M7 3v4m10-4v4m-9 7h.01m4 0h.01m4 0h.01m-8 3h.01m4 0h.01"/>',
   lock: '<rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 4v3"/>',
   user: '<circle cx="12" cy="8" r="4"/><path d="M4 21v-2a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v2"/>',
@@ -28,9 +42,6 @@ const paths = {
   down: '<path d="m6 9 6 6 6-6"/>',
   upRight: '<path d="M6 18 18 6M7 6h11v11"/>',
   back: '<path d="M20 12H5m6-6-6 6 6 6"/>',
-  game: '<path d="M8 6h8c2.35 0 4.02 1.38 4.6 3.64l1.13 4.9c.58 2.53-.38 4.09-2.03 4.09-1.04 0-1.72-.52-2.46-1.35l-1.65-1.84H8.4l-1.64 1.84c-.75.83-1.42 1.35-2.46 1.35-1.65 0-2.61-1.56-2.03-4.09l1.13-4.9C3.98 7.38 5.65 6 8 6Z" fill="#769bce" stroke="#b0c9f3" /><path d="M7.65 9.05v4.6m-2.3-2.3h4.6" stroke="#172a45" /><circle cx="16.7" cy="12.6" r="1" fill="#203a60" /><circle cx="19" cy="10.3" r="1" fill="#e6f4ff"/>',
-  clock: '<circle cx="12" cy="12.75" r="7.8" fill="#346075" stroke="#a5dcef" /><path d="M9.6 2.25h4.8m-2.4 3V2.6m5.85 4.28 1.3-1.3M12 8.7v4.15l2.65 1.65" stroke="#bce7f4" /><circle cx="12" cy="12.75" r=".9" fill="#bce7f4"/>',
-  trophy: '<path d="M6.9 6H3.5v1.5c0 2.27 1.47 3.72 3.8 3.95m9.4 0c2.33-.23 3.8-1.68 3.8-3.95V6h-3.4" stroke="#cba270" /><path d="M7.1 4.1h9.8v4.6a4.9 4.9 0 0 1-9.8 0V4.1Z" fill="#aa7952" stroke="#f3d4a7" /><path d="M12 13.8v4.7m-3.55 1.2h7.1m-5.9-13.1v2.1" stroke="#f3d4a7"/>',
   monitor: '<rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8m-4-4v4"/>',
   checklist: '<path d="m3 5 2 2 3-3m-5 8 2 2 3-3m-5 8 2 2 3-3M12 6h9m-9 7h9m-9 7h9"/>',
   pin: '<path d="M20 10c0 5.5-8 11-8 11s-8-5.5-8-11a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.6"/>',
@@ -48,6 +59,8 @@ const paths = {
 };
 
 export function icon(name, size = 20) {
-  const width = ['chart','clock','game','heart','layers','news','perfect','trophy'].includes(name) ? 1.55 : 1.65;
-  return `<svg aria-hidden="true" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${width}" stroke-linecap="round" stroke-linejoin="round">${paths[name] || paths.game}</svg>`;
+  const accent = accentPaths[name];
+  const plain = paths[name];
+  const stroke = name === 'perfect' ? '#c5dcf5' : plain ? 'currentColor' : '#57d6ef';
+  return `<svg aria-hidden="true" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${stroke}" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round">${accent || plain || accentPaths.game}</svg>`;
 }

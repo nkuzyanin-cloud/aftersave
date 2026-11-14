@@ -2413,7 +2413,6 @@ dialog.session-archive-dialog{width:min(700px,calc(100vw - 24px))}
 .home-collection-meta{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px;color:#aabbcd;font-size:.8rem}
 .home-collection-meta b{font-weight:750;color:#e0edfa}
 .home-dashboard,.desk-steam-rank{font-variant-numeric:tabular-nums}
-.home-panel .desk-progress>span svg,.home-panel .desk-activity svg{filter:saturate(.32);opacity:.8}
 .home-panel .desk-recent>small,.home-panel .desk-activity small,.home-row-detail{color:#acbfd1}
 .home-empty{margin:0;padding:17px 1px;color:#aab6c7;font-size:.8rem}
 .home-news-tools{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
