@@ -3,7 +3,6 @@ import {
   STORAGE_KEY, load, save, emptyState, exportJSON, importJSON, exportCSV, isEldenRing
 } from './data.js';
 import { icon } from './icons.js';
-import { createCloudSync } from './cloud.js';
 import { bossRegions, bossById } from './elden-ring.js';
 import { bossArt } from './elden-ring-art.js';
 import { mergeSteam, fetchLibrary, connect, disconnect, connected, steamCover, steamHeader, steamHero, fetchSteamArtwork,
@@ -68,12 +67,10 @@ let feedLimit = 24;
 let lockedFeed = false;
 let lockedAchievementOrder = 'common';
 let achievementYear = '';
+let recentRevealStartedAt;
 let scanningAchievements = false;
 let stopAchievementScan = false;
 let scanMessage = '';
-let cloudMessage = '';
-let cloudConflict = false;
-let enableCloudAfterLogin = false;
 let bossRegion = 0;
 let bossArea = '';
 const gameHours = game => Math.max(game.hours, (game.steam?.minutes ?? 0) / 60);
@@ -137,7 +134,6 @@ function commit(next, message, options) {
   try {
     state = save(next, options);
     storageError = '';
-    cloud.schedule();
     if (message) notify(message);
     return true;
   } catch (error) {
@@ -185,7 +181,7 @@ function cover(game, className = '') {
   const custom = coverUrl(game.cover);
   const generated = id && custom === `https://cdn.cloudflare.steamstatic.com/steam/apps/${id}/library_600x900.jpg`;
   const url = (generated ? '' : custom) || steamCover(id);
-  return `<div class="cover ${className}" style="--cover-accent:${/^#[\da-f]{6}$/i.test(game.accent ?? '') ? game.accent : '#7063a5'}">
+  return `<div class="cover ${className}" style="--cover-accent:${/^#[\da-f]{6}$/i.test(game.accent ?? '') ? game.accent : '#5083a7'}">
     <span class="cover-fallback">${icon('game', 42)}</span>${url ? `<img src="${esc(url)}" alt="" decoding="async" loading="${className === 'game-poster' ? 'eager' : 'lazy'}" referrerpolicy="no-referrer" data-steam-art="${id ?? ''}" data-art-kind="cover">` : ''}</div>`;
 }
 
@@ -642,11 +638,12 @@ function newsCard(item, featured = false) {
   </a>`;
 }
 
-function updateStoreFeed(page) {
+function updateStoreFeed(page, animate = false) {
   if (route.section !== page) return;
   const content = sectionDialog.querySelector('#store-feed-content');
   if (!content) return;
   content.innerHTML = storeFeedContent(page);
+  content.classList.toggle('store-enter',animate);
   imageFallbacks(content);
   const data = storeFeeds.get(page)?.data;
   const checked = sectionDialog.querySelector('#store-feed-checked');
@@ -825,7 +822,13 @@ function achievementEarnedContent(earned, totalUnlocked) {
   const remaining=selected.slice(5).sort((a,b)=>compareAchievementPercent(a.item,b.item));
   const since=Date.now()-7*24*60*60*1000;
   const lastWeek=earned.filter(({item})=>item.time*1000 >= since && item.time*1000 <= Date.now()).length;
-  return '<div class="ach-earned-content">' +
+  const now = performance.now();
+  if (recent.length) recentRevealStartedAt ??= now;
+  const elapsed = now - (recentRevealStartedAt ?? -Infinity);
+  const historyDelay = 480 + Math.max(0,recent.length - 1) * 250;
+  const reveal = recent.length > 0 && elapsed < historyDelay + 270;
+  return '<div class="ach-earned-content' + (reveal ?
+    ' ach-recent-reveal" style="--reveal-elapsed:' + elapsed + 'ms;--history-delay:' + historyDelay + 'ms"' : '"') + '>' +
     '<section class="ach-feature ach-earned-feature" aria-label="Недавние полученные достижения">' +
     '<div class="ach-earned-intro">' +
       '<div class="ach-intro-copy"><h1>Недавние достижения</h1>' +
@@ -1186,7 +1189,7 @@ function sessionRingSegment(start,end) {
 }
 
 function sessionGameDistribution(data) {
-  const colors = ['#6377f5','#528df7','#37bcb6','#6c9be5','#8d90c9','#a3bdd0'];
+  const colors = ['#4f9fe9','#57c4e3','#37bcb6','#4778bb','#80a7c9','#a3bdd0'];
   const total = data.metrics.minutes;
   const top = data.ranking.slice(0,5);
   const items = top.map(({game,minutes}) => ({label:displayName(game),minutes}));
@@ -1195,7 +1198,7 @@ function sessionGameDistribution(data) {
   let start = 0;
   const segments = items.map((item,index) => {
     const end = start+item.minutes/total;
-    const props = `data-session-share="${index}" tabindex="0" aria-label="${esc(item.label)} — ${sessionDuration(item.minutes)}"`;
+    const props = `data-session-share="${index}"`;
     const shape = items.length === 1 ? `<circle ${props} cx="100" cy="100" r="79" fill="none" stroke="${colors[index]}" stroke-width="38"/>` :
       `<path ${props} d="${sessionRingSegment(start,end)}" fill="${colors[index]}"/>`;
     start = end;
@@ -1204,7 +1207,7 @@ function sessionGameDistribution(data) {
   return `<section class="session-card session-share-panel">
     <div class="session-panel-head"><h2>${icon('pie',19)}Распределение по играм</h2></div>
     ${total ? `<div class="session-share-layout"><div class="session-donut">
-      <svg viewBox="0 0 200 200" aria-label="Доли игрового времени по играм">
+      <svg viewBox="0 0 200 200" aria-hidden="true" focusable="false">
         <defs><mask id="session-donut-mask"><circle class="session-ring-sweep" cx="100" cy="100" r="79" pathLength="100"
           fill="none" stroke="white" stroke-width="42" transform="rotate(-90 100 100)"/></mask></defs>
         <g mask="url(#session-donut-mask)">${segments}</g></svg>
@@ -1287,7 +1290,8 @@ function showSessionShareHover(event) {
   if (!panel) return;
   const related = event.relatedTarget instanceof Element ? event.relatedTarget.closest('[data-session-share]') : null;
   const isLeaving = event.type === 'pointerout' || event.type === 'focusout';
-  const next = isLeaving ? related ?? (event.type === 'pointerout' ? document.activeElement : null) : target;
+  const focusedLegend = document.activeElement?.matches('.session-share-list [data-session-share]:focus-visible') ? document.activeElement : null;
+  const next = isLeaving ? related ?? (event.type === 'pointerout' ? focusedLegend : null) : target;
   const active = panel.contains(next) ? next.dataset.sessionShare : undefined;
   panel.querySelectorAll('[data-session-share]').forEach(item => {
     item.classList.toggle('is-dimmed',active !== undefined && item.dataset.sessionShare !== active);
@@ -1630,28 +1634,19 @@ function gamePage() { return gameDashboard(); }
 
 function wideCover(game, showFallback = false) {
   const id = game.steam?.appid;
-  return id ? `<div class="cover wide-cover" style="--cover-accent:#7363a2">${showFallback ? `<span class="cover-fallback">${icon('game',24)}</span>` : ''}<img src="${esc(steamHeader(id))}" alt="" decoding="async" referrerpolicy="no-referrer" data-steam-art="${id}" data-art-kind="wide"></div>` : cover(game,'wide-cover');
+  return id ? `<div class="cover wide-cover" style="--cover-accent:#5083a7">${showFallback ? `<span class="cover-fallback">${icon('game',24)}</span>` : ''}<img src="${esc(steamHeader(id))}" alt="" decoding="async" referrerpolicy="no-referrer" data-steam-art="${id}" data-art-kind="wide"></div>` : cover(game,'wide-cover');
 }
 
 function settingsPage() {
   return `<div class="settings-grid">
-      <section class="panel settings-panel"><span class="metric-icon violet">${icon('globe',21)}</span><h2>Облачное сохранение</h2>
-        <p>Статусы, теги, избранное, коллекции и заметки на ПК и телефоне.</p>
-        <div class="settings-actions">${button('cloud-toggle',cloud.enabled() ? 'Выключить на этом устройстве' : 'Включить облачное сохранение','globe','primary')}
-          ${cloud.enabled() ? button('cloud-sync','Синхронизировать','download') : ''}</div>
-        ${cloudMessage ? `<p class="cloud-status" role="status">${esc(cloudMessage)}</p>` : ''}
-        ${cloudConflict ? `<div class="settings-actions">${button('cloud-local','В спорных записях взять с устройства','','secondary')}${button('cloud-remote','В спорных записях взять из облака','','secondary')}</div>` : ''}</section>
-      <section class="panel settings-panel"><span class="metric-icon lime">${icon('shield', 21)}</span><h2>Данные на устройстве</h2>
+      <section class="panel settings-panel"><span class="metric-icon">${icon('shield', 21)}</span><h2>Данные на устройстве</h2>
         <p>Библиотека сохраняется в этом браузере. Сделай копию перед очисткой данных, сменой браузера или переносом на другое устройство.</p>
         <div class="settings-actions">${button('export-json', 'Скачать JSON', 'download', 'primary', storageError ? 'disabled' : '')}
           ${button('import-json', 'Восстановить JSON', 'upload')}
           ${button('export-csv', 'Скачать CSV', 'download', 'secondary', storageError ? 'disabled' : '')}</div>
         <input id="backup-file" type="file" accept=".json,application/json" hidden></section>
-      <section class="panel settings-panel"><span class="metric-icon aqua">${icon('monitor', 21)}</span><h2>Приложение на экране «Домой»</h2>
-        <p>На iPhone открой AFTERSAVE в Safari и выбери «Поделиться» → «На экран “Домой”». На компьютере используй пункт установки приложения в браузере, если он доступен.</p>
-        <small id="offline-label">${'serviceWorker' in navigator && navigator.serviceWorker.controller ? 'Офлайн-режим готов на этом устройстве.' : 'Офлайн-режим доступен после первой загрузки по HTTPS.'}</small></section>
-      <section class="panel settings-panel"><span class="metric-icon amber">${icon('globe', 21)}</span><h2>Игровые аккаунты</h2>
-        <p>Синхронизация библиотеки Steam и достижений.</p>${steamPanel()}
+      <section class="panel settings-panel"><span class="metric-icon">${icon('steam',21)}</span>
+        <h2>Steam</h2>${steamPanel()}
         ${connected() && games().some(game => game.steam) ? `<div class="settings-actions">${button(scanningAchievements ? 'achievement-stop' : 'achievement-scan',
           scanningAchievements ? 'Остановить обновление' : 'Обновить достижения всех игр','download')}</div>` : ''}
         ${state.steam ? `<div class="settings-actions"><label class="btn btn-secondary desk-log-import">${icon('upload',16)} Импорт журнала Steam
@@ -1696,6 +1691,7 @@ function renderSection() {
   if (!wasOpen) sectionDialog.showModal();
   if (!wasOpen || changed) {
     sectionDialog.querySelector('[data-action="close-section"]').focus({preventScroll:true});
+    sectionDialog.querySelector('.desk-collections')?.classList.add('collection-reveal');
     if (page === 'stats') sectionDialog.querySelector('.stats-dashboard').classList.add('stats-charts-enter');
     if (page === 'sessions') sectionDialog.querySelector('.session-dashboard').classList.add('session-charts-enter');
   } else if (active) {
@@ -1705,7 +1701,7 @@ function renderSection() {
   }
   sectionDialog.querySelector('.section-dialog-body').scrollTop = scroll;
   if (page === 'news' || page === 'wishlist') {
-    updateStoreFeed(page);
+    updateStoreFeed(page,!wasOpen || changed);
     void refreshStoreFeed(page);
   }
   imageFallbacks(sectionDialog);
@@ -1852,7 +1848,7 @@ const actions = {
     for (const button of control.parentElement.querySelectorAll('button')) {
       button.setAttribute('aria-pressed',String(button === control));
     }
-    updateStoreFeed('news');
+    updateStoreFeed('news',true);
   },
   'stats-time-period': control => {
     const mode = control.dataset.value;
@@ -1898,7 +1894,8 @@ const actions = {
     if (lockedFeed === next) return;
     lockedFeed = next;
     feedLimit = 24;
-    refreshDeskFeed();
+    recentRevealStartedAt = undefined;
+    refreshDeskFeed(lockedFeed ? 'locked-enter' : undefined);
     sectionDialog.querySelector('.ach-tab.is-active')?.focus({preventScroll:true});
   },
   'desk-heat-year': openHeatYear,
@@ -1934,16 +1931,6 @@ const actions = {
   },
   'completion-results': openCompletionResults,
   'steam-sync': () => steamSync(),
-  'cloud-toggle': () => {
-    if (!connected() || !state.steam) {
-      enableCloudAfterLogin = true;
-      return connected() ? steamSync() : openSteamLogin();
-    }
-    try { cloud.toggle(); } catch { notify('Не удалось сохранить настройку облака.',true); }
-  },
-  'cloud-sync': () => cloud.sync(),
-  'cloud-local': () => cloud.sync('local'),
-  'cloud-remote': () => cloud.sync('remote'),
   'library-status': control => {
     filter.status = control.dataset.value;
     const menu = control.closest('details');
@@ -1988,6 +1975,7 @@ const actions = {
     if (!['games', 'time', 'achievements'].includes(value) || collectionSort === value) return;
     collectionSort = value;
     renderSection();
+    sectionDialog.querySelector('.desk-collections')?.classList.add('collection-reveal','collection-sort-reveal');
     refreshHomePreview('collections');
     sectionDialog.querySelector('.desk-collection-filter-trigger')?.focus({preventScroll:true});
   },
@@ -2102,6 +2090,7 @@ document.addEventListener('change', async event => {
   if (field.id === 'desk-unlock-year') {
     achievementYear = field.value;
     feedLimit = 24;
+    recentRevealStartedAt = undefined;
     refreshDeskFeed();
     sectionDialog.querySelector('#desk-unlock-year')?.focus({preventScroll:true});
   }
@@ -2109,14 +2098,14 @@ document.addEventListener('change', async event => {
     if (!['common','rare'].includes(field.value)) return;
     lockedAchievementOrder = field.value;
     feedLimit = 24;
-    refreshDeskFeed();
+    refreshDeskFeed('locked-list-enter');
     sectionDialog.querySelector('#ach-locked-order')?.focus({preventScroll:true});
   }
   if (field.id === 'achievement-order') {
     if (!['rare','common','recent'].includes(field.value)) return;
     achievementSort = field.value;
     achievementLimit = 24;
-    updateAchievementRows();
+    updateAchievementRows(false,true);
   }
   if (field.id === 'achievement-state') {
     achievementFilter = field.value;
@@ -2184,6 +2173,7 @@ function updateRoute() {
   }
   const next = getRoute();
   const previous = route;
+  if (next.section !== previous.section) recentRevealStartedAt = undefined;
   if (!next.section && next.page === 'library') libraryHash = location.hash || '#library';
   route = next.section && previous.page === 'library' ? {...next,trophy:previous.trophy} : next;
   if (next.page === 'library' && previous.page === 'library' && (next.section || previous.section)) {
@@ -2225,6 +2215,25 @@ function updateRoute() {
 }
 
 window.addEventListener('hashchange',updateRoute);
+
+for (const modal of [sectionDialog,dialog]) {
+  let pressedOutside = false;
+  const outside = event => {
+    if (event.target !== modal) return false;
+    const bounds = modal.getBoundingClientRect();
+    return event.clientX < bounds.left || event.clientX >= bounds.right ||
+      event.clientY < bounds.top || event.clientY >= bounds.bottom;
+  };
+  modal.addEventListener('pointerdown',event => { pressedOutside = outside(event); });
+  modal.addEventListener('pointercancel',() => { pressedOutside = false; });
+  modal.addEventListener('click',event => {
+    const dismiss = pressedOutside && outside(event);
+    pressedOutside = false;
+    if (!dismiss) return;
+    if (modal === sectionDialog) closeSection();
+    else modal.close();
+  });
+}
 sectionDialog.addEventListener('cancel',event => {
   event.preventDefault();
   const menu = sectionDialog.querySelector('.desk-collection-sort[open]');
@@ -2268,7 +2277,6 @@ window.addEventListener('storage', event => {
 
 dialog.addEventListener('close', () => {
   if (dialog.open) return;
-  if (!syncingSteam && dialog.querySelector('#steam-login-form')) enableCloudAfterLogin = false;
   if (storagePending && !sectionDialog.open) {
     storagePending = false;
     refreshFromStorage();
@@ -2323,14 +2331,12 @@ function steamPanel() {
   const active = connected();
   const last = state.steam ? 'Последняя синхронизация · ' + new Date(state.steam.lastSync).toLocaleString('ru') :
     'Игры и время появятся после первого импорта.';
-  return `<section class="panel steam-panel" aria-label="Синхронизация Steam">
-    <div><div class="eyebrow"><i></i>STEAM</div>
-      <h2>Библиотека Steam</h2><p>${esc(last)}</p></div>
+  return `<div class="steam-panel"><p>${esc(last)}</p>
     <div class="settings-actions">${button('steam-sync', 'Синхронизировать Steam', 'download', 'primary', syncingSteam ? 'disabled' : '')}
       ${active ? button('steam-disconnect', 'Выйти на этом устройстве', 'x', 'secondary', syncingSteam ? 'disabled' : '') : ''}</div>
     ${syncingSteam ? '<progress class="steam-progress" aria-label="Синхронизация Steam"></progress>' : ''}
     ${steamMessage ? `<p class="steam-message ${steamError ? 'form-error' : ''}" role="status">${esc(steamMessage)}</p>` : ''}
-  </section>`;
+  </div>`;
 }
 
 function openSteamLogin() {
@@ -2384,7 +2390,6 @@ async function steamSync({background = false} = {}) {
     steamMessage = response.entries.length ? '' :
       'Steam вернул пустую библиотеку. Личные записи сохранены.';
     refreshRecentSteamAchievements();
-    cloud.schedule(0);
   } catch (error) {
     if (!background) {
       steamError = true;
@@ -2392,12 +2397,6 @@ async function steamSync({background = false} = {}) {
     }
   } finally {
     syncingSteam = false;
-    if (enableCloudAfterLogin && succeeded) {
-      enableCloudAfterLogin = false;
-      if (!cloud.enabled()) {
-        try { cloud.toggle(); } catch { notify('Не удалось сохранить настройку облака.',true); }
-      }
-    }
     if (route.page === 'library') {
       if (succeeded) refreshLibrary();
       if (!background && route.section && !dialog.open) {
@@ -2426,13 +2425,14 @@ async function refreshSteamSummaries(repaint = true) {
   const account = state.steam?.account ?? null;
   const records = await achievementRecords(account);
   if (account !== (state.steam?.account ?? null)) return;
+  const firstLoad = summaries.size === 0 && records.length > 0;
   for (const record of records) trackCompletion(record, summaryAccount === account ? summaries.get(record.appid) : null);
   summaryAccount = account;
   summaries = new Map(records.map(record => [record.appid,record]));
   if (!repaint || dialog.open) return;
   if (route.page === 'library') refreshLibrary();
   if (['achievements','sessions','stats'].includes(route.section) || route.page === 'game' && route.tab === 'sessions') {
-    refreshDeskFeed();
+    refreshDeskFeed(firstLoad ? ({stats:'stats-charts-enter',sessions:'session-charts-enter'})[route.section] : undefined);
   }
   const game = route.page === 'game' ? findByRoute(games()) : null;
   if (game?.steam && displayedAchievements) {
@@ -2973,6 +2973,7 @@ function gameAchievementDate(time) {
 
 function drawAchievements(box, record, message = '', loading = false) {
   if (!box?.isConnected) return;
+  const firstDraw = record?.total > 0 && !box.querySelector('.af-game-ach-shell');
   const refresh = app.querySelector('.desk-game-actions [data-action="achievement-reload"]');
   if (refresh) {
     refresh.disabled = loading;
@@ -3016,13 +3017,13 @@ function drawAchievements(box, record, message = '', loading = false) {
       '</div>' +
       '<div id="achievement-rows"></div>' +
     '</div>' : '');
-  updateAchievementRows();
+  updateAchievementRows(false,firstDraw);
   if (focusedField) document.getElementById(focusedField)?.focus({preventScroll:true});
 }
 
 const isRare = item => Number.isFinite(item.percent) && item.percent < 10;
 
-function updateAchievementRows(more = false) {
+function updateAchievementRows(more = false, animate = false) {
   const target = document.querySelector('#achievement-rows');
   if (!target || !displayedAchievements) return;
   const query = achievementQuery.trim().toLocaleLowerCase('ru');
@@ -3060,6 +3061,7 @@ function updateAchievementRows(more = false) {
     (items.length > achievementLimit ?
       '<div class="load-more">' + button('achievement-more','Показать ещё · ' + (items.length-achievementLimit),'down') + '</div>' : '') :
     '<p class="dash-empty" role="status">Достижения по этим фильтрам не найдены.</p>';
+  if (animate) target.querySelector('.af-ach-list')?.classList.add('game-achievements-enter');
   imageFallbacks(target);
   if (more) {
     const firstNew = target.querySelectorAll('li')[achievementLimit - 24];
@@ -3067,36 +3069,16 @@ function updateAchievementRows(more = false) {
   }
 }
 
-const cloud = createCloudSync({
-  state: () => state,
-  commit: next => {
-    const ok = commit(next);
-    if (ok && !dialog.open) {
-      if (route.page === 'library') {
-        refreshLibrary();
-        refreshStoreFeeds();
-      } else render();
-    }
-    return ok;
-  },
-  blocked: () => Boolean(storageError || dialog.open || syncingSteam),
-  status: (message, conflict) => {
-    cloudMessage = message;
-    cloudConflict = conflict;
-    if (route.section === 'settings' && !dialog.open) renderSection();
-  }
-});
 if (!route.section && route.page === 'library') libraryHash = location.hash || '#library';
 render(false,true);
 refreshSteamSummaries();
 refreshSteamProfile();
-window.addEventListener('online', () => { cloud.schedule(0); refreshSteamProfile(); maybeSyncSteam(); refreshStoreFeeds(); });
+window.addEventListener('online', () => { refreshSteamProfile(); maybeSyncSteam(); refreshStoreFeeds(); });
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) { cloud.schedule(0); maybeSyncSteam(); refreshStoreFeeds(); }
+  if (!document.hidden) { maybeSyncSteam(); refreshStoreFeeds(); }
 });
-cloud.schedule(0);
 setInterval(() => {
-  if (!document.hidden) { cloud.schedule(0); refreshStoreFeeds(); }
+  if (!document.hidden) { refreshStoreFeeds(); }
 }, 60 * 1000);
 setInterval(maybeSyncSteam, 15 * 1000);
 maybeSyncSteam();
@@ -3106,8 +3088,6 @@ if ('serviceWorker' in navigator) {
     .then(registration => registration.update().catch(() => {}))
     .catch(error => console.warn('AFTERSAVE offline:', error));
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    const offline = sectionDialog.querySelector('#offline-label');
-    if (offline) offline.textContent = 'Офлайн-режим готов на этом устройстве.';
     // Do not discard in-progress form edits when an update becomes active.
     if (!controlledAtStart || appUpdateReady) return;
     appUpdateReady = true;

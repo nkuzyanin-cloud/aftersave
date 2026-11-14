@@ -138,8 +138,6 @@ export async function connect(password, expectedAccount) {
   remember(typeof refresh === 'string' && /^[a-f0-9]{64}$/.test(refresh) ? {account,refresh} : null);
 }
 
-export const readCloud = () => request('personal');
-export const writeCloud = (revision,snapshot) => request('personal',{method:'PUT',body:{revision,snapshot}});
 export const fetchSteamFeed = page => request(page);
 
 const profileKey = STORAGE_KEY + ':steam-profile';

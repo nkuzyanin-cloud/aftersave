@@ -1,6 +1,6 @@
 
 import { readActivity, recordSnapshot } from './activity.mjs';
-import { requestJson, rememberDevice, renewDevice, forgetDevice, readPersonal, savePersonal, MAX_SNAPSHOT } from './cloud.mjs';
+import { requestJson, rememberDevice, renewDevice, forgetDevice } from './device-session.mjs';
 import { readSteamFeed, refreshSteamFeeds } from './feeds.mjs';
 
 const ORIGIN = 'https://nkuzyanin-cloud.github.io';
@@ -271,17 +271,17 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const cors = allowedOrigin(request);
-    if (url.pathname === '/health' && request.method === 'GET') return reply({ ok: true, version: 9 }, 200, cors);
+    if (url.pathname === '/health' && request.method === 'GET') return reply({ ok: true, version: 10 }, 200, cors);
     const route = url.pathname;
-    if (!['/session', '/session/refresh', '/session/forget', '/personal', '/profile', '/library', '/achievements', '/artwork', '/wishlist', '/news'].includes(route)) return reply({ error: 'not_found' }, 404, cors);
+    if (!['/session', '/session/refresh', '/session/forget', '/profile', '/library', '/achievements', '/artwork', '/wishlist', '/news'].includes(route)) return reply({ error: 'not_found' }, 404, cors);
     if (!cors) return reply({ error: 'origin' }, 403, false);
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: {
-        ...headers(true), 'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
+        ...headers(true), 'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization', 'Access-Control-Max-Age': '600'
       } });
     }
-    const methods = route.startsWith('/session') ? ['POST'] : route === '/personal' ? ['GET','PUT'] : ['GET'];
+    const methods = route.startsWith('/session') ? ['POST'] : ['GET'];
     if (!methods.includes(request.method)) return reply({ error: 'method' }, 405, true);
     try {
       if (route === '/artwork') {
@@ -324,13 +324,6 @@ export default {
       if (route === '/profile') {
         if (url.search) throw new RequestError(400, 'invalid_request');
         return reply(await cached(url, env.STEAM_ID + '/profile-v1', 600, ctx, () => playerProfile(env)), 200, true);
-      }
-      if (route === '/personal') {
-        if (url.search || !env.STEAM_ACTIVITY) throw new RequestError(400, 'invalid_request');
-        if (request.method === 'GET') return reply(await readPersonal(env),200,true);
-        const result = await savePersonal(env, await requestJson(request,MAX_SNAPSHOT+256));
-        if (!result) throw new RequestError(400,'invalid_snapshot');
-        return reply(result,result.conflict ? 409 : 200,true);
       }
       if (route === '/library') {
         if (url.search) throw new RequestError(400, 'invalid_request');

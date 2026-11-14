@@ -1,7 +1,6 @@
 
 const DEVICE_LIFETIME = 30 * 24 * 60 * 60 * 1000;
 const tokenPattern = /^[a-f0-9]{64}$/;
-export const MAX_SNAPSHOT = 2 * 1024 * 1024;
 
 export async function requestJson(request, limit) {
   if (Number(request.headers.get('content-length')) > limit ||
@@ -54,28 +53,4 @@ export async function forgetDevice(env, token) {
   if (typeof token !== 'string' || !tokenPattern.test(token)) return;
   await env.STEAM_ACTIVITY.prepare('DELETE FROM saved_devices WHERE account=?1 AND digest=?2')
     .bind(env.STEAM_ID,await digest(token,env)).run();
-}
-
-export async function readPersonal(env) {
-  const row = await env.STEAM_ACTIVITY.prepare('SELECT revision,snapshot FROM personal_library WHERE account=?1')
-    .bind(env.STEAM_ID).first();
-  return row ? { revision:row.revision,snapshot:JSON.parse(row.snapshot) } : { revision:0,snapshot:null };
-}
-
-const dictionary = value => value && typeof value === 'object' && !Array.isArray(value);
-export async function savePersonal(env, payload) {
-  const revision = payload?.revision;
-  const snapshot = payload?.snapshot;
-  if (!Number.isSafeInteger(revision) || revision < 0 || revision >= Number.MAX_SAFE_INTEGER ||
-      !dictionary(snapshot?.games) || !dictionary(snapshot?.collections) ||
-      Object.keys(snapshot.games).length > 10000 || Object.keys(snapshot.collections).length > 500) return null;
-  const contents = JSON.stringify(snapshot);
-  if (new TextEncoder().encode(contents).byteLength > MAX_SNAPSHOT) return null;
-  const db = env.STEAM_ACTIVITY;
-  const result = revision === 0 ?
-    await db.prepare('INSERT INTO personal_library(account,revision,snapshot) VALUES(?1,1,?2) ON CONFLICT(account) DO NOTHING')
-      .bind(env.STEAM_ID,contents).run() :
-    await db.prepare('UPDATE personal_library SET revision=revision+1,snapshot=?1 WHERE account=?2 AND revision=?3')
-      .bind(contents,env.STEAM_ID,revision).run();
-  return result.meta.changes === 1 ? { revision:revision+1 } : { conflict:true };
 }

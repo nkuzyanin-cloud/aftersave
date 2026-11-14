@@ -1,5 +1,5 @@
 // Bump this version whenever a file in the precache changes.
-const CACHE_VERSION = 59;
+const CACHE_VERSION = 60;
 const scope = new URL(self.registration.scope);
 const cachePrefix = `aftersave::${scope.href}::v`;
 const cacheName = `${cachePrefix}${CACHE_VERSION}`;
@@ -12,7 +12,7 @@ const coverIds = [
   'hades', 'disco-elysium', 'red-dead-redemption-2', 'control', 'witcher-3', 'baldur-gate-3',
 ];
 const precache = new Set([
-  './index.html', './styles.css', './app.js', './data.js', './icons.js', './steam.js', './cloud.js', './activity-view.js', './elden-ring.js', './elden-ring-art.js', './manifest.webmanifest',
+  './index.html', './styles.css', './app.js', './data.js', './icons.js', './steam.js', './activity-view.js', './elden-ring.js', './elden-ring-art.js', './manifest.webmanifest',
   './assets/icon.svg', './assets/icon-192.png', './assets/icon-512.png',
   './assets/profile-header.webp', './assets/achievements-hero.webp',
   './assets/apple-touch-icon.png', './assets/elden-ring-hero.jpg', './assets/witcher-3-achievements.json', './assets/elden-ring-achievements.json',
