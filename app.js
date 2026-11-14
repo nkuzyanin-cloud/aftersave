@@ -81,6 +81,23 @@ const esc = value => String(value ?? '').replace(/[&<>"']/g, char =>
 const numeric = value => number.format(value);
 const percent = value => Math.min(100, Math.max(0, Number(value) || 0));
 const games = () => state.games;
+let steamRosterIds;
+let steamRoster = null;
+
+function ownedSteamApps() {
+  const ids = state.steam?.ownedAppIds;
+  if (ids !== steamRosterIds) {
+    steamRosterIds = ids;
+    steamRoster = ids ? new Set(ids) : null;
+  }
+  return steamRoster;
+}
+
+function isInLibrary(game, owned = ownedSteamApps()) {
+  return !game.steam || !owned || owned.has(game.steam.appid);
+}
+
+const currentGames = () => games().filter(game => isInLibrary(game));
 const collections = () => state.collections;
 const coverUrl = value => {
   if (/^\.?\/?assets\/covers\/[a-z0-9-]+\.jpg$/i.test(value ?? '')) return './' + value.replace(/^\.?\//, '');
@@ -288,7 +305,7 @@ function libraryTools() {
           const active = filter.status === value;
           return button('library-status',label,'check','quiet',`data-value="${value}" aria-pressed="${active}"`);
         }).join('')}
-        ${!route.trophy && games().some(game => game.hidden) ? `<label class="desk-hidden-filter"><input type="checkbox" data-library-hidden ${libraryHidden ? 'checked' : ''}> Ранее скрытые игры</label>` : ''}
+        ${!route.trophy && currentGames().some(game => game.hidden) ? `<label class="desk-hidden-filter"><input type="checkbox" data-library-hidden ${libraryHidden ? 'checked' : ''}> Ранее скрытые игры</label>` : ''}
       </div>
     </details>
   </div>`;
@@ -320,7 +337,7 @@ function updateLibraryFilters() {
 }
 
 function libraryGames(full = false) {
-  return games().filter(game => game.hidden === (full && libraryHidden) &&
+  return currentGames().filter(game => game.hidden === (full && libraryHidden) &&
     (!route.trophy || trophyFor(summaryFor(game)) === route.trophy));
 }
 
@@ -435,8 +452,9 @@ function librarySummary() {
   const linked = games().filter(game => game.steam);
   const hours = linked.reduce((total,game) => total + game.steam.minutes, 0) / 60;
   const earned = linked.reduce((total,game) => total + (summaryFor(game)?.unlocked ?? 0), 0);
-  const perfect = linked.filter(game => trophyFor(summaryFor(game)) === 'platinum').length;
-  const metrics = [[numeric(linked.length),'Игр в Steam','game'],[numeric(Math.round(hours))+' ч','Время в играх','clock'],
+  const active = linked.filter(game => isInLibrary(game));
+  const perfect = active.filter(game => trophyFor(summaryFor(game)) === 'platinum').length;
+  const metrics = [[numeric(active.length),'Игр в Steam','game'],[numeric(Math.round(hours))+' ч','Время в играх','clock'],
     [numeric(earned),'Получено достижений','trophy'],[numeric(perfect),'Идеально','crown']];
   return `<dl id="library-summary" class="library-summary" aria-label="Сводка Steam">${metrics.map(([value,label,glyph]) =>
     `<div><dt>${label}</dt><dd class="desk-metric" data-glyph="${glyph}">${icon(glyph,17)}${value}</dd></div>`).join('')}</dl>`;
@@ -602,8 +620,7 @@ function releaseSortDate(label = '') {
 }
 
 function unownedWishlist(items) {
-  const owned = new Set(state.steam?.ownedAppIds ??
-    games().flatMap(game => game.steam ? [game.steam.appid] : []));
+  const owned = ownedSteamApps() ?? new Set(games().flatMap(game => game.steam ? [game.steam.appid] : []));
   return items.filter(item => !owned.has(item.appid));
 }
 
@@ -843,7 +860,7 @@ function achievementFeatureRow(entry) {
 }
 
 function achievementIncompleteGames() {
-  return games().filter(game => !game.hidden && game.steam).map(game => {
+  return currentGames().filter(game => !game.hidden && game.steam).map(game => {
     const record = summaryFor(game);
     if (!record?.total || !Array.isArray(record.items)) return null;
     const remaining = record.items.filter(item => !item.unlocked);
@@ -970,7 +987,7 @@ function achievementsPage() {
   const entries=achievementEntries();
   const earned=entries.filter(({item})=>item.unlocked && item.time && Number.isFinite(item.time))
     .sort((a,b)=>b.item.time-a.item.time);
-  const locked=entries.filter(({item})=>!item.unlocked);
+  const locked=lockedFeed ? entries.filter(({game,item})=>!item.unlocked && isInLibrary(game)) : [];
   const years=[...new Set(earned.map(({item})=>new Date(item.time*1000).getFullYear()))]
     .sort((a,b)=>b-a);
   return '<div id="desk-feed" class="achievements-v3">' +
@@ -1446,15 +1463,15 @@ function statsHourChart(events) {
 
 function statsPage() {
   const linked = games().filter(game => game.steam && !game.hidden);
-  const records = linked.map(game => summaryFor(game)).filter(record => record?.total);
+  const active = linked.filter(game => isInLibrary(game));
   const totals = collectionTotals(linked);
-  const completed = linked.filter(game => completionFor(game) === 'perfect').length;
-  const beaten = linked.filter(game => completionFor(game) === 'beaten').length;
-  const other = Math.max(0,linked.length-completed-beaten);
+  const completed = active.filter(game => completionFor(game) === 'perfect').length;
+  const beaten = active.filter(game => completionFor(game) === 'beaten').length;
+  const other = active.length-completed-beaten;
   const unlocked = totals.unlocked, total = totals.total;
   const completionRate = total ? unlocked/total*100 : 0;
   const finished = completed+beaten;
-  const libraryRate = linked.length ? finished/linked.length*100 : 0;
+  const libraryRate = active.length ? finished/active.length*100 : 0;
   const earned = achievementEntries().filter(({item}) => item.unlocked);
   const dated = earned.filter(({item}) => item.time > 0);
   const days = achievementDays(dated);
@@ -1484,7 +1501,7 @@ function statsPage() {
       '<h2 class="stats-heading">'+icon('game',23)+'Игры</h2>'+
       '<span class="stats-watermark" aria-hidden="true">'+icon('game',112)+'</span>'+
       '<div class="stats-games-content">'+
-        '<div class="stats-games-total"><strong>'+numeric(linked.length)+'</strong><span>игр</span></div>'+
+        '<div class="stats-games-total"><strong>'+numeric(active.length)+'</strong><span>игр</span></div>'+
         '<div class="stats-games-split">'+
           '<div><span class="stats-games-symbol">'+icon('trophy',20)+'</span><strong>'+numeric(completed)+'</strong><small>идеально</small></div>'+
           '<div><span class="stats-games-symbol">'+icon('check',20)+'</span><strong>'+numeric(beaten)+'</strong><small>пройдено</small></div>'+
@@ -1533,7 +1550,7 @@ function statsPage() {
       '<h2 class="stats-heading">'+icon('layers',23)+'Прогресс библиотеки</h2>'+
       '<div class="stats-library-inner"><div>'+
         '<strong class="stats-bottom-value">'+numeric(Math.round(libraryRate*10)/10)+'%</strong>'+
-        '<p>Пройдено игр ('+numeric(finished)+' из '+numeric(linked.length)+')</p>'+
+        '<p>Пройдено игр ('+numeric(finished)+' из '+numeric(active.length)+')</p>'+
       '</div><div class="stats-library-ring" role="img" aria-label="Пройдено '+numeric(Math.round(libraryRate*10)/10)+'% игр" style="--stats-library-pct:'+percent(libraryRate)+'%"></div></div>'+
     '</section>'+
   '</div>';
@@ -1645,8 +1662,9 @@ function collectionRow(entry) {
 }
 
 function collectionEntries() {
+  const library = currentGames();
   const list = collections().map(item => {
-    const grouped = games().filter(game => game.collectionIds.includes(item.id));
+    const grouped = library.filter(game => game.collectionIds.includes(item.id));
     const totals = collectionTotals(grouped);
     return {item, grouped, ...totals, games:grouped.length, time:totals.minutes, achievements:totals.unlocked};
   });
@@ -1662,7 +1680,7 @@ function collectionEntries() {
 
 function collectionsPage(collection) {
   if (collection) {
-    const source = games().filter(game => game.collectionIds.includes(collection.id));
+    const source = currentGames().filter(game => game.collectionIds.includes(collection.id));
     const actions = button('pick-collection','Выбрать игру','plus','primary') +
       button('edit-collection','Редактировать','edit','secondary',`data-id="${esc(collection.id)}"`);
     return `<div class="desk-collection-detail"><div class="collection-detail-toolbar">
@@ -1719,7 +1737,7 @@ function settingsPage() {
         <input id="backup-file" type="file" accept=".json,application/json" hidden></section>
       <section class="panel settings-panel"><span class="metric-icon">${icon('steam',21)}</span>
         <h2>Steam</h2>${steamPanel()}
-        ${connected() && games().some(game => game.steam) ? `<div class="settings-actions">${button(scanningAchievements ? 'achievement-stop' : 'achievement-scan',
+        ${connected() && currentGames().some(game => game.steam) ? `<div class="settings-actions">${button(scanningAchievements ? 'achievement-stop' : 'achievement-scan',
           scanningAchievements ? 'Остановить обновление' : 'Обновить достижения всех игр','download')}</div>` : ''}
         ${state.steam ? `<div class="settings-actions"><label class="btn btn-secondary desk-log-import">${icon('upload',16)} Импорт журнала Steam
           <input type="file" accept=".txt,text/plain" id="steam-log-file" aria-label="Импорт журнала Steam"></label></div>
@@ -1791,7 +1809,7 @@ function renderCollectionGames() {
   const collection = findByRoute(collections());
   const current = sectionDialog.querySelector('#collection-game-results');
   if (!current || !collection) return;
-  current.outerHTML = gameResults(games().filter(game => game.collectionIds.includes(collection.id)),false);
+  current.outerHTML = gameResults(currentGames().filter(game => game.collectionIds.includes(collection.id)),false);
   imageFallbacks(sectionDialog.querySelector('#collection-game-results'));
 }
 
@@ -2021,7 +2039,7 @@ const actions = {
   'restore-game': control => {
     const game = games().find(item => item.id === control.dataset.id && item.hidden);
     if (game && updateGame(game, { hidden: false }, 'Игра возвращена в библиотеку')) {
-      if (!games().some(item => item.hidden)) libraryHidden = false;
+      if (!currentGames().some(item => item.hidden)) libraryHidden = false;
       render();
     }
   },
@@ -2447,6 +2465,7 @@ async function steamSync({background = false} = {}) {
   if (!connected()) return openSteamLogin();
   if (storageError) return notify('Сначала восстановите библиотеку из копии.', true);
   const originalAccount = state.steam?.account;
+  const previousRoster = ownedSteamApps();
   let succeeded = false;
   const syncControl = document.activeElement?.matches('[data-action="steam-sync"]');
   syncingSteam = true;
@@ -2480,13 +2499,23 @@ async function steamSync({background = false} = {}) {
     }
   } finally {
     syncingSteam = false;
+    const roster = ownedSteamApps();
+    const rosterChanged = succeeded && roster && (!previousRoster || previousRoster.size !== roster.size ||
+      [...roster].some(id => !previousRoster.has(id)));
     if (route.page === 'library') {
-      if (succeeded) refreshLibrary();
-      if (!background && route.section && !dialog.open) {
+      if (succeeded) {
+        if (rosterChanged && !currentGames().some(game => game.hidden)) libraryHidden = false;
+        refreshLibrary();
+      }
+      if (route.section && !dialog.open &&
+          (!background || rosterChanged && ['all-games','collections'].includes(route.section))) {
         renderSection();
         if (syncControl) sectionDialog.querySelector('[data-action="steam-sync"]')?.focus({preventScroll:true});
       }
-    } else if (!background && !dialog.open) render();
+    } else if (!dialog.open && (!background || rosterChanged)) {
+      const game = findByRoute(games());
+      if (!background || game && isInLibrary(game,previousRoster) !== isInLibrary(game,roster)) render();
+    }
   }
 }
 
@@ -2541,7 +2570,7 @@ async function refreshRecentSteamAchievements() {
     for (const {appid,observedTo} of state.steam?.activity?.windows ?? []) {
       observed.set(appid,Math.max(observed.get(appid) ?? 0,observedTo));
     }
-    const recent = games().filter(game => game.steam && !game.hidden).map(game => ({
+    const recent = currentGames().filter(game => game.steam && !game.hidden).map(game => ({
       game, last:Math.max(game.steam.lastPlayed * 1000,observed.get(game.steam.appid) ?? 0)
     })).filter(({game,last}) => {
       const fetchedAt = summaryFor(game)?.fetchedAt ?? 0;
@@ -2551,6 +2580,7 @@ async function refreshRecentSteamAchievements() {
     }).sort((a,b) => b.last-a.last).slice(0,5);
     for (const {game} of recent) {
       if (account !== state.steam?.account || scanningAchievements || !connected()) break;
+      if (!isInLibrary(game)) continue;
       try { await fetchAchievements(account,game.steam.appid,false,true); }
       catch (error) {
         if (/ограничил запросы|Worker недоступен|Требуется вход/.test(error.message)) break;
@@ -2566,7 +2596,7 @@ async function scanAchievements() {
   if (scanningAchievements) return;
   if (!connected()) return openSteamLogin();
   const account = state.steam?.account;
-  const linked = state.games.filter(game => game.steam).sort(byLastPlayed);
+  const linked = currentGames().filter(game => game.steam).sort(byLastPlayed);
   scanningAchievements = true;
   stopAchievementScan = false;
   let checked = 0;
@@ -2575,7 +2605,8 @@ async function scanAchievements() {
   scanMessage = 'Загружаем сводку по очереди…';
   renderSection();
   for (const game of linked) {
-    if (stopAchievementScan || state.steam?.account !== account || !(connected())) break;
+    if (stopAchievementScan || state.steam?.account !== account || !connected()) break;
+    if (!isInLibrary(game)) continue;
     try { await fetchAchievements(account, game.steam.appid, false, true); }
     catch (error) {
       failed++;
@@ -2680,6 +2711,7 @@ function gameDashboard() {
   if (!game) return `<div class="empty"><h2>Игра не найдена</h2><a class="btn btn-secondary" href="#library">К играм</a></div>`;
   if (route.ngPlus && isEldenRing(game)) return bossTracker(game);
   const url = gameHref(game);
+  const archived = !isInLibrary(game);
   const summary = summaryFor(game);
   const status = completionFor(game,summary);
   const achievementBox = `<section class="game-achievements af-game-achievements" id="steam-achievements" aria-label="Достижения">
@@ -2696,13 +2728,14 @@ function gameDashboard() {
           <div class="desk-game-actions">
             <label class="desk-completed" title="Игра пройдена"><input type="checkbox" id="game-completed" aria-label="Игра пройдена" ${game.status === 'completed' ? 'checked' : ''}>
               <span aria-hidden="true">${icon('check',20)}</span></label>
-            ${game.steam && !['sessions','notes'].includes(route.tab) ? iconButton('achievement-reload',connected() ? 'Обновить достижения Steam' : 'Подключить Steam','cloudDownload') : ''}
+            ${game.steam && !archived && !['sessions','notes'].includes(route.tab) ? iconButton('achievement-reload',connected() ? 'Обновить достижения Steam' : 'Подключить Steam','cloudDownload') : ''}
           </div>
         </div>
         <div class="desk-game-heading">${route.tab === "overview" ? cover(game,"game-poster",{detailed:true,eager:true}) : wideCover(game,true)}
           <div class="desk-game-title"><h1>${esc(displayName(game,true))} <span id="game-trophy">${completionBadge(status)}</span></h1>
             ${route.tab === 'overview' ? '' : '<small>' + (game.steam ? icon('steam',14) + ' Steam' : esc(game.platform)) + '</small>'}
             <div class="desk-game-links">
+            ${archived ? '<span class="desk-game-archived">Вне библиотеки Steam</span>' : ''}
             ${game.steam ? `<a href="https://store.steampowered.com/app/${game.steam.appid}/" target="_blank" rel="noopener">${icon('upRight',14)} Страница игры</a>
               <button type="button" data-action="desk-game-sessions" aria-haspopup="dialog">${icon('clock',14)} Игровые сессии</button>` : ''}
             ${isEldenRing(game) ? `<a class="desk-ng-link" href="${url}/notes/ng-plus">${icon('checklist',16)} NG+</a>` : ''}
@@ -2938,7 +2971,7 @@ function notesPanel(game) {
 function openCollectionPicker() {
   const collection = findByRoute(collections());
   if (!collection) return;
-  const source = [...games()].sort((a,b)=>displayName(a).localeCompare(displayName(b),'ru'));
+  const source = currentGames().sort((a,b)=>displayName(a).localeCompare(displayName(b),'ru'));
   showDialog('Выбрать игру',esc(collection.name),`<form id="collection-picker"><div class="dialog-body">
     ${source.length ? `<label class="searchbox">${icon('search',20)}<input id="collection-query" type="search" placeholder="Найти игру в библиотеке" aria-label="Поиск игры" autofocus></label>
     <div class="collection-choices" role="group" aria-label="Игры библиотеки">${source.map(game=>`<label class="desk-collection-choice" data-title="${esc((displayName(game)+' '+game.title).toLowerCase())}">
@@ -2969,7 +3002,9 @@ function saveCollectionChoices(form) {
   if (!collection) return;
   const selected = new Set(new FormData(form).getAll('game'));
   const updatedAt = new Date().toISOString();
-  const next = games().map(game => setCollectionMembership(game,collection.id,selected.has(game.id),updatedAt));
+  const shown = new Set([...form.querySelectorAll('input[name="game"]')].map(input => input.value));
+  const next = games().map(game => shown.has(game.id) && isInLibrary(game)
+    ? setCollectionMembership(game,collection.id,selected.has(game.id),updatedAt) : game);
   if (commit({...state,games:next},'Коллекция сохранена')) {
     dialog.close();
     renderCollectionGames();
@@ -3024,6 +3059,10 @@ async function showAchievements(force = false) {
   const view = ++achievementView;
   const cached = await cachedAchievements(account, id);
   if (view !== achievementView || route.page !== 'game' || findByRoute(games())?.steam?.appid !== id) return;
+  if (!isInLibrary(game)) {
+    drawAchievements(box,cached,cached?.unlocked ? '' : 'Сохранённых достижений пока нет.');
+    return;
+  }
   const active = connected();
   const repairKey = account + ':' + id;
   const needsIcons = cached?.items.some(item => item.unlocked && !item.icon) && !iconRefreshes.has(repairKey);
@@ -3058,7 +3097,12 @@ function gameAchievementDate(time) {
 
 function drawAchievements(box, record, message = '', loading = false) {
   if (!box?.isConnected) return;
-  const firstDraw = record?.total > 0 && !box.querySelector('.af-game-ach-shell');
+  const game = findByRoute(games());
+  const archived = game && !isInLibrary(game);
+  const total = Number(record?.total) || 0;
+  const earned = Number(record?.unlocked) || 0;
+  const hasList = archived ? earned > 0 : total > 0;
+  const firstDraw = hasList && !box.querySelector('.af-game-ach-shell');
   const refresh = app.querySelector('.desk-game-actions [data-action="achievement-reload"]');
   if (refresh) {
     refresh.disabled = loading;
@@ -3068,36 +3112,32 @@ function drawAchievements(box, record, message = '', loading = false) {
   if (count && record) {
     count.textContent = record.total ? record.unlocked + ' / ' + record.total : 'Нет достижений';
     const badge = document.querySelector('#game-trophy');
-    if (badge) {
-      const game = findByRoute(games());
-      badge.innerHTML = completionBadge(completionFor(game,record));
-    }
+    if (badge && game) badge.innerHTML = completionBadge(completionFor(game,record));
   }
-  displayedAchievements = record;
+  displayedAchievements = archived && record ? {...record,items:recentUnlocks(record)} : record;
+  if (archived) achievementFilter = '';
   const extraOpen = box.querySelector('.af-ach-extra')?.open;
   const focusedField = box.contains(document.activeElement) ? document.activeElement.id : '';
-  const total = Number(record?.total) || 0;
-  const earned = Number(record?.unlocked) || 0;
   box.innerHTML = (message ? '<p class="dash-empty" role="status">' + esc(message) + '</p>' : '') +
-    (!total && !message ? '<p class="dash-empty">' + (record ? 'Нет достижений' : 'Данные пока недоступны.') + '</p>' : '') +
-    (total ? '<div class="af-game-ach-shell">' +
+    (!hasList && !message ? '<p class="dash-empty">' + (record ? 'Нет достижений' : 'Данные пока недоступны.') + '</p>' : '') +
+    (hasList ? '<div class="af-game-ach-shell">' +
       '<div class="af-game-ach-toolbar">' +
         '<label class="searchbox">' + icon('search',19) +
           '<input type="search" id="achievement-query" aria-label="Поиск достижений" placeholder="Поиск достижений…" value="' + esc(achievementQuery) + '"></label>' +
         '<div class="af-game-ach-filters">' +
-          '<label class="af-ach-select-label"><span>Статус</span><select id="achievement-state" aria-label="Статус достижения">' +
+          (archived ? '' : '<label class="af-ach-select-label"><span>Статус</span><select id="achievement-state" aria-label="Статус достижения">' +
             option('','Все',achievementFilter) +
             option('yes','Получено · '+earned,achievementFilter) +
             option('no','Не получено · '+(total-earned),achievementFilter) +
-          '</select></label>' +
+          '</select></label>') +
           '<label class="af-ach-select-label"><span>Сортировка</span><select id="achievement-order" aria-label="Сортировка достижений">' +
             option('common','Сначала распространённые',achievementSort) +
             option('rare','Сначала редкие',achievementSort) +
             option('recent','Сначала полученные',achievementSort) +
           '</select></label>' +
-          '<details class="af-ach-extra"' + (extraOpen ? ' open' : '') + '><summary title="Дополнительно" aria-label="Дополнительные настройки достижений">' +
+          (archived ? '' : '<details class="af-ach-extra"' + (extraOpen ? ' open' : '') + '><summary title="Дополнительно" aria-label="Дополнительные настройки достижений">' +
              icon('settings',18) + '</summary><label><input id="achievement-reveal" type="checkbox" ' +
-             (revealHidden ? 'checked' : '') + '> Показывать условия секретных достижений</label></details>' +
+             (revealHidden ? 'checked' : '') + '> Показывать условия секретных достижений</label></details>') +
         '</div>' +
       '</div>' +
       '<div id="achievement-rows"></div>' +

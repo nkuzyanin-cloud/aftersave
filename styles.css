@@ -915,6 +915,7 @@ dialog.desk-collection-dialog{width:min(560px,calc(100vw - 24px))}
 .desk-game-title h1{font-size:1.16rem;line-height:1.25;letter-spacing:-.015em}
 .desk-game-title>small,.desk-game-links a{display:inline-flex;align-items:center;gap:4px;color:var(--desk-muted);font-size:.75rem}
 .desk-game-links{display:flex;flex-wrap:wrap;gap:4px 11px;margin-top:6px}
+.desk-game-archived{align-self:center;color:var(--desk-muted);font-size:var(--desk-caption,.75rem)}
 .desk-game-links a:hover,.desk-game-links .desk-ng-link{color:#b5beff}
 .desk-game-metrics{display:flex;gap:12px 15px;margin:0;flex-wrap:wrap}
 .desk-game-metrics dt{color:var(--desk-muted);font-size:.69rem}

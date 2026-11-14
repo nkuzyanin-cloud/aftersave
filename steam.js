@@ -211,7 +211,8 @@ export async function fetchLibrary(legacy, expected, step = () => {}) {
   }
   const entries = library.games ?? [];
   if (!Array.isArray(entries) || entries.length !== library.game_count || entries.length > 10000 ||
-      entries.some(item => !item || !appId(item.appid) || typeof item.name !== 'string' || !item.name.trim())) {
+      entries.some(item => !item || !appId(item.appid) || typeof item.name !== 'string' || !item.name.trim()) ||
+      new Set(entries.map(item => item.appid)).size !== entries.length) {
     throw new Error('Steam вернул неполный или некорректный список. Библиотека сохранена.');
   }
   if (legacy) {
