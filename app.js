@@ -1629,18 +1629,20 @@ function redrawStatsHours() {
 function periodRecapMetrics(mode, daily, total, gameCount, achievements, from, to) {
   const metrics = [
     ['Игровых дней',numeric(daily.size)],
+    ['Игр запущено',numeric(gameCount)],
     ['Получено достижений',numeric(achievements.length)]
   ];
   if (mode === 'weeks') return metrics;
+  const [bestDay,bestMinutes] = [...daily].sort(([dayA,minutesA],[dayB,minutesB])=>
+    minutesB-minutesA || dayB-dayA)[0];
   metrics.push(
-    ['Игр запущено',numeric(gameCount)],
-    ['В среднем за игровой день',sessionDuration(total/daily.size)]
+    ['В среднем за игровой день',sessionDuration(total/daily.size)],
+    ['Самый игровой день',sessionDuration(bestMinutes),shortDay.format(calendarDate(bestDay))]
   );
   if (mode === 'months') return metrics;
 
-  const [bestDay,bestMinutes] = [...daily].sort(([dayA,minutesA],[dayB,minutesB])=>
-    minutesB-minutesA || dayB-dayA)[0];
   const months = new Set([...daily.keys()].map(day=>statsPeriodKey(day,'months')));
+  const gamesWithUnlocks = new Set(achievements.map(({game})=>game.id));
   const perfect = games().filter(game => {
     if (game.hidden) return false;
     const record = summaryFor(game);
@@ -1652,8 +1654,8 @@ function periodRecapMetrics(mode, daily, total, gameCount, achievements, from, t
   }).length;
   return [...metrics,
     ['Активных месяцев',numeric(months.size)],
-    ['Самый игровой день',sessionDuration(bestMinutes),shortDay.format(calendarDate(bestDay))],
     ['Лучшая серия игровых дней',numeric(streaks(daily,to-1,from).best)+' дн.'],
+    ['Игр с новыми достижениями',numeric(gamesWithUnlocks.size)],
     ['Редких достижений',numeric(achievements.filter(({item})=>isRare(item)).length)],
     ['Игр на «Идеально»',numeric(perfect)]
   ];
