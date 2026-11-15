@@ -520,7 +520,7 @@ function trackCompletion(record, previous) {
   const fresh = record.fetchedAt >= openedAt && last && last.time * 1000 >= Date.now() - 2 * 86400000;
   if (previous ? record.unlocked <= previous.unlocked : !fresh) return;
   const event = JSON.stringify([record.total,last?.id,last?.time]);
-  if (completionNotice(record)?.event !== event) saveCompletionNotice(record,{event,pending:true});
+  if (completionNotice(record)?.event !== event) saveCompletionNotice(record,{event,pending:true,automatic:true});
 }
 
 function achievementTipAttributes(item) {
@@ -1545,9 +1545,9 @@ async function importSteamLog(file) {
 }
 
 const statsPeriods = {
-  weeks: {count:10, label:'По неделям', title:'Итоги недели', unit:'недели', topGames:3},
-  months: {count:12, label:'По месяцам', title:'Итоги месяца', unit:'месяца', topGames:5},
-  years: {count:7, label:'По годам', title:'Итоги года', unit:'года', topGames:10}
+  weeks: {count:10, label:'По неделям', title:'Итоги недели', unit:'недели', topLimit:3},
+  months: {count:12, label:'По месяцам', title:'Итоги месяца', unit:'месяца', topLimit:5},
+  years: {count:7, label:'По годам', title:'Итоги года', unit:'года', topLimit:10}
 };
 const statsMonth = new Intl.DateTimeFormat('ru',{month:'short',timeZone:'UTC'});
 const statsMonthYear = new Intl.DateTimeFormat('ru',{month:'long',year:'numeric',timeZone:'UTC'});
@@ -1679,6 +1679,12 @@ function openStatsPeriod(control) {
   showStatsPeriod(statsTimeMode,key,activity,now);
 }
 
+function recapRanking(entries, limit, row) {
+  return '<ol class="period-recap-ranking" role="list">' + entries.slice(0,limit).map((entry,index)=>
+    '<li>'+row(entry,'<span class="period-recap-rank" aria-hidden="true">'+(index+1)+'</span>')+'</li>'
+  ).join('')+'</ol>';
+}
+
 function showStatsPeriod(mode, key, {from,to,events}, now) {
   const inPeriod = day => day >= from && day < to;
   const period = statsPeriods[mode];
@@ -1688,8 +1694,8 @@ function showStatsPeriod(mode, key, {from,to,events}, now) {
   const total = [...daily.values()].reduce((sum,minutes)=>sum+minutes,0);
   const achievements = achievementEntries().filter(({item})=>item.unlocked && item.time > 0 &&
     item.time*1000 <= now && inPeriod(dayNumber(item.time*1000)));
-  const rarest = achievements.filter(({item})=>Number.isFinite(item.percent))
-    .sort((a,b)=>a.item.percent-b.item.percent || b.item.time-a.item.time)[0];
+  const rarity = item => Number.isFinite(item.percent) ? item.percent : Infinity;
+  const rankedAchievements = [...achievements].sort((a,b)=>rarity(a.item)-rarity(b.item) || b.item.time-a.item.time);
   const metrics = periodRecapMetrics(mode,daily,total,ranked.length,achievements,from,to);
   dialog.className = 'period-recap-dialog';
   dialog.innerHTML = [
@@ -1705,17 +1711,16 @@ function showStatsPeriod(mode, key, {from,to,events}, now) {
       '<div style="--recap-delay:'+(760+index*73)+'ms"><dt>'+esc(label)+'</dt><dd>'+esc(value)+'</dd>'+
       (detail ? '<dd class="period-recap-metric-detail">'+esc(detail)+'</dd>' : '')+'</div>'
     ).join('')+'</dl>',
-    '<div class="period-recap-highlights"><section><h3>Топ игр '+period.unit+'</h3><ol class="period-recap-ranking" role="list">',
-    ranked.slice(0,period.topGames).map(({game,minutes},index)=>
-      '<li><a href="'+gameHref(game)+'"><span class="period-recap-rank" aria-hidden="true">'+(index+1)+'</span>'+
-        cover(game,'',{detailed:true})+'<span><strong>'+esc(displayName(game))+'</strong>'+
-        '<small>'+esc(sessionDuration(minutes))+'</small></span></a></li>'
-    ).join('')+'</ol></section>',
-    '<section><h3>Самая редкая ачивка</h3>',
-    rarest ? '<a class="period-recap-feature" href="'+gameHref(rarest.game,'achievements')+'">'+trophyIcon(rarest.item)+
-      '<span><strong>'+esc(rarest.item.name)+'</strong><small>'+esc(displayName(rarest.game))+' · '+
-      numeric(Math.round(rarest.item.percent*10)/10)+'% игроков</small></span></a>' :
-      '<p class="period-recap-caption">'+(achievements.length ? 'Steam не передал данные о редкости.' : 'За этот период достижений нет.')+'</p>',
+    '<div class="period-recap-highlights"><section><h3>Топ игр '+period.unit+'</h3>',
+    recapRanking(ranked,period.topLimit,({game,minutes},rank)=>
+      '<a href="'+gameHref(game)+'">'+rank+cover(game,'',{detailed:true})+'<span><strong>'+esc(displayName(game))+'</strong>'+
+      '<small>'+esc(sessionDuration(minutes))+'</small></span></a>'),
+    '</section><section><h3>Топ достижений по редкости</h3>',
+    rankedAchievements.length ? recapRanking(rankedAchievements,period.topLimit,({game,item},rank)=>
+      '<a href="'+gameHref(game,'achievements')+'">'+rank+trophyIcon(item)+
+      '<span><strong>'+esc(item.name)+'</strong><small>'+esc(displayName(game))+
+      (Number.isFinite(item.percent) ? ' · '+numeric(Math.round(item.percent*10)/10)+'% игроков' : '')+'</small></span></a>') :
+      '<p class="period-recap-caption">За этот период достижений нет.</p>',
     '</section></div></div>'
   ].join('');
   dialog.showModal();
@@ -1732,17 +1737,43 @@ function dueStatsPeriods(now) {
   return periods;
 }
 
-async function maybeShowAutomaticRecap() {
+function showResultOnce(storageKey, value, show) {
+  const previous = localStorage.getItem(storageKey);
+  localStorage.setItem(storageKey,value);
+  try {
+    show();
+  } catch (error) {
+    if (previous === null) localStorage.removeItem(storageKey);
+    else localStorage.setItem(storageKey,previous);
+    throw error;
+  }
+}
+
+function showQueuedCompletion() {
+  for (const game of currentGames()) {
+    const record = summaryFor(game);
+    if (game.hidden || trophyFor(record) !== 'platinum') continue;
+    const notice = completionNotice(record);
+    if (!notice?.automatic || !notice.pending) continue;
+    const storageKey = completionKey(record) + ':automatic';
+    if (localStorage.getItem(storageKey) === notice.event) continue;
+    showResultOnce(storageKey,notice.event,()=>showCompletionResults(game,record));
+    return true;
+  }
+  return false;
+}
+
+async function maybeShowAutomaticResults() {
   const account = state.steam?.account;
   const ready = () => autoRecapReady && account && account === state.steam?.account &&
-    route.page === 'library' && !route.section && !route.trophy && !dialog.open && !sectionDialog.open &&
-    !syncingSteam && !document.hidden;
+    !dialog.open && !sectionDialog.open && !syncingSteam && !document.hidden;
   if (!ready()) return;
   const storagePrefix = STORAGE_KEY + ':period-recaps:' + account;
   const open = () => {
     if (!ready()) return;
+    if (showQueuedCompletion()) return;
     const now = Date.now();
-    if (dayNumber(now) !== autoRecapVisitDay) return;
+    if (route.page !== 'library' || route.section || route.trophy || dayNumber(now) !== autoRecapVisitDay) return;
     const due = dueStatsPeriods(now).filter(([mode,key])=>
       Number(localStorage.getItem(storagePrefix + ':' + mode)) < key);
     if (!due.length) return;
@@ -1751,15 +1782,7 @@ async function maybeShowAutomaticRecap() {
       const activity = statsPeriodActivity(mode,key,sessions,now);
       if (!activity.events.length) continue;
       const storageKey = storagePrefix + ':' + mode;
-      const previous = localStorage.getItem(storageKey);
-      localStorage.setItem(storageKey,String(key));
-      try {
-        showStatsPeriod(mode,key,activity,now);
-      } catch (error) {
-        if (previous === null) localStorage.removeItem(storageKey);
-        else localStorage.setItem(storageKey,previous);
-        throw error;
-      }
+      showResultOnce(storageKey,String(key),()=>showStatsPeriod(mode,key,activity,now));
       break;
     }
   };
@@ -1773,7 +1796,7 @@ async function maybeShowAutomaticRecap() {
 
 function checkRecapsOnVisit() {
   autoRecapVisitDay = dayNumber(Date.now());
-  void maybeShowAutomaticRecap();
+  void maybeShowAutomaticResults();
 }
 
 function statsPage() {
@@ -2182,6 +2205,10 @@ function openCompletionResults(control) {
   if (!game) return;
   const record = summaryFor(game);
   if (trophyFor(record) !== 'platinum') return;
+  showCompletionResults(game,record,true);
+}
+
+function showCompletionResults(game, record, manual = false) {
   const unlocked = recentUnlocks(record);
   const dated = unlocked.filter(item => item.time > 0);
   const hasCompleteDates = dated.length === record.total;
@@ -2204,7 +2231,10 @@ function openCompletionResults(control) {
     saveCompletionNotice(record,{...notice,pending:false});
     renderLibraryList();
     renderLibraryList(true);
-    [...(sectionDialog.open ? sectionDialog : app).querySelectorAll('.desk-results-link')].find(item => item.dataset.id === game.id)?.focus({preventScroll:true});
+    if (manual) {
+      [...(sectionDialog.open ? sectionDialog : app).querySelectorAll('.desk-results-link')]
+        .find(item => item.dataset.id === game.id)?.focus({preventScroll:true});
+    }
   }
   showDialog(esc(displayName(game,true)), '', `<div class="desk-completion-body">
     <div class="desk-completion-art" aria-hidden="true">${hero ? `<img src="${esc(hero)}" alt="" referrerpolicy="no-referrer" data-steam-art="${game.steam.appid}" data-art-kind="hero">` : ''}</div>
@@ -2546,9 +2576,10 @@ document.addEventListener('change', async event => {
     const game = findByRoute(games());
     if (!game) return;
     const count = field.value === '' ? 0 : field.valueAsNumber;
-    if (!field.validity.valid || !Number.isSafeInteger(count)) {
+    const minimum = Number(field.min);
+    if (!field.validity.valid || !Number.isSafeInteger(count) || count < minimum) {
       field.value = game.playthroughCount;
-      notify('Введи целое число от нуля.', true);
+      notify(minimum ? 'У пройденной игры должно быть хотя бы одно прохождение.' : 'Введи целое число от нуля.', true);
     } else if (count === game.playthroughCount || updateGame(game,{playthroughCount:count},'Количество прохождений сохранено')) {
       field.defaultValue = field.value = count;
     } else field.value = game.playthroughCount;
@@ -2558,8 +2589,14 @@ document.addEventListener('change', async event => {
     const game = findByRoute(games());
     if (!game) return;
     if (updateGame(game,{status:field.checked ? 'completed' : 'planned',shelf:true})) {
+      const updated = findByRoute(games());
       const badge = app.querySelector('#game-trophy');
-      if (badge && !badge.querySelector('.perfect')) badge.innerHTML = completionBadge(completionFor(findByRoute(games())));
+      if (badge && !badge.querySelector('.perfect')) badge.innerHTML = completionBadge(completionFor(updated));
+      const count = app.querySelector('#game-playthrough-count');
+      if (count) {
+        count.min = field.checked ? '1' : '0';
+        count.defaultValue = count.value = updated.playthroughCount;
+      }
     } else field.checked = game.status === 'completed';
     return;
   }
@@ -2733,7 +2770,7 @@ sectionDialog.addEventListener('close',() => {
     storagePending = false;
     refreshFromStorage();
   }
-  void maybeShowAutomaticRecap();
+  void maybeShowAutomaticResults();
 });
 
 function refreshFromStorage() {
@@ -2761,7 +2798,7 @@ dialog.addEventListener('close', () => {
     storagePending = false;
     refreshFromStorage();
   }
-  void maybeShowAutomaticRecap();
+  void maybeShowAutomaticResults();
 });
 
 document.addEventListener('keydown', event => {
@@ -2902,7 +2939,7 @@ async function steamSync({background = false} = {}) {
       const game = findByRoute(games());
       if (!background || game && isInLibrary(game,previousRoster) !== isInLibrary(game,roster)) render();
     }
-    void maybeShowAutomaticRecap();
+    void maybeShowAutomaticResults();
   }
 }
 
@@ -2930,6 +2967,7 @@ async function refreshSteamSummaries(repaint = true) {
   for (const record of records) trackCompletion(record, summaryAccount === account ? summaries.get(record.appid) : null);
   summaryAccount = account;
   summaries = new Map(records.map(record => [record.appid,record]));
+  void maybeShowAutomaticResults();
   if (!repaint || dialog.open) return;
   if (route.page === 'library') refreshLibrary();
   if (['achievements','sessions','stats'].includes(route.section) || route.page === 'game' && route.tab === 'sessions') {
@@ -3137,7 +3175,7 @@ function gameDashboard() {
           <dl class="desk-game-metrics">
             <div class="desk-playthrough">
               <dt><label class="desk-icon-text" for="game-playthrough-count">${icon('checklist',15)}Прохождения</label></dt>
-              <dd><input id="game-playthrough-count" type="number" inputmode="numeric" min="0" max="${Number.MAX_SAFE_INTEGER}"
+              <dd><input id="game-playthrough-count" type="number" inputmode="numeric" min="${game.status === 'completed' ? 1 : 0}" max="${Number.MAX_SAFE_INTEGER}"
                 step="1" value="${game.playthroughCount}" title="Изменить количество прохождений"></dd>
             </div>
             <div><dt class="desk-icon-text">${icon('trophy',15)}Достижения</dt><dd id="game-achievement-count">${summary?.total ? summary.unlocked+' / '+summary.total : 'Нет достижений'}</dd></div>
@@ -3591,7 +3629,7 @@ if (!route.section && route.page === 'library') libraryHash = location.hash || '
 render(false,true);
 refreshSteamSummaries().finally(() => {
   autoRecapReady = true;
-  void maybeShowAutomaticRecap();
+  void maybeShowAutomaticResults();
 });
 refreshSteamProfile();
 window.addEventListener('online', () => { refreshSteamProfile(); maybeSyncSteam(); refreshStoreFeeds(); });

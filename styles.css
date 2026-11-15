@@ -2133,13 +2133,6 @@ dialog.period-recap-dialog:not(.boss-map-panel){
 .period-recap-highlights section{min-width:0;padding-right:14px}
 .period-recap-highlights section+section{padding-inline:clamp(12px,3vw,33px) 0}
 .period-recap-highlights h3{color:#89e7f3;font-size:clamp(.9rem,2.1vw,1.55rem);font-weight:800;margin-bottom:9px}
-.period-recap-feature{display:flex;align-items:center;gap:12px;width:fit-content;color:#f8f5ec}
-.period-recap-feature:hover strong{text-decoration:underline;text-underline-offset:3px}
-.period-recap-feature .cover,.period-recap-feature .desk-trophy-icon{flex:none;width:clamp(36px,5.1vw,56px);border-radius:6px}
-.period-recap-feature .cover{aspect-ratio:2/3}
-.period-recap-feature strong,.period-recap-feature small{display:block;overflow-wrap:anywhere}
-.period-recap-feature strong{font-size:clamp(1rem,2.15vw,1.65rem);font-weight:800;line-height:1.17}
-.period-recap-feature small{margin-top:5px;color:#c3dfed;font-size:clamp(.76rem,1.55vw,1.06rem)}
 .period-recap-ranking{list-style:none;padding:0}
 .period-recap-ranking li{min-width:0;border-bottom:1px solid #85cde436}
 .period-recap-ranking a{display:grid;grid-template-columns:2ch 29px minmax(0,1fr);align-items:center;gap:9px;padding:5px 2px}
@@ -2147,10 +2140,10 @@ dialog.period-recap-dialog:not(.boss-map-panel){
 .period-recap-rank{color:#9eb9ca;text-align:center;font-variant-numeric:tabular-nums;font-weight:700}
 .period-recap-ranking li:first-child .period-recap-rank{color:#95ebf8}
 .period-recap-ranking .cover{width:29px;aspect-ratio:2/3;border-radius:4px}
+.period-recap-ranking .desk-trophy-icon{width:29px;border-radius:4px}
 .period-recap-ranking strong,.period-recap-ranking small{display:block;overflow-wrap:anywhere;line-height:1.25}
 .period-recap-ranking strong{color:#eef5f9;font-size:.91rem;font-weight:800}
 .period-recap-ranking small{margin-top:3px;color:#b6cddd;font-size:.8rem;font-variant-numeric:tabular-nums}
-[data-recap-period=years] .period-recap-highlights{grid-template-columns:2fr 1fr}
 @media(min-width:950px){
   [data-recap-period=years] .period-recap-ranking{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:17px}
 }
