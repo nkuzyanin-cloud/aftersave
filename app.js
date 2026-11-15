@@ -46,6 +46,8 @@ let achievementSort = 'common';
 let collectionSort = 'games';
 let statsTimeMode = 'months';
 let statsTimePage = 0;
+let autoRecapReady = false;
+let autoRecapVisitDay = dayNumber(Date.now());
 let sessionPeriod = '30';
 let sessionGrouping = 'days';
 let revealHidden = true;
@@ -1543,9 +1545,9 @@ async function importSteamLog(file) {
 }
 
 const statsPeriods = {
-  weeks: {count:10, label:'По неделям', title:'Итоги недели'},
-  months: {count:12, label:'По месяцам', title:'Итоги месяца'},
-  years: {count:7, label:'По годам', title:'Итоги года'}
+  weeks: {count:10, label:'По неделям', title:'Итоги недели', unit:'недели', topGames:3},
+  months: {count:12, label:'По месяцам', title:'Итоги месяца', unit:'месяца', topGames:5},
+  years: {count:7, label:'По годам', title:'Итоги года', unit:'года', topGames:10}
 };
 const statsMonth = new Intl.DateTimeFormat('ru',{month:'short',timeZone:'UTC'});
 const statsMonthYear = new Intl.DateTimeFormat('ru',{month:'long',year:'numeric',timeZone:'UTC'});
@@ -1661,35 +1663,41 @@ function periodRecapMetrics(mode, daily, total, gameCount, achievements, from, t
   ];
 }
 
+function statsPeriodActivity(mode, key, sessions, now) {
+  const from = statsDay(statsPeriodDate(key,mode));
+  const to = Math.min(statsDay(statsPeriodDate(key+1,mode)),dayNumber(now)+1);
+  return {from,to,events:sessions.filter(({day,minutes})=>day >= from && day < to && minutes > 0)};
+}
+
 function openStatsPeriod(control) {
-  const mode = statsTimeMode;
   const key = Number(control.dataset.period);
   if (!Number.isSafeInteger(key)) return;
-  const from = statsDay(statsPeriodDate(key,mode));
-  const to = Math.min(statsDay(statsPeriodDate(key+1,mode)),dayNumber(Date.now())+1);
+  const now = Date.now();
+  const activity = statsPeriodActivity(statsTimeMode,key,statsSessionEvents(),now);
+  if (!activity.events.length) return;
+  control.focus({preventScroll:true});
+  showStatsPeriod(statsTimeMode,key,activity,now);
+}
+
+function showStatsPeriod(mode, key, {from,to,events}, now) {
   const inPeriod = day => day >= from && day < to;
-  const events = statsSessionEvents().filter(event=>inPeriod(event.day) && event.minutes > 0);
+  const period = statsPeriods[mode];
   const ranked = sessionRank(events);
-  const leader = ranked[0];
-  if (!leader) return;
   const daily = new Map();
   for (const {day,minutes} of events) addDaily(daily,day,minutes);
   const total = [...daily.values()].reduce((sum,minutes)=>sum+minutes,0);
-  const now = Date.now();
   const achievements = achievementEntries().filter(({item})=>item.unlocked && item.time > 0 &&
     item.time*1000 <= now && inPeriod(dayNumber(item.time*1000)));
   const rarest = achievements.filter(({item})=>Number.isFinite(item.percent))
     .sort((a,b)=>a.item.percent-b.item.percent || b.item.time-a.item.time)[0];
   const metrics = periodRecapMetrics(mode,daily,total,ranked.length,achievements,from,to);
-  const unit = {weeks:'недели',months:'месяца',years:'года'}[mode];
-  control.focus({preventScroll:true});
   dialog.className = 'period-recap-dialog';
   dialog.innerHTML = [
     '<div class="period-recap-inner" data-recap-period="'+mode+'">',
     '<div class="period-recap-art" aria-hidden="true"></div><div class="period-recap-light" aria-hidden="true"></div>',
     '<div class="period-recap-close">'+iconButton('close-dialog','Закрыть','x')+'</div>',
     '<header class="period-recap-header"><p class="period-recap-date">'+esc(statsPeriodLabel(key,mode))+'</p>',
-    '<h2 id="dialog-title">'+statsPeriods[mode].title+'</h2>',
+    '<h2 id="dialog-title">'+period.title+'</h2>',
     '<strong class="period-recap-total">'+esc(sessionDuration(total))+'</strong>',
     '<p class="period-recap-caption">Игровое время · по записанным сессиям</p></header>',
     '<dl class="period-recap-metrics">',
@@ -1697,9 +1705,12 @@ function openStatsPeriod(control) {
       '<div style="--recap-delay:'+(760+index*73)+'ms"><dt>'+esc(label)+'</dt><dd>'+esc(value)+'</dd>'+
       (detail ? '<dd class="period-recap-metric-detail">'+esc(detail)+'</dd>' : '')+'</div>'
     ).join('')+'</dl>',
-    '<div class="period-recap-highlights"><section><h3>Игра '+unit+'</h3>',
-    '<a class="period-recap-feature" href="'+gameHref(leader.game)+'">'+cover(leader.game,'',{detailed:true})+
-      '<span><strong>'+esc(displayName(leader.game))+'</strong><small>'+esc(sessionDuration(leader.minutes))+'</small></span></a></section>',
+    '<div class="period-recap-highlights"><section><h3>Топ игр '+period.unit+'</h3><ol class="period-recap-ranking" role="list">',
+    ranked.slice(0,period.topGames).map(({game,minutes},index)=>
+      '<li><a href="'+gameHref(game)+'"><span class="period-recap-rank" aria-hidden="true">'+(index+1)+'</span>'+
+        cover(game,'',{detailed:true})+'<span><strong>'+esc(displayName(game))+'</strong>'+
+        '<small>'+esc(sessionDuration(minutes))+'</small></span></a></li>'
+    ).join('')+'</ol></section>',
     '<section><h3>Самая редкая ачивка</h3>',
     rarest ? '<a class="period-recap-feature" href="'+gameHref(rarest.game,'achievements')+'">'+trophyIcon(rarest.item)+
       '<span><strong>'+esc(rarest.item.name)+'</strong><small>'+esc(displayName(rarest.game))+' · '+
@@ -1712,6 +1723,59 @@ function openStatsPeriod(control) {
   dialog.querySelector('[data-action="close-dialog"]').focus({preventScroll:true});
   imageFallbacks(dialog);
 }
+
+function dueStatsPeriods(now) {
+  const today = dayNumber(now);
+  const date = calendarDate(today);
+  const periods = [['months',statsPeriodKey(today,'months')-1],['weeks',statsPeriodKey(today,'weeks')-1]];
+  if (date.getUTCMonth() === 11 && date.getUTCDate() === 31) periods.unshift(['years',date.getUTCFullYear()]);
+  return periods;
+}
+
+async function maybeShowAutomaticRecap() {
+  const account = state.steam?.account;
+  const ready = () => autoRecapReady && account && account === state.steam?.account &&
+    route.page === 'library' && !route.section && !route.trophy && !dialog.open && !sectionDialog.open &&
+    !syncingSteam && !document.hidden;
+  if (!ready()) return;
+  const storagePrefix = STORAGE_KEY + ':period-recaps:' + account;
+  const open = () => {
+    if (!ready()) return;
+    const now = Date.now();
+    if (dayNumber(now) !== autoRecapVisitDay) return;
+    const due = dueStatsPeriods(now).filter(([mode,key])=>
+      Number(localStorage.getItem(storagePrefix + ':' + mode)) < key);
+    if (!due.length) return;
+    const sessions = statsSessionEvents();
+    for (const [mode,key] of due) {
+      const activity = statsPeriodActivity(mode,key,sessions,now);
+      if (!activity.events.length) continue;
+      const storageKey = storagePrefix + ':' + mode;
+      const previous = localStorage.getItem(storageKey);
+      localStorage.setItem(storageKey,String(key));
+      try {
+        showStatsPeriod(mode,key,activity,now);
+      } catch (error) {
+        if (previous === null) localStorage.removeItem(storageKey);
+        else localStorage.setItem(storageKey,previous);
+        throw error;
+      }
+      break;
+    }
+  };
+  try {
+    if (navigator.locks) await navigator.locks.request(storagePrefix,open);
+    else open();
+  } catch (error) {
+    console.warn('AFTERSAVE recap:',error);
+  }
+}
+
+function checkRecapsOnVisit() {
+  autoRecapVisitDay = dayNumber(Date.now());
+  void maybeShowAutomaticRecap();
+}
+
 function statsPage() {
   const linked = games().filter(game => game.steam && !game.hidden);
   const active = linked.filter(game => isInLibrary(game));
@@ -2626,7 +2690,10 @@ function updateRoute() {
   render(true,true);
 }
 
-window.addEventListener('hashchange',updateRoute);
+window.addEventListener('hashchange',() => {
+  updateRoute();
+  checkRecapsOnVisit();
+});
 
 for (const modal of [sectionDialog,dialog]) {
   let pressedOutside = false;
@@ -2666,6 +2733,7 @@ sectionDialog.addEventListener('close',() => {
     storagePending = false;
     refreshFromStorage();
   }
+  void maybeShowAutomaticRecap();
 });
 
 function refreshFromStorage() {
@@ -2693,6 +2761,7 @@ dialog.addEventListener('close', () => {
     storagePending = false;
     refreshFromStorage();
   }
+  void maybeShowAutomaticRecap();
 });
 
 document.addEventListener('keydown', event => {
@@ -2833,6 +2902,7 @@ async function steamSync({background = false} = {}) {
       const game = findByRoute(games());
       if (!background || game && isInLibrary(game,previousRoster) !== isInLibrary(game,roster)) render();
     }
+    void maybeShowAutomaticRecap();
   }
 }
 
@@ -3519,11 +3589,19 @@ function updateAchievementRows(more = false, animate = false) {
 
 if (!route.section && route.page === 'library') libraryHash = location.hash || '#library';
 render(false,true);
-refreshSteamSummaries();
+refreshSteamSummaries().finally(() => {
+  autoRecapReady = true;
+  void maybeShowAutomaticRecap();
+});
 refreshSteamProfile();
 window.addEventListener('online', () => { refreshSteamProfile(); maybeSyncSteam(); refreshStoreFeeds(); });
+window.addEventListener('pageshow',checkRecapsOnVisit);
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) { maybeSyncSteam(); refreshStoreFeeds(); }
+  if (!document.hidden) {
+    maybeSyncSteam();
+    refreshStoreFeeds();
+    checkRecapsOnVisit();
+  }
 });
 setInterval(() => {
   if (!document.hidden) { refreshStoreFeeds(); }
