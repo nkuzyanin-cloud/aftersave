@@ -1712,14 +1712,22 @@ function showStatsPeriod(mode, key, {from,to,events}, now) {
       (detail ? '<dd class="period-recap-metric-detail">'+esc(detail)+'</dd>' : '')+'</div>'
     ).join('')+'</dl>',
     '<div class="period-recap-highlights"><section><h3>Топ игр '+period.unit+'</h3>',
-    recapRanking(ranked,period.topLimit,({game,minutes},rank)=>
-      '<a href="'+gameHref(game)+'">'+rank+cover(game,'',{detailed:true})+'<span><strong>'+esc(displayName(game))+'</strong>'+
-      '<small>'+esc(sessionDuration(minutes))+'</small></span></a>'),
+    recapRanking(ranked,period.topLimit,({game,minutes},rank)=>{
+      const name = esc(displayName(game));
+      return '<a href="'+gameHref(game)+'">'+rank+cover(game,'',{detailed:true})+'<span><strong title="'+name+'">'+name+
+        '</strong><small>'+esc(sessionDuration(minutes))+'</small></span></a>';
+    }),
     '</section><section><h3>Топ достижений по редкости</h3>',
-    rankedAchievements.length ? recapRanking(rankedAchievements,period.topLimit,({game,item},rank)=>
-      '<a href="'+gameHref(game,'achievements')+'">'+rank+trophyIcon(item)+
-      '<span><strong>'+esc(item.name)+'</strong><small>'+esc(displayName(game))+
-      (Number.isFinite(item.percent) ? ' · '+numeric(Math.round(item.percent*10)/10)+'% игроков' : '')+'</small></span></a>') :
+    rankedAchievements.length ? recapRanking(rankedAchievements,period.topLimit,({game,item},rank)=>{
+      const title = esc(item.name);
+      const gameName = esc(displayName(game));
+      const share = Number.isFinite(item.percent) ? numeric(Math.round(item.percent*10)/10)+'%' : '';
+      return '<a href="'+gameHref(game,'achievements')+'">'+rank+trophyIcon(item)+
+        '<span><strong title="'+title+'">'+title+'</strong><small class="period-recap-ranking-meta">'+
+        '<span title="'+gameName+'">'+gameName+'</span>'+
+        (share ? '<span title="'+share+' игроков Steam" aria-label="'+share+' игроков Steam">'+share+'</span>' : '')+
+        '</small></span></a>';
+    }) :
       '<p class="period-recap-caption">За этот период достижений нет.</p>',
     '</section></div></div>'
   ].join('');
