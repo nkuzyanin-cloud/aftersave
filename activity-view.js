@@ -11,8 +11,8 @@ export function addDaily(days, day, amount) {
   days.set(day, (days.get(day) ?? 0) + amount);
 }
 
-export function streaks(days, today) {
-  const active = [...days.keys()].filter(day => day >= today - 364 && day <= today).sort((a,b) => a - b);
+export function streaks(days, today, start = today - 364) {
+  const active = [...days.keys()].filter(day => day >= start && day <= today).sort((a,b) => a - b);
   let best = 0, run = 0, previous = -Infinity;
   for (const day of active) {
     run = day === previous + 1 ? run + 1 : 1;

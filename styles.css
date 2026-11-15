@@ -2116,11 +2116,19 @@ dialog.period-recap-dialog:not(.boss-map-panel){
 .period-recap-total{display:block;color:#bdf1ff;text-shadow:0 0 31px #50cdf448;font-size:clamp(2.65rem,7.4vw,6.25rem);font-variant-numeric:tabular-nums}
 .period-recap-caption{margin:10px 0 0;color:#c5d7e3;font-size:clamp(.85rem,1.5vw,1.08rem)}
 .period-recap-metrics,.period-recap-highlights{display:grid;margin-inline:clamp(23px,5vw,60px)}
-.period-recap-metrics{grid-template-columns:repeat(3,minmax(0,1fr));text-align:center;padding:18px 0;border-block:1px solid #85cde455}
+.period-recap-metrics{grid-template-columns:repeat(2,minmax(0,1fr));text-align:center;padding:18px 0;border-block:1px solid #85cde455}
+[data-recap-period=months] .period-recap-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}
+[data-recap-period=years] .period-recap-metrics{grid-template-columns:repeat(3,minmax(0,1fr));padding:0}
 .period-recap-metrics>div{display:flex;flex-direction:column;justify-content:center;padding-inline:6px}
 .period-recap-metrics>div+div,.period-recap-highlights>section+section{border-left:1px solid #85cde455}
+[data-recap-period=years] .period-recap-header{min-height:280px}
+[data-recap-period=years] .period-recap-metrics>div{min-height:76px;padding:10px 6px;background:#0314204d}
+[data-recap-period=years] .period-recap-metrics>div:nth-child(3n+1){border-left:0}
+[data-recap-period=years] .period-recap-metrics>div:nth-child(n+4){border-top:1px solid #85cde455}
 .period-recap-metrics dd{order:-1;font-size:clamp(1.72rem,4.25vw,3.4rem);font-weight:800;line-height:1;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+[data-recap-period=years] .period-recap-metrics dd:not(.period-recap-metric-detail){font-size:clamp(1.25rem,2.75vw,2.5rem)}
 .period-recap-metrics dt{margin-top:7px;color:#d8e7ee;font-size:clamp(.75rem,1.5vw,1rem);line-height:1.25}
+.period-recap-metrics .period-recap-metric-detail{order:0;margin-top:4px;font-size:.78rem;letter-spacing:0;color:#b4d3e2}
 .period-recap-highlights{grid-template-columns:1fr 1fr;margin-block:24px 32px}
 .period-recap-highlights section{min-width:0;padding-right:14px}
 .period-recap-highlights section+section{padding-inline:clamp(12px,3vw,33px) 0}
@@ -2155,10 +2163,7 @@ dialog.period-recap-dialog:not(.boss-map-panel){
   }
   .period-recap-header h2{--recap-delay:.28s}
   .period-recap-total,.period-recap-header .period-recap-caption{--recap-delay:.44s}
-  .period-recap-metrics>div:nth-child(1){--recap-delay:.77s}
-  .period-recap-metrics>div:nth-child(2){--recap-delay:.99s}
-  .period-recap-metrics>div:nth-child(3){--recap-delay:1.21s}
-  .period-recap-highlights>section:first-child{--recap-delay:1.4s}
+  .period-recap-highlights>section:first-child{--recap-delay:1.45s}
   .period-recap-highlights>section:last-child{--recap-delay:1.6s}
   .route-enter .desk-game-heading,.route-enter .desk-game-crumb,.route-enter .desk-game-body,
   .route-enter .boss-tracker-heading,.route-enter .boss-sidebar,.route-enter .boss-region{

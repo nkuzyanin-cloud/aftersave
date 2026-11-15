@@ -1626,6 +1626,39 @@ function redrawStatsHours() {
   startStatsMotion(sectionDialog.querySelector('.stats-time-chart'),'chart-enter');
 }
 
+function periodRecapMetrics(mode, daily, total, gameCount, achievements, from, to) {
+  const metrics = [
+    ['Игровых дней',numeric(daily.size)],
+    ['Получено достижений',numeric(achievements.length)]
+  ];
+  if (mode === 'weeks') return metrics;
+  metrics.push(
+    ['Игр запущено',numeric(gameCount)],
+    ['В среднем за игровой день',sessionDuration(total/daily.size)]
+  );
+  if (mode === 'months') return metrics;
+
+  const [bestDay,bestMinutes] = [...daily].sort(([dayA,minutesA],[dayB,minutesB])=>
+    minutesB-minutesA || dayB-dayA)[0];
+  const months = new Set([...daily.keys()].map(day=>statsPeriodKey(day,'months')));
+  const perfect = games().filter(game => {
+    if (game.hidden) return false;
+    const record = summaryFor(game);
+    if (trophyFor(record) !== 'platinum') return false;
+    const unlocked = recentUnlocks(record);
+    if (unlocked.length !== record.total || !unlocked.every(item=>item.time > 0)) return false;
+    const finish = dayNumber(unlocked[0].time*1000);
+    return finish >= from && finish < to && unlocked[0].time*1000 <= Date.now();
+  }).length;
+  return [...metrics,
+    ['Активных месяцев',numeric(months.size)],
+    ['Самый игровой день',sessionDuration(bestMinutes),shortDay.format(calendarDate(bestDay))],
+    ['Лучшая серия игровых дней',numeric(streaks(daily,to-1,from).best)+' дн.'],
+    ['Редких достижений',numeric(achievements.filter(({item})=>isRare(item)).length)],
+    ['Игр на «Идеально»',numeric(perfect)]
+  ];
+}
+
 function openStatsPeriod(control) {
   const mode = statsTimeMode;
   const key = Number(control.dataset.period);
@@ -1637,18 +1670,20 @@ function openStatsPeriod(control) {
   const ranked = sessionRank(events);
   const leader = ranked[0];
   if (!leader) return;
-  const total = events.reduce((sum,event)=>sum+event.minutes,0);
-  const days = new Set(events.map(event=>event.day)).size;
+  const daily = new Map();
+  for (const {day,minutes} of events) addDaily(daily,day,minutes);
+  const total = [...daily.values()].reduce((sum,minutes)=>sum+minutes,0);
   const now = Date.now();
   const achievements = achievementEntries().filter(({item})=>item.unlocked && item.time > 0 &&
     item.time*1000 <= now && inPeriod(dayNumber(item.time*1000)));
   const rarest = achievements.filter(({item})=>Number.isFinite(item.percent))
     .sort((a,b)=>a.item.percent-b.item.percent || b.item.time-a.item.time)[0];
+  const metrics = periodRecapMetrics(mode,daily,total,ranked.length,achievements,from,to);
   const unit = {weeks:'недели',months:'месяца',years:'года'}[mode];
   control.focus({preventScroll:true});
   dialog.className = 'period-recap-dialog';
   dialog.innerHTML = [
-    '<div class="period-recap-inner">',
+    '<div class="period-recap-inner" data-recap-period="'+mode+'">',
     '<div class="period-recap-art" aria-hidden="true"></div><div class="period-recap-light" aria-hidden="true"></div>',
     '<div class="period-recap-close">'+iconButton('close-dialog','Закрыть','x')+'</div>',
     '<header class="period-recap-header"><p class="period-recap-date">'+esc(statsPeriodLabel(key,mode))+'</p>',
@@ -1656,9 +1691,10 @@ function openStatsPeriod(control) {
     '<strong class="period-recap-total">'+esc(sessionDuration(total))+'</strong>',
     '<p class="period-recap-caption">Игровое время · по записанным сессиям</p></header>',
     '<dl class="period-recap-metrics">',
-    '<div><dt>Игровых дней</dt><dd>'+numeric(days)+'</dd></div>',
-    '<div><dt>Игр запущено</dt><dd>'+numeric(ranked.length)+'</dd></div>',
-    '<div><dt>Получено достижений</dt><dd>'+numeric(achievements.length)+'</dd></div></dl>',
+    metrics.map(([label,value,detail],index)=>
+      '<div style="--recap-delay:'+(760+index*73)+'ms"><dt>'+esc(label)+'</dt><dd>'+esc(value)+'</dd>'+
+      (detail ? '<dd class="period-recap-metric-detail">'+esc(detail)+'</dd>' : '')+'</div>'
+    ).join('')+'</dl>',
     '<div class="period-recap-highlights"><section><h3>Игра '+unit+'</h3>',
     '<a class="period-recap-feature" href="'+gameHref(leader.game)+'">'+cover(leader.game,'',{detailed:true})+
       '<span><strong>'+esc(displayName(leader.game))+'</strong><small>'+esc(sessionDuration(leader.minutes))+'</small></span></a></section>',
