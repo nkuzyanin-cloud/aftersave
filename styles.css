@@ -1132,7 +1132,7 @@ dialog.desk-sessions-dialog{width:min(485px,100vw - 24px);background:var(--desk-
 .desk-celebration-action{font-size:var(--desk-caption);font-weight:700}
 .desk-celebration-row svg{flex:none}
 .desk-celebration:hover .desk-celebration-action{text-decoration:underline}
-.desk-celebration-new::after{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(100deg,transparent 20%,#f6c48735 50%,transparent 80%);animation:desk-completion-sweep 1s ease-out both}
+.desk-celebration-new::after{content:'';position:absolute;inset:0;pointer-events:none;background:linear-gradient(100deg,transparent 20%,#f6c48735 50%,transparent 80%);animation:desk-completion-sweep 1.5s ease-in-out both}
 @keyframes desk-completion-sweep{from{transform:translateX(-105%)}to{transform:translateX(105%)}}
 
 dialog.desk-completion-dialog{position:fixed;width:min(760px,calc(100vw - 24px));isolation:isolate}
@@ -1148,9 +1148,9 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
 .desk-completion-caption{text-align:center;color:var(--desk-muted);margin:0 0 19px;font-size:var(--desk-copy)}
 .desk-completion-timeline{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));padding:0;margin:0;list-style:none;position:relative;text-align:center}
 .desk-completion-timeline::before{content:'';position:absolute;top:104px;inset-inline:16.66%;height:2px;background:linear-gradient(90deg,#6cb5ec,#9894dd,#ecc088)}
-.desk-completion-timeline li{position:relative;display:grid;grid-template-rows:22px 65px 16px;align-items:start;justify-items:center;align-content:start;gap:4px;padding:0 6px;overflow-wrap:anywhere;animation:desk-completion-enter .35s ease-out both}
-.desk-completion-timeline li:nth-child(2){animation-delay:.14s}
-.desk-completion-timeline li:nth-child(3){animation-delay:.28s}
+.desk-completion-timeline li{position:relative;display:grid;grid-template-rows:22px 65px 16px;align-items:start;justify-items:center;align-content:start;gap:4px;padding:0 6px;overflow-wrap:anywhere;animation:desk-completion-enter 360ms var(--motion-ease) 120ms both}
+.desk-completion-timeline li:nth-child(2){animation-delay:370ms}
+.desk-completion-timeline li:nth-child(3){animation-delay:620ms}
 .desk-completion-timeline li::before{content:'';grid-row:3;width:9px;height:9px;align-self:center;border-radius:50%;background:#6cb5ec}
 .desk-completion-timeline li:nth-child(2)::before{background:#9894dd}
 .desk-completion-timeline li:nth-child(3)::before{background:#ecc088;box-shadow:0 0 10px #e9ad6870}
@@ -1278,13 +1278,22 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
 .stats-dashboard .stats-total-hours span{color:var(--stats-muted);font-size:.76rem}
 .stats-dashboard .stats-time-chart{display:grid;grid-template-columns:repeat(var(--stats-chart-columns),minmax(0,1fr));gap:7px;height:141px;align-items:end;
  padding:0 0 0;background:repeating-linear-gradient(to top,transparent 0,transparent calc(25% - 1px),#34485755 25%);}
-.stats-dashboard .stats-time-column{display:flex;flex-direction:column;align-items:center;justify-content:end;gap:4px;height:100%;min-width:0}
-.stats-dashboard .stats-time-column strong{height:14px;color:#e7f9fe;font-size:.64rem;white-space:nowrap;font-weight:600}
+.stats-dashboard .stats-time-column{display:flex;flex-direction:column;align-items:center;justify-content:end;gap:4px;height:100%;min-width:0;padding:0 2px}
+.stats-dashboard button.stats-time-column{width:100%;border-radius:5px;cursor:pointer}
+.stats-dashboard button.stats-time-column:is(:hover,:focus-visible){background:#75c9f217}
+.stats-dashboard button.stats-time-column[aria-current=true] .stats-time-column-track i,
+.stats-dashboard button.stats-time-column:is(:hover,:focus-visible) .stats-time-column-track i{background:linear-gradient(180deg,#cdf4ff,#5ca6da);box-shadow:0 0 14px #8edcfa44}
+.stats-dashboard .stats-time-column strong{min-height:14px;color:#e7f9fe;font-size:.66rem;line-height:1.1;font-weight:700}
 .stats-dashboard .stats-time-column-track{display:flex;align-items:end;width:100%;flex:1;min-height:0}
 .stats-dashboard .stats-time-column-track i{display:block;width:100%;min-height:0;border-radius:5px 5px 0 0;background:linear-gradient(180deg,#65b6e6,#3774b4);
  box-shadow:inset 0 1px #ffffff38;transition:height .25s ease}
 .stats-dashboard .stats-time-column small{margin-top:3px;color:var(--stats-muted);font-size:.69rem;white-space:nowrap}
 .stats-dashboard .stats-time-chart-empty{display:grid;place-items:center;min-height:155px;padding:18px;text-align:center;border:1px dashed #3c5967;border-radius:8px;color:var(--stats-muted);font-size:.89rem}
+.stats-time-footer{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-top:9px;color:var(--stats-muted)}
+.stats-time-footer:empty{display:none}
+.stats-time-history{display:flex;gap:7px;margin-left:auto}
+.stats-time-history button{min-height:32px;padding:3px 7px;font-size:.78rem}
+.stats-time-history button:disabled{cursor:default;opacity:.45}
 .stats-dashboard .stats-chart-caption{margin:9px 0 0;color:#8ea5b3;font-size:.71rem;line-height:1.35}
 .stats-dashboard .stats-top-list{display:grid;gap:7px}
 .stats-dashboard .stats-top-game{display:flex;align-items:center;gap:9px;min-width:0;color:#f1f7fb;text-decoration:none}
@@ -2080,6 +2089,50 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
   .desk-game-achievement-view .desk-game-metrics>div:nth-child(even){padding-right:0;border-right:0}
 }
 
+dialog.period-recap-dialog:not(.boss-map-panel){
+  width:min(1190px,calc(100vw - 44px));border:1px solid #6cc8e2;border-radius:17px;overflow:auto;
+  color:#f8f5eb;background:#031420;box-shadow:0 26px 100px #000e,0 0 36px #2ba9d42b;
+}
+.period-recap-dialog::backdrop{background:#060d17dc;backdrop-filter:blur(7px)}
+.period-recap-inner{min-height:min(720px,calc(100dvh - 38px));position:relative;isolation:isolate;overflow:hidden;display:flex;flex-direction:column}
+.period-recap-art,.period-recap-light{position:absolute;inset:0;z-index:-2;pointer-events:none}
+.period-recap-art{
+  background:
+    linear-gradient(0deg,#031420 4%,#031420e8 22%,#03142070 49%,transparent 69%),
+    linear-gradient(90deg,#031420dc 0%,#0314209c 29%,transparent 64%),
+    #09223b url('./assets/period-recap.webp') center 43% / cover no-repeat;
+}
+.period-recap-light{
+  z-index:-1;opacity:0;
+  background:linear-gradient(112deg,transparent 35%,#7aeaff19 46%,#ffcf692f 51%,transparent 61%);
+  transform:translateX(-90%);
+}
+.period-recap-close{position:absolute;z-index:1;top:19px;right:19px}
+.period-recap-close .icon-btn{background:#041622cc;border:1px solid #83bed07d;color:#e7f3fa}
+.period-recap-header{padding:clamp(24px,4.4vw,55px) clamp(23px,5vw,60px) 32px;flex:1}
+.period-recap-date{color:#d8e8f5;font-weight:750;font-size:clamp(.9rem,1.6vw,1.15rem);letter-spacing:.12em;text-transform:uppercase}
+.period-recap-header h2,.period-recap-total{font-weight:800;line-height:1;letter-spacing:-.053em;text-wrap:balance}
+.period-recap-header h2{font-size:clamp(2.25rem,5.5vw,4.6rem);margin:15px 42px 14px 0}
+.period-recap-total{display:block;color:#bdf1ff;text-shadow:0 0 31px #50cdf448;font-size:clamp(2.65rem,7.4vw,6.25rem);font-variant-numeric:tabular-nums}
+.period-recap-caption{margin:10px 0 0;color:#c5d7e3;font-size:clamp(.85rem,1.5vw,1.08rem)}
+.period-recap-metrics,.period-recap-highlights{display:grid;margin-inline:clamp(23px,5vw,60px)}
+.period-recap-metrics{grid-template-columns:repeat(3,minmax(0,1fr));text-align:center;padding:18px 0;border-block:1px solid #85cde455}
+.period-recap-metrics>div{display:flex;flex-direction:column;justify-content:center;padding-inline:6px}
+.period-recap-metrics>div+div,.period-recap-highlights>section+section{border-left:1px solid #85cde455}
+.period-recap-metrics dd{order:-1;font-size:clamp(1.72rem,4.25vw,3.4rem);font-weight:800;line-height:1;letter-spacing:-.04em;font-variant-numeric:tabular-nums}
+.period-recap-metrics dt{margin-top:7px;color:#d8e7ee;font-size:clamp(.75rem,1.5vw,1rem);line-height:1.25}
+.period-recap-highlights{grid-template-columns:1fr 1fr;margin-block:24px 32px}
+.period-recap-highlights section{min-width:0;padding-right:14px}
+.period-recap-highlights section+section{padding-inline:clamp(12px,3vw,33px) 0}
+.period-recap-highlights h3{color:#89e7f3;font-size:clamp(.9rem,2.1vw,1.55rem);font-weight:800;margin-bottom:9px}
+.period-recap-feature{display:flex;align-items:center;gap:12px;width:fit-content;color:#f8f5ec}
+.period-recap-feature:hover strong{text-decoration:underline;text-underline-offset:3px}
+.period-recap-feature .cover,.period-recap-feature .desk-trophy-icon{flex:none;width:clamp(36px,5.1vw,56px);border-radius:6px}
+.period-recap-feature .cover{aspect-ratio:2/3}
+.period-recap-feature strong,.period-recap-feature small{display:block;overflow-wrap:anywhere}
+.period-recap-feature strong{font-size:clamp(1rem,2.15vw,1.65rem);font-weight:800;line-height:1.17}
+.period-recap-feature small{margin-top:5px;color:#c3dfed;font-size:clamp(.76rem,1.55vw,1.06rem)}
+
 /* Motion runs on navigation and deliberate view changes. */
 @property --stats-library-pct{
   syntax:"<percentage>";
@@ -2094,6 +2147,19 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
 
 @media(prefers-reduced-motion:no-preference){
   :root{--motion-ease:cubic-bezier(.21,.68,.28,1)}
+  dialog.period-recap-dialog[open]{animation:period-recap-open 490ms var(--motion-ease) both}
+  .period-recap-dialog[open] .period-recap-art{animation:period-recap-art 1.35s var(--motion-ease) both}
+  .period-recap-dialog[open] .period-recap-light{animation:period-recap-light 1.55s ease-out .15s both}
+  .period-recap-dialog[open] :is(.period-recap-header>*,.period-recap-metrics>div,.period-recap-highlights>section){
+    animation:period-recap-reveal 540ms var(--motion-ease) var(--recap-delay,.18s) both;
+  }
+  .period-recap-header h2{--recap-delay:.28s}
+  .period-recap-total,.period-recap-header .period-recap-caption{--recap-delay:.44s}
+  .period-recap-metrics>div:nth-child(1){--recap-delay:.77s}
+  .period-recap-metrics>div:nth-child(2){--recap-delay:.99s}
+  .period-recap-metrics>div:nth-child(3){--recap-delay:1.21s}
+  .period-recap-highlights>section:first-child{--recap-delay:1.4s}
+  .period-recap-highlights>section:last-child{--recap-delay:1.6s}
   .route-enter .desk-game-heading,.route-enter .desk-game-crumb,.route-enter .desk-game-body,
   .route-enter .boss-tracker-heading,.route-enter .boss-sidebar,.route-enter .boss-region{
     animation:view-enter 360ms var(--motion-ease) backwards;
@@ -2162,6 +2228,10 @@ dialog.desk-completion-dialog .dialog-head{position:relative;min-height:172px;al
   }
 
 }
+@keyframes period-recap-open{from{opacity:0;translate:0 16px;scale:.975}to{opacity:1;translate:0;scale:1}}
+@keyframes period-recap-art{from{opacity:.2;transform:scale(1.08)}to{opacity:1;transform:scale(1)}}
+@keyframes period-recap-light{0%{opacity:0;transform:translateX(-90%)}30%{opacity:1}100%{opacity:0;transform:translateX(90%)}}
+@keyframes period-recap-reveal{from{opacity:0;transform:translateY(13px);filter:blur(3px)}to{opacity:1;transform:none;filter:none}}
 
 @keyframes achievement-reveal{from{opacity:0;translate:0 -9px}to{opacity:1;translate:0 0}}
 @keyframes history-enter{from{visibility:hidden;opacity:0;translate:0 10px}to{visibility:visible;opacity:1;translate:0 0}}

@@ -2,20 +2,26 @@ const DAY = 86400;
 const BATCH = 36;
 const MAX_ARTICLE_AGE = 30 * DAY;
 const HOUR = 3600;
-const SLOT_HOURS = [9,16]; // 12:00 and 19:00 Moscow (UTC+3).
+const WISHLIST_HOURS = [9,16]; // 12:00 and 19:00 Moscow (UTC+3).
+const NEWS_INTERVAL = 2 * HOUR;
 const REFRESH_WINDOW = HOUR;
 const BATCH_INTERVAL = 5 * 60;
 const NEWS_FEED = 'steam_community_announcements';
-function refreshSlot(seconds) {
+function refreshSlot(seconds, kind) {
+  if (kind === 'news') {
+    // Odd hours in UTC are even hours in Moscow.
+    const start = Math.floor((seconds - HOUR) / NEWS_INTERVAL) * NEWS_INTERVAL + HOUR;
+    return {start,next:start+NEWS_INTERVAL};
+  }
   const day = Math.floor(seconds / DAY) * DAY;
-  const [noon,evening] = SLOT_HOURS.map(hour => day + hour*HOUR);
+  const [noon,evening] = WISHLIST_HOURS.map(hour => day + hour*HOUR);
   if (seconds >= evening) return {start:evening,next:noon+DAY};
   if (seconds >= noon) return {start:noon,next:evening};
   return {start:evening-DAY,next:noon};
 }
 
-function nextRead(seconds, rosterTime, complete) {
-  const {start,next} = refreshSlot(seconds);
+function nextRead(seconds, kind, rosterTime, complete) {
+  const {start,next} = refreshSlot(seconds,kind);
   return seconds < start+REFRESH_WINDOW && (rosterTime < start || !complete)
     ? Math.min(seconds+BATCH_INTERVAL,start+REFRESH_WINDOW)
     : next+BATCH_INTERVAL;
@@ -123,17 +129,20 @@ async function refresh(db, account, kind, slot, checked, loadRoster, loadDetails
 
 export async function refreshSteamFeeds(db, account, library, now) {
   const checked = Math.floor(now/1000);
-  const {start} = refreshSlot(checked);
-  if (checked >= start + REFRESH_WINDOW) return;
+  const wishlist = refreshSlot(checked,'wishlist').start;
+  const news = refreshSlot(checked,'news').start;
+  const refreshWishlist = checked < wishlist + REFRESH_WINDOW;
+  const refreshNews = library && checked < news + REFRESH_WINDOW;
+  if (!refreshWishlist && !refreshNews) return;
 
   await prepare(db);
   // Finish each scheduled scan in bounded batches on the existing five-minute trigger.
   const results = await Promise.allSettled([
-    refresh(db,account,'wishlist',start,checked,() => wishRoster(account),async ids => {
+    refreshWishlist && refresh(db,account,'wishlist',wishlist,checked,() => wishRoster(account),async ids => {
       const details = await wishDetails(ids).catch(() => null);
       await db.batch(ids.map(id => saveRow(db,account,'wishlist',id,checked,details?.get(id) ?? null)));
     }),
-    library && refresh(db,account,'news',start,checked,() => {
+    refreshNews && refresh(db,account,'news',news,checked,() => {
       const games = [...(library?.games ?? [])].filter(game => appid(game.appid))
         .sort((a,b) => (b.rtime_last_played ?? 0) - (a.rtime_last_played ?? 0));
       return {ids:[...new Set(games.map(game => game.appid))],names:Object.fromEntries(games.map(game => [game.appid,clean(game.name,180)]))};
@@ -195,8 +204,8 @@ export async function readSteamFeed(db, account, kind, now = Date.now()) {
   const seconds = Math.floor(now/1000);
   const started = rows.get(0)?.checked ?? 0;
   if (!roster || roster.unavailable) return {status:roster ? 'unavailable' : 'pending',items:[],
-    nextCheck:nextRead(seconds,started,Boolean(roster))};
-  const {start} = refreshSlot(started);
+    nextCheck:nextRead(seconds,kind,started,Boolean(roster))};
+  const {start} = refreshSlot(started,kind);
   let checked = started;
   let complete = true;
   for (const id of roster.ids) {
@@ -208,5 +217,5 @@ export async function readSteamFeed(db, account, kind, now = Date.now()) {
     groupNews(roster.ids.flatMap(id => (rowData(rows.get(id)) ?? []).filter(item => item.date >= now/1000-MAX_ARTICLE_AGE)
       .map(item => ({...item,game:{appid:id,name:roster.names[id]}}))));
   const missing = roster.ids.some(id => !rows.get(id)?.payload);
-  return {status:!complete ? 'updating' : missing ? 'partial' : 'ready',checked,items,nextCheck:nextRead(seconds,started,complete)};
+  return {status:!complete ? 'updating' : missing ? 'partial' : 'ready',checked,items,nextCheck:nextRead(seconds,kind,started,complete)};
 }

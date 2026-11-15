@@ -6,6 +6,7 @@ export const dayNumber = value => {
 };
 
 export const calendarDate = day => new Date(day * DAY);
+export const ACTIVITY_DAY_LIMIT = 20000;
 export function addDaily(days, day, amount) {
   days.set(day, (days.get(day) ?? 0) + amount);
 }
@@ -79,4 +80,34 @@ export function sessionsWithLocalHistory(windows, localSessions, gameByAppId) {
     add(game,day,minutes,observedTo,day === dayNumber(observedFrom) ? 'estimated' : 'uncertain');
   }
   return [...days.values()].sort((a,b) => b.day-a.day || b.observedTo-a.observedTo);
+}
+
+// Retain daily Steam totals locally after the Worker drops its rolling observations.
+export function archiveActivityDays(saved, windows, today) {
+  const archive = new Map((saved ?? []).map(row => [row.appid + ':' + row.day,row]));
+  const totals = new Map();
+  for (const {appid,minutes,observedTo} of windows ?? []) {
+    const day = dayNumber(observedTo);
+    if (day >= today) continue;
+    const key = appid + ':' + day;
+    const row = totals.get(key) ?? {appid,day,minutes:0};
+    row.minutes += minutes;
+    totals.set(key,row);
+  }
+  for (const [key,row] of totals) {
+    if (row.minutes > (archive.get(key)?.minutes ?? 0)) archive.set(key,row);
+  }
+  return [...archive.values()].sort((a,b) => b.day-a.day || a.appid-b.appid).slice(0,ACTIVITY_DAY_LIMIT);
+}
+
+export function withArchivedActivity(events, archived, gameByAppId) {
+  const days = new Map(events.map(event => [event.game.steam.appid + ':' + event.day,event]));
+  for (const {appid,day,minutes} of archived ?? []) {
+    const game = gameByAppId.get(appid);
+    if (!game) continue;
+    const key = appid + ':' + day;
+    const current = days.get(key);
+    if (!current || (!current.local && current.minutes < minutes)) days.set(key,{game,day,minutes,estimated:true});
+  }
+  return [...days.values()];
 }

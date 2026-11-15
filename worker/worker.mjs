@@ -274,7 +274,7 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const cors = allowedOrigin(request);
-    if (url.pathname === '/health' && request.method === 'GET') return reply({ ok: true, version: 11 }, 200, cors);
+    if (url.pathname === '/health' && request.method === 'GET') return reply({ ok: true, version: 12 }, 200, cors);
     const route = url.pathname;
     if (!['/session', '/session/refresh', '/session/forget', '/profile', '/library', '/achievements', '/artwork', '/wishlist', '/news'].includes(route)) return reply({ error: 'not_found' }, 404, cors);
     if (!cors) return reply({ error: 'origin' }, 403, false);

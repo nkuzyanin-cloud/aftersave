@@ -1,3 +1,5 @@
+import { ACTIVITY_DAY_LIMIT } from './activity-view.js';
+
 const VERSION = 8;
 const FORMAT = 'game-library';
 export const STORAGE_KEY = `game-library:${new URL('.', import.meta.url).pathname}`;
@@ -349,6 +351,14 @@ function normalizeSteam(value) {
   if (value == null) return null;
   const steam = object(value, 'Профиль Steam');
   if (typeof steam.account !== 'string' || !/^7656\d{13}$/.test(steam.account)) throw new Error('Неверный SteamID.');
+  const activityDays = list(steam.activityDays ?? [], 'История игрового времени', ACTIVITY_DAY_LIMIT).map(value => {
+    const row = object(value, 'Игровой день Steam');
+    const appid = number(row.appid, 'AppID', 1, 4294967295, null, true);
+    const day = number(row.day, 'Игровой день', 0, 2932896, null, true);
+    const minutes = number(row.minutes, 'Минуты Steam', 1, Number.MAX_SAFE_INTEGER, null, true);
+    if (!appid || day === null || !minutes) throw new Error('Некорректная запись игрового времени.');
+    return {appid,day,minutes};
+  });
   const localSessions = list(steam.localSessions ?? [], 'Локальные сессии Steam', 10000).map(value => {
     const session = object(value,'Локальная сессия Steam');
     const appid = number(session.appid,'AppID',1,4294967295,null,true);
@@ -366,6 +376,7 @@ function normalizeSteam(value) {
   )];
   return { account: steam.account, lastSync: stamp(steam.lastSync, EPOCH), activity: normalizeActivity(steam.activity),
     ...(ownedAppIds ? {ownedAppIds} : {}),
+    ...(activityDays.length ? {activityDays} : {}),
     ...(localSessions.length ? {localSessions} : {}) };
 }
 

@@ -1,5 +1,6 @@
 
 import { createGame, STORAGE_KEY } from './data.js';
+import { archiveActivityDays, dayNumber } from './activity-view.js';
 
 const BASE = 'https://aftersave-steam.n-kuzyanin.workers.dev/';
 const KNOWN = new Map(Object.entries({
@@ -265,8 +266,12 @@ export function mergeSteam(state, { account, entries, activity }, lastSync = new
       added++;
     }
   }
+  const today = dayNumber(Date.parse(lastSync));
+  const previousDays = archiveActivityDays(state.steam?.activityDays,state.steam?.activity?.windows,today);
+  const activityDays = archiveActivityDays(previousDays,activity?.windows,today);
   return { state: { ...state, games, showDemo: false,
-    steam: { account, lastSync, ownedAppIds: unique.map(game => game.appid), activity: activity ?? state.steam?.activity, localSessions: state.steam?.localSessions } }, added, updated };
+    steam: { account, lastSync, ownedAppIds: unique.map(game => game.appid), activity: activity ?? state.steam?.activity,
+      activityDays, localSessions: state.steam?.localSessions } }, added, updated };
 }
 
 const TTL = 24 * 60 * 60 * 1000;
