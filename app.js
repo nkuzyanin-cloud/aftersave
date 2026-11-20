@@ -177,7 +177,7 @@ function shell(content, enter) {
   return `<main id="main" tabindex="-1" class="page page-${route.page}${workspace ? ' desk-workspace home-page' : ''}${enter ? ' route-enter' : ''}">
     ${appUpdateReady ? updateNotice() : ''}
     ${storageError ? `<div class="alert">${icon('shield',19)}<span>${esc(storageError)}</span><a href="#settings">Восстановить данные</a></div>` : ''}
-    ${deskHeader()}
+    ${workspace ? deskHeader() : ''}
     ${content}
   </main>`;
 }
@@ -228,7 +228,7 @@ function filtered(source, applyFilters) {
   return source.filter(game => {
     const haystack = [game.title, displayName(game), game.genre, game.platform, game.steam?.appid, ...game.tags].join(' ').toLocaleLowerCase('ru');
     return (!query || query.split(/\s+/).every(term => haystack.includes(term))) &&
-      (!status || completionFor(game) === status);
+      (!status || (status === 'unmarked' ? !['perfect','beaten'].includes(completionFor(game)) : completionFor(game) === status));
   }).sort((a,b) => byLastPlayed(a,b) || displayName(a).localeCompare(displayName(b),'ru'));
 }
 
@@ -306,7 +306,7 @@ function libraryTools() {
     <details class="desk-library-filter">
       <summary class="icon-btn" aria-label="Фильтры библиотеки" title="Фильтры библиотеки" data-active="${Boolean(filter.status || libraryHidden)}">${icon('filter',18)}</summary>
       <div class="desk-library-filter-panel" role="group" aria-label="Статус игры">
-        ${[['','Все'],['perfect','Идеально'],['beaten','Пройдено']].map(([value,label]) => {
+        ${[['','Все'],['perfect','Идеально'],['beaten','Пройдено'],['unmarked','Без отметок']].map(([value,label]) => {
           const active = filter.status === value;
           return button('library-status',label,'check','quiet',`data-value="${value}" aria-pressed="${active}"`);
         }).join('')}
@@ -694,7 +694,7 @@ function deskHeader() {
   const links = [['library','Главная','game'],['all-games','Все игры','library'],['achievements','Достижения','trophy'],['stats','Статистика','chart']];
   return '<header class="launcher-header"><nav aria-label="Главная навигация">'+links.map(([page,label,glyph])=>
     '<a href="#'+page+'" '+(page === selected ? 'aria-current="page"' : '')+(page !== 'library' ? ' aria-haspopup="dialog"' : '')+'>'+icon(glyph,19)+label+'</a>'
-  ).join('')+'</nav><a class="launcher-search" href="#all-games" data-action="launcher-search" aria-haspopup="dialog">'+icon('search',18)+'Поиск игр</a><div class="launcher-account">'+deskAccount()+'</div></header>';
+  ).join('')+'</nav><div class="launcher-account">'+deskAccount()+'</div></header>';
 }
 
 function storeFeedPage(page) {
@@ -2863,10 +2863,11 @@ function imageFallbacks(root) {
     let pending = false;
     const fail = async () => {
       if (pending) return;
+      image.hidden = true;
       pending = true;
       const portrait = steamCover(id);
       // Try a regular portrait before looking up newer, versioned Steam assets.
-      if (id && artwork === undefined && (kind !== 'cover' || tried.has(portrait))) artwork = await fetchSteamArtwork(id);
+      if (id && artwork === undefined && (kind === 'hero' ? tried.has(steamHeader(id)) : kind !== 'cover' || tried.has(portrait))) artwork = await fetchSteamArtwork(id);
       if (!image.isConnected) return;
       for (let part = image.parentElement; part; part = part.parentElement) {
         if (part.matches('.game-grid > *, [data-home-feed] > *, #store-feed-content > *, .stats-dashboard > *') &&
@@ -2878,7 +2879,8 @@ function imageFallbacks(root) {
         kind === 'cover' ? [portrait, image.dataset.coverFallback, detailed ? steamCover2x(id,artwork?.cover) : '',
           artwork?.cover, artwork?.header, steamHeader(id), artwork?.hero, steamHero(id)] :
         kind === 'wide' ? [steamHeader(id), artwork?.header, portrait, artwork?.cover] :
-        kind === 'collection-hero' ? [steamHeader(id), artwork?.hero, artwork?.header, portrait] : [artwork?.hero];
+        kind === 'collection-hero' ? [steamHeader(id), artwork?.hero, artwork?.header, portrait] :
+        [artwork?.hero, steamHeader(id), artwork?.header, portrait, artwork?.cover];
       const next = alternatives.find(url => url && !tried.has(url));
       pending = false;
       if (next) {
@@ -2889,6 +2891,7 @@ function imageFallbacks(root) {
         image.removeEventListener('error', fail);
       }
     };
+    image.addEventListener('load', () => { image.hidden = false; });
     image.addEventListener('error', fail);
     if (image.complete && !image.naturalWidth) fail();
   });
@@ -3197,7 +3200,7 @@ function gameDashboard() {
     <section class="desk-game-hero">
       ${hero ? `<img class="desk-hero-art" src="${esc(hero)}" alt="" referrerpolicy="no-referrer" ${game.steam ? `data-steam-art="${game.steam.appid}" data-art-kind="hero"` : ''}>` : ''}
       <div class="desk-game-inner">
-        <div class="desk-game-crumb"><a href="#library">${icon('back',17)} Игры</a>
+        <div class="desk-game-crumb"><a href="#library">${icon('back',17)} Назад</a>
           <div class="desk-game-actions">
             <label class="desk-completed" title="Игра пройдена"><input type="checkbox" id="game-completed" aria-label="Игра пройдена" ${game.status === 'completed' ? 'checked' : ''}>
               <span aria-hidden="true">${icon('check',20)}</span></label>
