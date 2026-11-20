@@ -177,7 +177,7 @@ function shell(content, enter) {
   return `<main id="main" tabindex="-1" class="page page-${route.page}${workspace ? ' desk-workspace home-page' : ''}${enter ? ' route-enter' : ''}">
     ${appUpdateReady ? updateNotice() : ''}
     ${storageError ? `<div class="alert">${icon('shield',19)}<span>${esc(storageError)}</span><a href="#settings">Восстановить данные</a></div>` : ''}
-    ${workspace ? deskHeader() : ''}
+    ${deskHeader()}
     ${content}
   </main>`;
 }
@@ -352,7 +352,7 @@ function gameResults(source, inLibrary = true, full = false) {
 }
 
 function allGamesPage() {
-  return `<div class="all-games-tools">${libraryTools()}</div>${gameResults(libraryGames(true),true,true)}`;
+  return `<div class="all-games-tools">${libraryTools()}</div><div id="all-game-results">${launcherCards(true)}</div>`;
 }
 
 function homeLink(page, label) {
@@ -431,25 +431,44 @@ function refreshHomePreview(page) {
   updateViewChildren(content,parseView(homePreview(page)));
 }
 
+
+function launcherCards(full = false) {
+  const source = filtered(libraryGames(full),full);
+  const shown = full ? source : source.slice(0,HOME_GAME_LIMIT);
+  return '<div class="launcher-grid">'+shown.map(game=>{
+    const record = summaryFor(game);
+    const name = esc(displayName(game));
+    const status = completionFor(game,record);
+    return '<article class="launcher-tile"><a class="launcher-game" href="'+gameHref(game)+'" aria-label="Открыть '+name+'">'+
+      wideCover(game,true,{lazy:true})+'<span class="launcher-game-copy"><strong>'+name+'</strong>'+
+      (status === 'perfect' ? '' : completionBadge(status))+
+      '<small>'+(record?.total ? record.unlocked+' / '+record.total+' достижений' : duration(game.steam?.minutes ?? Math.round(game.hours*60)))+'</small>'+
+      (record?.total ? progressBar(achievementPercent(record)) : '')+'</span></a>'+
+      (status === 'perfect' ? '<button type="button" class="launcher-perfect" data-action="completion-results" data-id="'+esc(game.id)+'" aria-haspopup="dialog" aria-label="'+name+'. Посмотреть итоги идеальной игры">'+icon('perfect',16)+' Идеально</button>' : '')+
+      (full && libraryHidden && game.hidden ? iconButton('restore-game','Вернуть в библиотеку','eye','data-id="'+esc(game.id)+'"') : '')+'</article>';
+  }).join('')+'</div>'+(shown.length ? '' : homeEmpty('Игры не найдены.'));
+}
+function launcherFeature() {
+  const game = filtered(libraryGames(),false)[0];
+  if (!game) return '<div class="launcher-feature launcher-feature-empty"><h2>Твоя игровая библиотека</h2><a class="btn btn-primary" href="#settings">Подключить Steam</a></div>';
+  const record = summaryFor(game);
+  const art = steamHero(game.steam?.appid) || coverUrl(game.cover);
+  return '<article class="launcher-feature">'+
+    (art ? '<img class="launcher-feature-art" src="'+esc(art)+'" alt="" data-steam-art="'+(game.steam?.appid ?? '')+'" data-art-kind="hero">' : '')+
+    '<div class="launcher-feature-copy"><small>Недавняя игра</small><h2>'+esc(displayName(game))+'</h2>'+
+    '<p>'+(record?.total ? record.unlocked+' из '+record.total+' достижений' : duration(game.steam?.minutes ?? Math.round(game.hours*60)))+'</p>'+
+    (record?.total ? progressBar(achievementPercent(record)) : '')+
+    '<a class="btn btn-primary" href="'+gameHref(game)+'">Карточка игры '+icon('right',18)+'</a></div></article>';
+}
 function library() {
-  return `<div class="home-dashboard">
-    <div class="home-primary">
-      <section class="library-section home-panel" aria-labelledby="home-games-title">
-        <header><h1 id="home-games-title">${icon('game',22)}Игры</h1>${homeLink('all-games','Все игры')}</header>
-        ${route.trophy ? `<div class="cup-filter">${trophyBadge(route.trophy)} <a class="quiet-link" href="#library">${icon('x',16)} Сбросить кубок</a></div>` : ''}
-        ${gameResults(libraryGames())}
-      </section>
-      <aside class="home-activity" aria-label="Последняя активность">
-        ${homePanel('achievements','Последние достижения','Все')}
-        ${homePanel('sessions','Игровые сессии','Подробнее')}
-      </aside>
-    </div>
-    <div class="home-secondary">
-      ${homePanel('collections','Коллекции','Все коллекции')}
-      ${homePanel('wishlist','Список желаемого','Весь список')}
-      ${homePanel('news','Новости','Все')}
-    </div>
-  </div>`;
+  return '<div class="home-dashboard">'+
+    '<div class="launcher-main"><div id="launcher-feature">'+launcherFeature()+'</div>'+
+    '<section class="launcher-recent"><header><h1>Недавние игры</h1>'+homeLink('all-games','Все игры')+'</header>'+
+    '<div id="game-results">'+launcherCards()+'</div></section></div>'+
+    '<div class="home-secondary">'+homePanel('collections','Коллекции','Все коллекции')+
+    homePanel('wishlist','Список желаемого','Весь список')+homePanel('news','Новости','Все')+'</div>'+
+    '<div class="home-activity">'+homePanel('achievements','Последние достижения','Все достижения')+
+    homePanel('sessions','Игровые сессии','Все сессии')+'</div></div>';
 }
 
 function librarySummary() {
@@ -623,7 +642,7 @@ function gameHref(game, tab = '') {
 function deskAccount() {
   const profile = steamProfile;
   if (!profile || profile.account !== state.steam?.account) {
-    return `<div id="desk-account" class="desk-account"><a class="desk-brand" href="#library">${icon('ribbon',25)} AFTERSAVE</a>
+    return `<div id="desk-account" class="desk-account"><a class="desk-brand" href="#library">${icon('user',25)} Профиль Steam</a>
    <a class="desk-persona-settings" href="#settings" aria-label="Настройки" title="Настройки">${icon('gear',17)}</a></div>`;
   }
   const { name, avatar, account, createdAt, level, xp, levelStart, remaining } = profile;
@@ -669,16 +688,13 @@ async function refreshSteamProfile() {
   finally { loadingSteamProfile = false; }
 }
 
+
 function deskHeader() {
-  return `<header class="desk-header home-header">
-    <div class="desk-overview">${deskAccount()}
-      <section class="home-overview-metrics" aria-label="Статистика Steam">
-        ${librarySummary()}
-        <a class="home-stats-action" href="#stats" aria-haspopup="dialog">${icon('chart',19)}
-          <span>Вся статистика</span>${icon('right',14)}</a>
-      </section>
-    </div>
-  </header>`;
+  const selected = route.section || (route.page === 'game' ? 'all-games' : 'library');
+  const links = [['library','Главная','game'],['all-games','Все игры','library'],['achievements','Достижения','trophy'],['stats','Статистика','chart']];
+  return '<header class="launcher-header"><nav aria-label="Главная навигация">'+links.map(([page,label,glyph])=>
+    '<a href="#'+page+'" '+(page === selected ? 'aria-current="page"' : '')+(page !== 'library' ? ' aria-haspopup="dialog"' : '')+'>'+icon(glyph,19)+label+'</a>'
+  ).join('')+'</nav><a class="launcher-search" href="#all-games" data-action="launcher-search" aria-haspopup="dialog">'+icon('search',18)+'Поиск игр</a><div class="launcher-account">'+deskAccount()+'</div></header>';
 }
 
 function storeFeedPage(page) {
@@ -2134,6 +2150,11 @@ function render(focusMain = false, enter = false) {
 }
 
 function renderSection() {
+  const selected = route.section || (route.page === 'game' ? 'all-games' : 'library');
+  for (const link of app.querySelectorAll('.launcher-header nav a')) {
+    if (link.hash === '#'+selected) link.setAttribute('aria-current','page');
+    else link.removeAttribute('aria-current');
+  }
   const page = route.section;
   if (!page) {
     if (sectionDialog.open) sectionDialog.close();
@@ -2176,6 +2197,12 @@ function renderLibraryList(full = false) {
   const id = full ? 'all-game-results' : 'game-results';
   const current = document.getElementById(id);
   if (!current) return;
+  const feature = document.querySelector('#launcher-feature');
+  if (!full && feature) updateViewChildren(feature,parseView(launcherFeature()));
+  if (current.querySelector('.launcher-grid')) {
+    updateViewChildren(current,parseView(launcherCards(full)));
+    return;
+  }
   const grid = current.querySelector('.game-grid');
   const next = parseView(gameResults(libraryGames(full),true,full)).firstElementChild;
   const nextGrid = next.querySelector('.game-grid');
@@ -2325,6 +2352,14 @@ function dateStamp(now = new Date()) {
 
 
 const actions = {
+  'launcher-search': () => {
+    librarySearchOpen = true;
+    if (route.section === 'all-games') setLibrarySearch(true);
+    else {
+      location.hash = '#all-games';
+      requestAnimationFrame(()=>sectionDialog.querySelector('[data-library-search]')?.focus());
+    }
+  },
   'news-category': control => {
     const major = control.dataset.major === 'true';
     if (major === majorNewsOnly) return;
