@@ -465,6 +465,7 @@ function normalizeState(value) {
     return {
       id: identifier(collection.id, 'Идентификатор коллекции'),
       name: requiredText(collection.name, 'Название коллекции', 64),
+      ...(typeof collection.banner === 'string' && collection.banner.length <= 1500000 && /^data:image\/webp;base64,[A-Za-z0-9+/]+=*$/.test(collection.banner) ? {banner:collection.banner} : {}),
       ...(collection.artGameId ? {artGameId:identifier(collection.artGameId,'Игра для фона')} : {})
     };
   });

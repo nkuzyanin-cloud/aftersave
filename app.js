@@ -2104,7 +2104,7 @@ function collectionsPage(collection) {
     const totals = collectionTotals(source);
     const leader = source.find(game => game.id === collection.artGameId) || collectionShowcaseGames(source,1)[0];
     const id = leader?.steam?.appid;
-    const art = steamHero(id) || (leader && coverUrl(leader.cover));
+    const art = collection.banner || steamHero(id) || (leader && coverUrl(leader.cover));
     const done = source.filter(game => completionFor(game)).length;
     return `<div class="desk-collection-detail">
       <header class="member-hero">
@@ -2353,22 +2353,86 @@ function formFooter(label, glyph = 'check') {
   return `<div class="dialog-footer">${button('close-dialog', 'Отмена', '', 'secondary')}<button type="submit" class="btn btn-primary">${icon(glyph, 17)}<span>${label}</span></button></div>`;
 }
 
-function openCollectionForm(item) {
-  const members = item ? games().filter(game => game.collectionIds.includes(item.id)).sort(byLastPlayed) : [];
-  showDialog(item ? 'Редактировать коллекцию' : 'Новая коллекция', 'ПОДБОРКИ', `<form id="collection-form" data-id="${esc(item?.id)}">
-    <div class="dialog-body single-form">${inputField('Название', 'name', item?.name, 'required maxlength="64" autofocus')}
-      ${item ? `<section class="desk-collection-members" aria-labelledby="collection-members-title">
-        <label class="field"><span>Фон коллекции</span><select name="artGameId"><option value="">По игровому времени</option>${members.map(game => option(game.id,displayName(game),item.artGameId)).join('')}</select></label>
-        <h3 id="collection-members-title">Игры в коллекции</h3>
-        <ul class="desk-collection-member-list">${members.map(game => `<li>${cover(game)}<span>${esc(displayName(game))}</span>
-          ${iconButton('remove-collection-member',`Убрать «${esc(displayName(game))}» из коллекции`,'x',`data-id="${esc(game.id)}"`)}</li>`).join('')}</ul>
-        <p class="desk-muted" id="collection-members-empty" ${members.length ? 'hidden' : ''}>В коллекции пока нет игр.</p></section>
-        ${button('delete-collection', 'Удалить коллекцию', 'trash', 'danger', `data-id="${esc(item.id)}"`)}` : ''}${errorLine()}</div>
-    ${formFooter('Сохранить')}</form>`,'desk-collection-dialog');
-  imageFallbacks(dialog);
+function previewCollectionBanner(form) {
+  const picker = form.elements.artGameId;
+  const choice = picker?.selectedOptions[0];
+  const url = form.dataset.banner || choice?.dataset.art || '';
+  const preview = form.querySelector('.editor-preview img');
+  preview.hidden = !url;
+  if (url) preview.src = url;
+  else preview.removeAttribute('src');
+  if (picker) picker.disabled = Boolean(form.dataset.banner);
+  form.querySelector('[data-action="clear-banner"]').hidden = !form.dataset.banner;
 }
 
+async function readCollectionBanner(input) {
+  const form = input.form;
+  const file = input.files[0];
+  if (!file) return;
+  const submit = form.querySelector('[type="submit"]');
+  submit.disabled = input.disabled = true;
+  let bitmap;
+  try {
+    if (!['image/jpeg','image/png','image/webp'].includes(file.type) || file.size > 16 * 1024 * 1024)
+      throw new Error('Выбери JPG, PNG или WebP размером до 16 МБ.');
+    bitmap = await createImageBitmap(file);
+    const scale = Math.min(1,1920 / bitmap.width,1080 / bitmap.height);
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1,Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1,Math.round(bitmap.height * scale));
+    canvas.getContext('2d').drawImage(bitmap,0,0,canvas.width,canvas.height);
+    const banner = canvas.toDataURL('image/webp',0.8);
+    if (!banner.startsWith('data:image/webp;base64,') || banner.length > 1500000)
+      throw new Error('Не удалось подготовить обложку. Попробуй изображение меньшего размера.');
+    if (form.isConnected) {
+      form.dataset.banner = banner;
+      form.querySelector('.form-error').hidden = true;
+      previewCollectionBanner(form);
+    }
+  } catch (error) {
+    if (form.isConnected) formError(form,error.name === 'InvalidStateError' ? 'Не удалось прочитать изображение.' : error.message);
+  } finally {
+    bitmap?.close();
+    submit.disabled = input.disabled = false;
+    input.value = '';
+  }
+}
 
+function openCollectionForm(item) {
+  const members = item ? games().filter(game => game.collectionIds.includes(item.id)).sort(byLastPlayed) : [];
+  const leader = collectionShowcaseGames(members,1)[0];
+  const art = game => game ? steamHero(game.steam?.appid) || coverUrl(game.cover) || '' : '';
+  showDialog(item ? 'Редактировать коллекцию' : 'Новая коллекция', '', `<form id="collection-form" data-id="${esc(item?.id)}">
+    <div class="dialog-body editor-layout"><section class="editor-settings">
+      ${inputField('Название коллекции','name',item?.name,'required maxlength="64" autofocus')}
+      <div class="editor-preview"><img alt=""><strong>${esc(item?.name || '')}</strong></div>
+      <div class="editor-cover-actions"><input id="collection-banner-file" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+        ${button('choose-banner','Добавить обложку','plus','primary')}${button('clear-banner','Убрать обложку','x','quiet')}</div>
+      ${members.length ? `<label class="field"><span>Фон из игры</span><select name="artGameId"><option value="" data-art="${esc(art(leader))}">По игровому времени</option>${members.map(game => `<option value="${esc(game.id)}" data-art="${esc(art(game))}" ${game.id === item.artGameId ? 'selected' : ''}>${esc(displayName(game))}</option>`).join('')}</select></label>` : ''}
+    </section>
+    ${item ? `<section class="desk-collection-members"><h3>Игры в коллекции</h3>
+      ${members.length ? '<label class="searchbox">'+icon('search',16)+'<input type="search" id="editor-member-search" placeholder="Найти игру" aria-label="Найти игру в коллекции"></label>' : ''}
+      <ul class="desk-collection-member-list">${members.map(game => `<li data-member-title="${esc(displayName(game).toLocaleLowerCase('ru'))}">${cover(game)}<span>${esc(displayName(game))}</span>
+        ${iconButton('remove-collection-member',`Убрать «${esc(displayName(game))}» из коллекции`,'x',`data-id="${esc(game.id)}"`)}</li>`).join('')}</ul>
+      <p class="desk-muted" id="collection-members-empty" ${members.length ? 'hidden' : ''}>В коллекции пока нет игр.</p>
+    </section>` : ''}${errorLine()}</div>
+    <div class="dialog-footer">${item ? button('delete-collection','Удалить коллекцию','trash','quiet',`data-id="${esc(item.id)}"`) : ''}
+    ${button('close-dialog','Отмена','','secondary')}<button type="submit" class="btn btn-primary">Сохранить</button></div></form>`,'desk-collection-dialog collection-editor');
+  const form = dialog.querySelector('#collection-form');
+  form.dataset.banner = item?.banner || '';
+  previewCollectionBanner(form);
+  form.elements.name.addEventListener('input',()=>{ form.querySelector('.editor-preview strong').textContent = form.elements.name.value; });
+  form.elements.artGameId?.addEventListener('change',()=>previewCollectionBanner(form));
+  form.querySelector('#editor-member-search')?.addEventListener('input',event=>{
+    const query = event.target.value.trim().toLocaleLowerCase('ru');
+    for (const row of form.querySelectorAll('[data-member-title]')) row.hidden = !row.dataset.memberTitle.includes(query);
+    const empty = form.querySelector('#collection-members-empty');
+    empty.textContent = query ? 'Игры не найдены.' : 'В коллекции пока нет игр.';
+    empty.hidden = Boolean(form.querySelector('[data-member-title]:not([hidden])'));
+  });
+  form.querySelector('#collection-banner-file').addEventListener('change',event=>readCollectionBanner(event.target));
+  imageFallbacks(form.querySelector('.desk-collection-member-list') || form.querySelector('.editor-cover-actions'));
+}
 
 function confirmAction(title, message, confirmLabel, action, danger = false) {
   showDialog(title, 'ПОДТВЕРЖДЕНИЕ', `<form id="confirm-form"><div class="dialog-body"><p>${message}</p>${errorLine()}</div>
@@ -2578,6 +2642,8 @@ const actions = {
     sectionDialog.querySelector('.desk-collection-filter-trigger')?.focus({preventScroll:true});
   },
   'new-collection': () => openCollectionForm(),
+  'choose-banner': control => control.form.querySelector('#collection-banner-file').click(),
+  'clear-banner': control => { control.form.dataset.banner = ''; previewCollectionBanner(control.form); },
   'edit-collection': control => {
     const item = state.collections.find(item => item.id === control.dataset.id);
     if (item) openCollectionForm(item);
@@ -2768,8 +2834,10 @@ dialog.addEventListener('submit', event => {
     const name = fields.get('name').trim();
     if (!name) return formError(form, 'Введите название коллекции.');
     const id = form.dataset.id || crypto.randomUUID();
-    const artGameId = fields.get('artGameId') || '';
-    const list = form.dataset.id ? state.collections.map(record => record.id === id ? {...record,name,artGameId} : record) : [...state.collections, {id,name}];
+    if (form.querySelector('[type=submit]').disabled) return;
+    const banner = form.dataset.banner || '';
+    const artGameId = form.elements.artGameId?.value || '';
+    const list = form.dataset.id ? state.collections.map(record => record.id === id ? {...record,name,artGameId,banner} : record) : [...state.collections, {id,name,banner}];
     const removed = new Set(fields.getAll('removed'));
     const updatedAt = new Date().toISOString();
     const next = removed.size ? games().map(game => removed.has(game.id) ? setCollectionMembership(game,id,false,updatedAt) : game) : games();

@@ -2766,3 +2766,30 @@ dialog.desk-completion-dialog .dialog-head{background:transparent}
 .member-dialog #collection-game-results{margin:0 24px 24px}
 .member-card.perfect::after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;box-shadow:inset 0 0 0 1px #f4fbff,inset 0 0 9px #a8c0d340}
 #section-dialog .member-hero .btn-primary{background:#8edcea;border-color:#b7eff8;color:#102936}
+
+/* Collection list shares its surfaces and completion accents with the gallery. */
+.member-dialog #collection-game-results .desk-columns{background:transparent;color:#9db3c4;border:0;padding-block:6px 10px}
+.member-dialog #collection-game-results .list-view{display:grid;gap:7px;border:0;background:transparent}
+.member-dialog #collection-game-results .desk-game{border:1px solid #344b5c;border-radius:9px;background:linear-gradient(105deg,#203242,#182633);overflow:hidden}
+.member-dialog #collection-game-results .desk-game:hover,.member-dialog #collection-game-results .desk-game:focus-within{background:#263c4c;border-color:#78b2c6}
+.member-dialog #collection-game-results .desk-game.perfect{border-color:#afc5d5;box-shadow:inset 3px 0 #d9e8f4}
+.member-dialog .desk-game .card-art img{object-fit:contain}
+@media(min-width:1000px){
+  .member-dialog :is(.desk-columns,.list-view .desk-game .card-link){grid-template-columns:minmax(230px,1.65fr) minmax(140px,.85fr) minmax(180px,1fr) minmax(120px,.6fr);column-gap:24px;padding-inline:16px}
+}
+dialog.collection-editor{width:min(920px,calc(100vw - 40px));background:#172633;color:#e9f2f8}
+.collection-editor .editor-layout{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:20px;padding:22px;align-items:start}
+.collection-editor .editor-layout:not(:has(.desk-collection-members)){grid-template-columns:1fr}
+.collection-editor .editor-settings,.collection-editor .desk-collection-members{display:grid;gap:14px;min-width:0;padding:16px;border:1px solid #374e60;border-radius:12px;background:#1b2c3a}
+.collection-editor .field{margin:0}
+.editor-preview{position:relative;isolation:isolate;display:flex;align-items:end;min-height:108px;aspect-ratio:3.5;background:linear-gradient(130deg,#243e4e,#13232f);overflow:hidden;border-radius:8px}
+.editor-preview img,.editor-preview::after{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 42%;z-index:-2}
+.editor-preview::after{content:'';z-index:-1;background:linear-gradient(90deg,#101c28e8,transparent 82%)}
+.editor-preview strong{padding:14px;font-size:1.3rem;overflow-wrap:anywhere}
+.editor-cover-actions{display:flex;align-items:center;flex-wrap:wrap;gap:6px}
+.collection-editor .desk-collection-member-list{margin:0;gap:5px;max-height:36vh}
+.collection-editor .desk-collection-member-list li{background:#213544;border:1px solid #354d5b;border-radius:7px;padding:6px 9px}
+.collection-editor [hidden]{display:none!important}
+.collection-editor .dialog-footer [data-action=delete-collection]{margin-right:auto;color:#e4a9aa}
+.collection-editor .editor-layout>.form-error{grid-column:1/-1}
+@media(max-width:720px){.collection-editor .editor-layout{grid-template-columns:1fr}}
