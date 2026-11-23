@@ -2793,3 +2793,59 @@ dialog.collection-editor{width:min(920px,calc(100vw - 40px));background:#172633;
 .collection-editor .dialog-footer [data-action=delete-collection]{margin-right:auto;color:#e4a9aa}
 .collection-editor .editor-layout>.form-error{grid-column:1/-1}
 @media(max-width:720px){.collection-editor .editor-layout{grid-template-columns:1fr}}
+
+/* Desktop library shell */
+:root{--rail:clamp(182px,14vw,244px);--paper:#eee9df;--sand:#d3bea0;--ink:#131313;--surface:#211f1e;--edge:#45413c;--bg:var(--ink);--panel:var(--surface);--text:var(--paper);--muted:#b9b4ad;--accent:var(--sand);--desk-card:var(--surface);--desk-text:var(--paper);--desk-border:var(--edge);--desk-muted:#c0bab1;--desk-blue:var(--sand)}
+body,body:has(.page-game){background:radial-gradient(ellipse at 52% 0,#292521,transparent 52vh),var(--ink);color:var(--paper)}
+#navigation{position:fixed;inset:0 auto 0 0;width:var(--rail);background:#171615;border-right:1px solid #36332f;z-index:5}
+#navigation nav{height:100%;display:flex;flex-direction:column;padding:clamp(18px,4vh,44px) 12px 14px;gap:16px;overflow:auto}
+#navigation nav>div+div{border-top:1px solid #37332f;padding-top:14px}
+#navigation a{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:7px;color:#cdc7be;line-height:1.25;font-size:16px}
+#navigation a svg{flex:none;color:#bcb6ab}
+:is(#navigation,.home-panel header,.app-mast,.member-summary) svg[stroke="#57d6ef"]{stroke:currentColor}
+:is(#navigation,.home-panel header,.app-mast,.member-summary) svg [stroke="#bbf3ff"]{stroke:currentColor}
+#navigation a span{min-width:0;overflow-wrap:anywhere}
+#navigation a:hover{background:#282624;color:#fff9ee}
+#navigation a[aria-current]{background:linear-gradient(110deg,#433c34,#34302c);color:#fff4e4;box-shadow:inset 2px 0 #cfb995}
+#navigation footer{margin-top:auto}
+#navigation .nav-collections{display:flex;flex-direction:column;min-height:84px}
+.nav-children{overflow:auto;scrollbar-width:thin;scrollbar-color:#514c45 transparent}
+#navigation .nav-child{font-size:14px;padding:8px 9px 8px 23px}
+#app{margin-left:var(--rail);min-width:0}
+#app .page.desk-workspace{width:min(1700px,calc(100% - 48px));margin-inline:auto}
+.app-mast{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:13px 2px 15px;margin-bottom:20px;border-bottom:1px solid var(--edge)}
+.app-mast h1,.launcher-feature-copy h2,.launcher-recent h1,.home-panel header h2,#section-dialog .member-hero h2{font-family:Georgia,'Times New Roman',serif;color:#f2e9da}
+.app-mast h1{font-size:clamp(32px,2.75vw,48px);line-height:1.1}
+.launcher-account .desk-member-since,.launcher-account .desk-xp-label{font-size:.83rem;color:#c8c0b5}
+.desk-xp progress::-webkit-progress-value{background:var(--sand)}
+.desk-xp progress::-moz-progress-bar{background:var(--sand)}
+#app .launcher-feature,#app .launcher-game,#app .home-panel,#app .home-collection-card{border-color:var(--edge);background:#201f1d}
+#app .launcher-feature::after{background:linear-gradient(0deg,#171614 0%,#151413c9 30%,transparent 78%)}
+#app .launcher-game-copy{background:linear-gradient(135deg,#272522,#1b1a19);min-height:78px}
+#app .launcher-feature-copy>small,#app .launcher-feature-copy p,#app .launcher-game-copy small,#app .home-row-copy small,#app .home-row-detail,#app .home-action{color:#d0c9bd}
+#app .launcher-game-copy small,#app .home-row-copy small,#app .home-row-detail{font-size:14px}
+#app .launcher-feature-copy .btn-primary,#section-dialog .member-hero .btn-primary{background:#d6c2a5;color:#201d19;border-color:#e4d5bc}
+#app .launcher-game:hover,#app .home-collection-card:hover{border-color:#978976}
+#app .launcher-game-copy .progress-track,#app .launcher-feature-copy .progress-track{background:#49453f}
+#app .launcher-game-copy .progress-track>span,#app .launcher-feature-copy .progress-track>span{background:linear-gradient(90deg,#ac9677,#d8c6ad)}
+#app .launcher-tile:has(.launcher-perfect) .launcher-game{border-color:#deebf4;box-shadow:0 0 0 1px #b5c2d0,0 0 12px #beccdc45}
+#app .launcher-perfect{background:#242525;color:#edf2fa}
+#app .home-panel header svg,#app .home-action svg,.member-dialog .member-summary svg{color:var(--sand)}
+#app .home-row{border-color:#403d39}
+#app .home-panel header h2{font-size:1.24rem}
+#section-dialog[hidden]{display:none}
+#app #section-dialog,#app #section-dialog.member-dialog{position:static;inset:auto;width:100%;height:auto;min-height:0;max-height:none;max-width:none;margin:0;padding:0;border:0;border-radius:0;box-shadow:none;background:transparent;overflow:visible}
+#app #section-dialog .section-dialog-body{width:100%;max-width:none;height:auto;max-height:none;margin:0;padding:0;background:transparent;overflow:visible;overscroll-behavior:auto}
+#section-dialog .section-dialog-body{--session-panel:#242321;--session-border:#43403b;--session-accent:#d6c2a5;--dashboard-surface:#242321;--dashboard-border:#43403b;--dashboard-accent:#d6c2a5}
+#app #section-dialog :is(.stats-panel,.session-card,.session-panel,.desk-panel,.ach-history-table,.ach-locked-feature,.ach-near-game,.collection-shelf,.member-summary,.member-card,.desk-wishlist li,.desk-news-card,.settings-card){background:linear-gradient(115deg,#282623,#1e1d1b);border-color:#45403b;color:var(--paper)}
+#app #section-dialog :is(input,select,textarea,.home-search){background-color:#272522;border-color:#504b44;color:var(--paper)}
+#app #section-dialog .home-search input{background:transparent}
+#app #section-dialog .member-card.perfect{border-color:#eef7ff}
+#app #section-dialog .member-hero{border-radius:12px}
+#app .desk-game-achievement-view{--desk-bg:var(--ink);--af-ach-panel:#242321;--af-ach-border:#44403a}
+#app .desk-game-achievement-view .af-ach-row,#app .member-dialog #collection-game-results .desk-game{background:linear-gradient(110deg,#292724,#1e1d1b);border-color:#44413c}
+#app .member-dialog #collection-game-results .desk-game.perfect{border-color:#afc5d5}
+@keyframes page-arrival{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:no-preference){#app>.route-enter{animation:page-arrival 220ms ease-out both}}
+@media(max-width:1000px){:root{--rail:164px}#app .page.desk-workspace{width:calc(100% - 28px)}#navigation nav{padding-inline:6px}}
+@media(max-width:680px){:root{--rail:60px}#navigation a{justify-content:center}#navigation a span{position:absolute;clip-path:inset(50%);width:1px;height:1px;overflow:hidden}#navigation .nav-children{display:none}.app-mast{flex-wrap:wrap}.launcher-main,.home-secondary,.home-activity{grid-template-columns:1fr}}

@@ -15,7 +15,7 @@ const app = document.querySelector('#app');
 const dialog = document.querySelector('#dialog');
 const sectionDialog = document.querySelector('#section-dialog');
 let libraryHash = '#library';
-let sectionOpener = null;
+let gameReturnHash = '#library';
 const toast = document.querySelector('#toast');
 const labels = { library: 'Игры', 'all-games': 'Все игры', wishlist: 'Список желаемого', achievements: 'Достижения', collections: 'Коллекции', sessions: 'Игровые сессии', stats: 'Статистика', news: 'Новости', settings: 'Настройки', game: 'Игра' };
 const sectionIcons = {'all-games':'game',wishlist:'heart',achievements:'trophy',collections:'layers',sessions:'clock',
@@ -180,7 +180,7 @@ function shell(content, enter) {
   return `<main id="main" tabindex="-1" class="page page-${route.page}${workspace ? ' desk-workspace home-page' : ''}${enter ? ' route-enter' : ''}">
     ${appUpdateReady ? updateNotice() : ''}
     ${storageError ? `<div class="alert">${icon('shield',19)}<span>${esc(storageError)}</span><a href="#settings">Восстановить данные</a></div>` : ''}
-    ${workspace ? deskHeader() : ''}
+    ${route.page !== 'game' ? `<header class="app-mast"><h1>${esc(route.section ? labels[route.section] : 'Главная')}</h1><div class="launcher-account">${deskAccount()}</div></header>` : ''}
     ${content}
   </main>`;
 }
@@ -286,7 +286,7 @@ function gameList(source, inLibrary, full = false, result = filtered(source,full
       <p>${isFiltered ? 'Попробуйте другой запрос или сбросьте фильтры.' :
         inLibrary ? 'Подключи Steam в настройках, чтобы загрузить библиотеку.' : 'Выбери игры из своей библиотеки.'}</p>
       ${isFiltered ? button('clear-filters','Сбросить фильтры','x') : inLibrary ?
-        '<a class="btn btn-primary" href="#settings" aria-haspopup="dialog">Настройки Steam</a>' : button('pick-collection','Выбрать игру','plus','primary')}</div>`;
+        '<a class="btn btn-primary" href="#settings">Настройки Steam</a>' : button('pick-collection','Выбрать игру','plus','primary')}</div>`;
   }
   const limit = inLibrary ? (full ? result.length : HOME_GAME_LIMIT) : collectionLimit;
   const showHidden = full && libraryHidden;
@@ -358,7 +358,7 @@ function allGamesPage() {
 }
 
 function homeLink(page, label) {
-  return `<a class="home-action" href="#${page}" aria-haspopup="dialog">${label} ${icon('right',15)}</a>`;
+  return `<a class="home-action" href="#${page}">${label} ${icon('right',15)}</a>`;
 }
 
 function homePanel(page, title, action) {
@@ -385,7 +385,7 @@ function homePreview(page) {
       const count = grouped.length;
       const noun = {one:'игра',few:'игры'}[achievementPlural.select(count)] ?? 'игр';
       const rate = total ? Math.round(unlocked / total * 100) : null;
-      return `<a class="home-collection-card" href="#collections/${encodeURIComponent(item.id)}" aria-haspopup="dialog">
+      return `<a class="home-collection-card" href="#collections/${encodeURIComponent(item.id)}">
         <div class="home-collection-art" aria-hidden="true">${posters || icon('layers',25)}</div>
         <strong>${esc(item.name)}</strong>
         <span class="home-collection-meta"><span><b>${numeric(count)}</b> ${noun}</span>
@@ -404,7 +404,7 @@ function homePreview(page) {
   }
   if (page === 'wishlist') {
     return wishlistGroups(unownedWishlist(data.items)).flatMap(([,rows]) => rows).slice(0,2).map(({item}) =>
-      homeRow('#wishlist',wideCover({steam:{appid:item.appid}},true,{lazy:true}),item.name,wishlistDate(item.releaseDate),'','aria-haspopup="dialog"')
+      homeRow('#wishlist',wideCover({steam:{appid:item.appid}},true,{lazy:true}),item.name,wishlistDate(item.releaseDate))
     ).join('') || homeEmpty('Список желаемого пуст.');
   }
   return data.items.slice(0,2).map(item => {
@@ -634,7 +634,7 @@ document.addEventListener('keydown', event => {
 document.addEventListener('scroll', hideAchievementTip, {capture:true,passive:true});
 window.addEventListener('resize', hideAchievementTip);
 window.addEventListener('hashchange', hideAchievementTip);
-for (const modal of [sectionDialog,dialog]) modal.addEventListener('close', hideAchievementTip);
+for (const modal of [dialog]) modal.addEventListener('close', hideAchievementTip);
 
 
 function gameHref(game, tab = '') {
@@ -691,12 +691,28 @@ async function refreshSteamProfile() {
 }
 
 
-function deskHeader() {
+function refreshNavigation() {
   const selected = route.section || (route.page === 'game' ? 'all-games' : 'library');
-  const links = [['library','Главная','game'],['all-games','Все игры','library'],['achievements','Достижения','trophy'],['stats','Статистика','chart']];
-  return '<header class="launcher-header"><nav aria-label="Главная навигация">'+links.map(([page,label,glyph])=>
-    '<a href="#'+page+'" '+(page === selected ? 'aria-current="page"' : '')+(page !== 'library' ? ' aria-haspopup="dialog"' : '')+'>'+icon(glyph,19)+label+'</a>'
-  ).join('')+'</nav><div class="launcher-account">'+deskAccount()+'</div></header>';
+  const link = (path,title,glyph,active,extra='') => `<a class="${extra}" href="#${esc(path)}"${active ? ' aria-current="page"' : ''}>${icon(glyph,19)}<span>${esc(title)}</span></a>`;
+  const primary = ['library','all-games','achievements','sessions','stats'].map(page =>
+    link(page,page === 'library' ? 'Главная' : labels[page],sectionIcons[page] || 'game',selected === page)).join('');
+  const children = collections().map(item => {
+    const id = encodeURIComponent(item.id);
+    return link('collections/'+id,item.name,'layers',selected === 'collections' && route.id === id,'nav-child');
+  }).join('');
+  const nav = document.querySelector('#navigation');
+  const markup = `<nav aria-label="Навигация"><div>${primary}</div>
+    <div class="nav-collections">${link('collections','Коллекции','layers',selected === 'collections' && !route.id)}
+    <div class="nav-children">${children}</div></div>
+    <div>${link('wishlist','Желаемое','heart',selected === 'wishlist')}${link('news','Новости','news',selected === 'news')}</div>
+    <footer>${link('settings','Настройки','gear',selected === 'settings')}</footer></nav>`;
+  if (nav.dataset.lastMarkup !== markup) {
+    const scroll = nav.querySelector('.nav-children')?.scrollTop || 0;
+    nav.innerHTML = markup;
+    nav.dataset.lastMarkup = markup;
+    nav.querySelector('.nav-children').scrollTop = scroll;
+    nav.querySelector('.nav-child[aria-current]')?.scrollIntoView({block:'nearest'});
+  }
 }
 
 function storeFeedPage(page) {
@@ -1792,7 +1808,7 @@ function showQueuedCompletion() {
 async function maybeShowAutomaticResults() {
   const account = state.steam?.account;
   const ready = () => autoRecapReady && account && account === state.steam?.account &&
-    !dialog.open && !sectionDialog.open && !syncingSteam && !document.hidden;
+    !dialog.open && !route.section && route.page === 'library' && !syncingSteam && !document.hidden;
   if (!ready()) return;
   const storagePrefix = STORAGE_KEY + ':period-recaps:' + account;
   const open = () => {
@@ -2187,31 +2203,31 @@ function settingsPage() {
 
 function render(focusMain = false, enter = false) {
   const regionOffset = app.querySelector('.boss-region-index')?.scrollTop;
-  app.innerHTML = shell(route.page === 'game' ? gamePage() : library(),enter);
+  app.innerHTML = shell(route.section ? '' : route.page === 'game' ? gamePage() : library(),enter);
   restoreBossRegionScroll(regionOffset);
   imageFallbacks(app);
   if (route.page === 'game') showAchievements();
-  else refreshStoreFeeds();
+  else if (!route.section) refreshStoreFeeds();
   document.title = route.page === 'library' ? 'AFTERSAVE — игровая библиотека' : 'Игра · AFTERSAVE';
   if (focusMain) app.querySelector('#main').focus({preventScroll:true});
   renderSection();
 }
 
 function renderSection() {
-  const selected = route.section || (route.page === 'game' ? 'all-games' : 'library');
-  for (const link of app.querySelectorAll('.launcher-header nav a')) {
-    if (link.hash === '#'+selected) link.setAttribute('aria-current','page');
-    else link.removeAttribute('aria-current');
-  }
+  refreshNavigation();
   const page = route.section;
   if (!page) {
-    if (sectionDialog.open) sectionDialog.close();
+    sectionDialog.hidden = true;
+    sectionDialog.replaceChildren();
     return;
   }
+  const main = app.querySelector('#main');
+  if (sectionDialog.parentNode !== main) main.append(sectionDialog);
+  document.title = labels[page] + ' · AFTERSAVE';
   const collection = page === 'collections' ? findByRoute(collections()) : null;
   const views = {'all-games':allGamesPage,wishlist:storeFeedPage,news:storeFeedPage,collections:() => collectionsPage(collection),
     achievements:achievementsPage,sessions:() => sessionsPage(undefined,true),stats:statsPage,settings:settingsPage};
-  const wasOpen = sectionDialog.open;
+  const wasOpen = !sectionDialog.hidden;
   const changed = sectionDialog.dataset.page !== page || sectionDialog.dataset.id !== (route.id ?? '');
   const active = sectionDialog.contains(document.activeElement) ? document.activeElement : null;
   const body = sectionDialog.querySelector('.section-dialog-body');
@@ -2219,20 +2235,16 @@ function renderSection() {
   sectionDialog.dataset.page = page;
   sectionDialog.dataset.id = route.id ?? '';
   sectionDialog.classList.toggle('member-dialog',Boolean(collection));
-  sectionDialog.innerHTML = `<div class="dialog-head"><h2 ${collection ? 'hidden' : 'id="section-dialog-title"'}>
-    ${icon(sectionIcons[page],23)}${esc(collection?.name ?? labels[page])}</h2>
-    ${iconButton('close-section','Закрыть','x')}</div>
-    <div class="dialog-body section-dialog-body page page-${page}">${views[page](page)}</div>`;
-  if (!wasOpen) sectionDialog.showModal();
+  sectionDialog.hidden = false;
+  sectionDialog.innerHTML = `<div class="section-dialog-body page page-${page}">${views[page](page)}</div>`;
   if (!wasOpen || changed) {
-    sectionDialog.querySelector('[data-action="close-section"]').focus({preventScroll:true});
     sectionDialog.querySelector('.desk-collections')?.classList.add('collection-reveal');
     if (page === 'stats') startStatsMotion(sectionDialog.querySelector('.stats-dashboard'),'stats-charts-enter');
     if (page === 'sessions') sectionDialog.querySelector('.session-dashboard').classList.add('session-charts-enter');
   } else if (active) {
     const target = active.id ? sectionDialog.querySelector('#' + CSS.escape(active.id)) :
       active.dataset.action ? sectionDialog.querySelector('[data-action="' + CSS.escape(active.dataset.action) + '"]') : null;
-    (target ?? sectionDialog.querySelector('[data-action="close-section"]')).focus({preventScroll:true});
+    (target ?? app.querySelector('#main')).focus({preventScroll:true});
   }
   sectionDialog.querySelector('.section-dialog-body').scrollTop = scroll;
   if (page === 'news' || page === 'wishlist') {
@@ -2269,11 +2281,6 @@ function renderCollectionGames() {
   if (!current || !collection) return;
   current.innerHTML = memberResults(currentGames().filter(game => game.collectionIds.includes(collection.id)));
   imageFallbacks(sectionDialog.querySelector('#collection-game-results'));
-}
-
-function closeSection() {
-  history.replaceState(null,'',libraryHash);
-  updateRoute();
 }
 
 function showDialog(title, eyebrow, content, className = '') {
@@ -2316,7 +2323,7 @@ function showCompletionResults(game, record, manual = false) {
     renderLibraryList();
     renderLibraryList(true);
     if (manual) {
-      [...(sectionDialog.open ? sectionDialog : app).querySelectorAll('.desk-results-link')]
+      [...(route.section ? sectionDialog : app).querySelectorAll('.desk-results-link')]
         .find(item => item.dataset.id === game.id)?.focus({preventScroll:true});
     }
   }
@@ -2679,14 +2686,13 @@ const actions = {
   'import-json': () => sectionDialog.querySelector('#backup-file')?.click(),
   'reload-after-update': () => location.reload(),
   'close-dialog': () => dialog.close(),
-  'close-section': closeSection,
+
 
 
 };
 
 document.addEventListener('click', event => {
-  const opener = event.target.closest('#app a[aria-haspopup="dialog"]');
-  if (opener && !event.defaultPrevented && event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) sectionOpener = opener;
+
   for (const menu of document.querySelectorAll('.desk-library-filter[open], .desk-collection-sort[open], .af-ach-extra[open]')) {
     if (!menu.contains(event.target)) menu.open = false;
   }
@@ -2859,6 +2865,7 @@ function updateRoute() {
   }
   const next = getRoute();
   const previous = route;
+  if (next.page === 'game' && previous.page === 'library') gameReturnHash = previous.section ? '#' + previous.section + (previous.id ? '/' + previous.id : '') : libraryHash;
   if (next.section !== previous.section) recentRevealStartedAt = undefined;
   if (!next.section && next.page === 'library') libraryHash = location.hash || '#library';
   route = next.section && previous.page === 'library' ? {...next,trophy:previous.trophy} : next;
@@ -2873,11 +2880,8 @@ function updateRoute() {
       earnedAchievementOrder = 'newest';
     }
     if (next.id !== previous.id) { collectionLimit = 24; memberFilter = 'all'; }
-    if (!next.section && next.trophy !== previous.trophy) {
-      render(false);
-      return;
-    }
-    renderSection();
+    window.scrollTo(0,0);
+    render(true,true);
     return;
   }
   if (next.trophy) libraryHidden = false;
@@ -2896,7 +2900,6 @@ function updateRoute() {
   achievementQuery = '';
   achievementLimit = 24;
   if (dialog.open) dialog.close();
-  if (sectionDialog.open && !next.section) sectionDialog.close();
   window.scrollTo(0,0);
   render(true,true);
 }
@@ -2906,7 +2909,7 @@ window.addEventListener('hashchange',() => {
   checkRecapsOnVisit();
 });
 
-for (const modal of [sectionDialog,dialog]) {
+for (const modal of [dialog]) {
   let pressedOutside = false;
   const outside = event => {
     if (event.target !== modal) return false;
@@ -2920,33 +2923,9 @@ for (const modal of [sectionDialog,dialog]) {
     const dismiss = pressedOutside && outside(event);
     pressedOutside = false;
     if (!dismiss) return;
-    if (modal === sectionDialog) closeSection();
-    else modal.close();
+    modal.close();
   });
 }
-sectionDialog.addEventListener('cancel',event => {
-  event.preventDefault();
-  const menu = sectionDialog.querySelector('.desk-collection-sort[open], .desk-library-filter[open]');
-  if (menu) {
-    menu.open = false;
-    menu.querySelector('summary').focus({preventScroll:true});
-  } else closeSection();
-});
-sectionDialog.addEventListener('close',() => {
-  if (sectionDialog.open) return;
-  if (route.page === 'library' && !route.section && sectionOpener) {
-    const target = sectionOpener.isConnected ? sectionOpener :
-      app.querySelector('a[href="' + CSS.escape(sectionOpener.getAttribute('href')) + '"]');
-    (target ?? app.querySelector('#main')).focus({preventScroll:true});
-  }
-  sectionOpener = null;
-  if (storagePending && !dialog.open) {
-    storagePending = false;
-    refreshFromStorage();
-  }
-  void maybeShowAutomaticResults();
-});
-
 function refreshFromStorage() {
   try {
     state = load();
@@ -2959,7 +2938,7 @@ function refreshFromStorage() {
 
 window.addEventListener('storage', event => {
   if (event.storageArea !== localStorage || (event.key !== null && event.key !== STORAGE_KEY)) return;
-  if (dialog.open || sectionDialog.open) {
+  if (dialog.open) {
     storagePending = true;
     const form = dialog.querySelector('form');
     if (form) formError(form, 'Библиотека изменилась в другой вкладке. Закройте форму и откройте её снова.');
@@ -2968,7 +2947,7 @@ window.addEventListener('storage', event => {
 
 dialog.addEventListener('close', () => {
   if (dialog.open) return;
-  if (storagePending && !sectionDialog.open) {
+  if (storagePending) {
     storagePending = false;
     refreshFromStorage();
   }
@@ -3331,7 +3310,7 @@ function gameDashboard() {
     <section class="desk-game-hero">
       ${hero ? `<img class="desk-hero-art" src="${esc(hero)}" alt="" referrerpolicy="no-referrer" ${game.steam ? `data-steam-art="${game.steam.appid}" data-art-kind="hero"` : ''}>` : ''}
       <div class="desk-game-inner">
-        <div class="desk-game-crumb"><a href="#library">${icon('back',17)} Назад</a>
+        <div class="desk-game-crumb"><a href="${esc(gameReturnHash)}">${icon('back',17)} Назад</a>
           <div class="desk-game-actions">
             <label class="desk-completed" title="Игра пройдена"><input type="checkbox" id="game-completed" aria-label="Игра пройдена" ${game.status === 'completed' ? 'checked' : ''}>
               <span aria-hidden="true">${icon('check',20)}</span></label>
