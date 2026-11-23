@@ -464,7 +464,8 @@ function normalizeState(value) {
     const collection = object(value, 'Коллекция');
     return {
       id: identifier(collection.id, 'Идентификатор коллекции'),
-      name: requiredText(collection.name, 'Название коллекции', 64)
+      name: requiredText(collection.name, 'Название коллекции', 64),
+      ...(collection.artGameId ? {artGameId:identifier(collection.artGameId,'Игра для фона')} : {})
     };
   });
   ensureUnique(collections, 'Коллекции');

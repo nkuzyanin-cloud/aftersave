@@ -44,6 +44,9 @@ let libraryHidden = false;
 let achievementQuery = '';
 let achievementSort = 'common';
 let collectionSort = 'games';
+let collectionView = 'grid';
+let memberOrder = 'activity';
+let memberFilter = 'all';
 let statsTimeMode = 'months';
 let statsTimePage = 0;
 let autoRecapReady = false;
@@ -275,8 +278,7 @@ function gameCard(game, inLibrary, canRestore) {
   </article>`;
 }
 
-function gameList(source, inLibrary, full = false) {
-  const result = filtered(source,full);
+function gameList(source, inLibrary, full = false, result = filtered(source,full)) {
   if (!result.length) {
     const isFiltered = inLibrary && Boolean(route.trophy || (full && (filter.query || filter.status || libraryHidden)));
     return `<div class="empty"><span class="empty-icon">${icon(isFiltered ? 'search' : 'game',29)}</span>
@@ -2069,14 +2071,60 @@ function collectionEntries() {
   return list.sort((a,b) => b[collectionSort] - a[collectionSort] || a.item.name.localeCompare(b.item.name,'ru'));
 }
 
+function memberCard(game) {
+  const record = summaryFor(game);
+  const status = completionFor(game,record);
+  return `<article class="member-card ${status}">
+    <a href="${gameHref(game)}">${cover(game,'member-poster',{detailed:true})}
+      <div class="member-info"><strong>${esc(displayName(game))}</strong>
+        <div class="member-numbers"><span>${icon('clock',15)} ${duration(Math.round(gameHours(game)*60))}</span>
+        ${record?.total ? `<span>${icon('trophy',15)} ${record.unlocked} / ${record.total}</span>` : ''}</div>
+        ${status === 'beaten' ? completionBadge(status) : ''}
+      </div>
+    </a>${status === 'perfect' ? button('completion-results','Идеально','perfect','quiet',`data-id="${esc(game.id)}" aria-haspopup="dialog"`) : ''}
+  </article>`;
+}
+
+function memberResults(source) {
+  const matches = source.filter(game => memberFilter === 'all' || (completionFor(game) || 'unmarked') === memberFilter);
+  matches.sort((a,b) => {
+    if (memberOrder === 'activity' && byLastPlayed(a,b)) return byLastPlayed(a,b);
+    if (memberOrder === 'time' && gameHours(a) !== gameHours(b)) return gameHours(b)-gameHours(a);
+    return displayName(a).localeCompare(displayName(b),'ru');
+  });
+  if (!matches.length) return homeEmpty(source.length ? 'Нет игр с такой отметкой.' : 'В коллекции пока нет игр.');
+  if (collectionView === 'list') return gameList(source,false,false,matches);
+  return `<div class="member-grid">${matches.slice(0,collectionLimit).map(memberCard).join('')}</div>
+    ${matches.length > collectionLimit ? button('more-games','Показать ещё','down','quiet') : ''}`;
+}
+
 function collectionsPage(collection) {
   if (collection) {
     const source = currentGames().filter(game => game.collectionIds.includes(collection.id));
-    const actions = button('pick-collection','Выбрать игру','plus','primary') +
-      button('edit-collection','Редактировать','edit','secondary',`data-id="${esc(collection.id)}"`);
-    return `<div class="desk-collection-detail"><div class="collection-detail-toolbar">
-      <a class="back-link" href="#collections">${icon('back',17)} Все коллекции</a>
-      <div class="heading-actions">${actions}</div></div>${gameResults(source,false)}</div>`;
+    const totals = collectionTotals(source);
+    const leader = source.find(game => game.id === collection.artGameId) || collectionShowcaseGames(source,1)[0];
+    const id = leader?.steam?.appid;
+    const art = steamHero(id) || (leader && coverUrl(leader.cover));
+    const done = source.filter(game => completionFor(game)).length;
+    return `<div class="desk-collection-detail">
+      <header class="member-hero">
+        ${art ? `<img src="${esc(art)}" alt="" data-steam-art="${id || ''}" data-art-kind="collection-hero">` : ''}
+        <a class="back-link" href="#collections">${icon('back',17)} Все коллекции</a>
+        <h2 id="section-dialog-title">${esc(collection.name)}</h2>
+        <div class="heading-actions">${button('pick-collection','Добавить игру','plus','primary')}
+        ${button('edit-collection','Редактировать','edit','secondary',`data-id="${esc(collection.id)}"`)}</div>
+      </header>
+      <div class="member-summary">
+        <span>${icon('game',20)} Игр: ${numeric(source.length)}</span>
+        <span>${icon('check',20)} Пройдено: ${numeric(done)}</span>
+        <span>${icon('clock',20)} ${duration(totals.minutes)}</span>
+        <span>${icon('trophy',20)} ${numeric(totals.unlocked)} / ${numeric(totals.total)} достижений</span>
+      </div>
+      <div class="member-tools"><select id="member-filter" aria-label="Статус игры">${[['all','Все игры'],['perfect','Идеально'],['beaten','Пройдено'],['unmarked','Без отметок']].map(([k,v])=>option(k,v,memberFilter)).join('')}</select>
+        <select id="member-order" aria-label="Сортировка игр">${[['activity','По активности'],['name','По названию'],['time','По времени']].map(([k,v])=>option(k,v,memberOrder)).join('')}</select>
+        <div class="member-switch">${[['grid','Сетка'],['list','Список']].map(([k,v])=>button('member-view',v,'','quiet',`data-view="${k}" aria-pressed="${collectionView === k}"`)).join('')}</div>
+      </div>
+      <div id="collection-game-results">${memberResults(source)}</div></div>`;
   }
   const list = collectionEntries();
   const sorts = [['games', 'Игры', 'game'], ['time', 'Время', 'clock'], ['achievements', 'Достижения', 'trophy']];
@@ -2170,7 +2218,8 @@ function renderSection() {
   const scroll = changed ? 0 : body?.scrollTop ?? 0;
   sectionDialog.dataset.page = page;
   sectionDialog.dataset.id = route.id ?? '';
-  sectionDialog.innerHTML = `<div class="dialog-head"><h2 id="section-dialog-title">
+  sectionDialog.classList.toggle('member-dialog',Boolean(collection));
+  sectionDialog.innerHTML = `<div class="dialog-head"><h2 ${collection ? 'hidden' : 'id="section-dialog-title"'}>
     ${icon(sectionIcons[page],23)}${esc(collection?.name ?? labels[page])}</h2>
     ${iconButton('close-section','Закрыть','x')}</div>
     <div class="dialog-body section-dialog-body page page-${page}">${views[page](page)}</div>`;
@@ -2218,7 +2267,7 @@ function renderCollectionGames() {
   const collection = findByRoute(collections());
   const current = sectionDialog.querySelector('#collection-game-results');
   if (!current || !collection) return;
-  current.outerHTML = gameResults(currentGames().filter(game => game.collectionIds.includes(collection.id)),false);
+  current.innerHTML = memberResults(currentGames().filter(game => game.collectionIds.includes(collection.id)));
   imageFallbacks(sectionDialog.querySelector('#collection-game-results'));
 }
 
@@ -2309,6 +2358,7 @@ function openCollectionForm(item) {
   showDialog(item ? 'Редактировать коллекцию' : 'Новая коллекция', 'ПОДБОРКИ', `<form id="collection-form" data-id="${esc(item?.id)}">
     <div class="dialog-body single-form">${inputField('Название', 'name', item?.name, 'required maxlength="64" autofocus')}
       ${item ? `<section class="desk-collection-members" aria-labelledby="collection-members-title">
+        <label class="field"><span>Фон коллекции</span><select name="artGameId"><option value="">По игровому времени</option>${members.map(game => option(game.id,displayName(game),item.artGameId)).join('')}</select></label>
         <h3 id="collection-members-title">Игры в коллекции</h3>
         <ul class="desk-collection-member-list">${members.map(game => `<li>${cover(game)}<span>${esc(displayName(game))}</span>
           ${iconButton('remove-collection-member',`Убрать «${esc(displayName(game))}» из коллекции`,'x',`data-id="${esc(game.id)}"`)}</li>`).join('')}</ul>
@@ -2460,11 +2510,16 @@ const actions = {
     showBossMap(bossById.get(control.dataset.id));
   },
   'boss-map-place': control => showBossMap(bossById.get(control.dataset.id), Number(control.dataset.place)),
+  'member-view': control => {
+    collectionView = control.dataset.view;
+    sectionDialog.querySelectorAll('[data-action=member-view]').forEach(btn => btn.setAttribute('aria-pressed',String(btn === control)));
+    renderCollectionGames();
+  },
   'more-games': () => {
     const previous = collectionLimit;
     collectionLimit += 24;
     renderCollectionGames();
-    sectionDialog.querySelectorAll('#collection-game-results .desk-game')[previous]?.querySelector('a')?.focus({preventScroll:true});
+    sectionDialog.querySelectorAll('#collection-game-results :is(.desk-game,.member-card)')[previous]?.querySelector('a')?.focus({preventScroll:true});
   },
   'library-search': () => setLibrarySearch(!librarySearchOpen),
   'completion-results': openCompletionResults,
@@ -2611,6 +2666,13 @@ document.addEventListener('input', event => {
 
 document.addEventListener('change', async event => {
   const field = event.target;
+  if (field.id === 'member-order' || field.id === 'member-filter') {
+    if (field.id === 'member-order') memberOrder = field.value;
+    else memberFilter = field.value;
+    collectionLimit = 24;
+    renderCollectionGames();
+    return;
+  }
   if (field.id === 'steam-log-file') {
     if (field.files.length) await importSteamLog(field.files[0]);
     return;
@@ -2706,7 +2768,8 @@ dialog.addEventListener('submit', event => {
     const name = fields.get('name').trim();
     if (!name) return formError(form, 'Введите название коллекции.');
     const id = form.dataset.id || crypto.randomUUID();
-    const list = form.dataset.id ? state.collections.map(record => record.id === id ? {...record,name} : record) : [...state.collections, {id,name}];
+    const artGameId = fields.get('artGameId') || '';
+    const list = form.dataset.id ? state.collections.map(record => record.id === id ? {...record,name,artGameId} : record) : [...state.collections, {id,name}];
     const removed = new Set(fields.getAll('removed'));
     const updatedAt = new Date().toISOString();
     const next = removed.size ? games().map(game => removed.has(game.id) ? setCollectionMembership(game,id,false,updatedAt) : game) : games();
@@ -2741,7 +2804,7 @@ function updateRoute() {
       achievementYear = '';
       earnedAchievementOrder = 'newest';
     }
-    if (next.id !== previous.id) collectionLimit = 24;
+    if (next.id !== previous.id) { collectionLimit = 24; memberFilter = 'all'; }
     if (!next.section && next.trophy !== previous.trophy) {
       render(false);
       return;
@@ -3482,7 +3545,7 @@ function saveCollectionChoices(form) {
     ? setCollectionMembership(game,collection.id,selected.has(game.id),updatedAt) : game);
   if (commit({...state,games:next},'Коллекция сохранена')) {
     dialog.close();
-    renderCollectionGames();
+    renderSection();
     refreshHomePreview('collections');
   }
 }
