@@ -183,7 +183,6 @@ function shell(content, enter) {
   return `<main id="main" tabindex="-1" class="page page-${route.page}${workspace ? ' desk-workspace home-page' : ''}${enter ? ' route-enter' : ''}">
     ${appUpdateReady ? updateNotice() : ''}
     ${storageError ? `<div class="alert">${icon('shield',19)}<span>${esc(storageError)}</span><a href="#settings">Восстановить данные</a></div>` : ''}
-    ${route.page !== 'game' ? `<header class="app-mast"><h1>${esc(route.section ? labels[route.section] : 'Главная')}</h1><div class="launcher-account">${deskAccount()}</div></header>` : ''}
     ${content}
   </main>`;
 }
@@ -360,13 +359,9 @@ function allGamesPage() {
   return `<div class="all-games-tools">${libraryTools()}</div><div id="all-game-results">${launcherCards(true)}</div>`;
 }
 
-function homeLink(page, label) {
-  return `<a class="home-action" href="#${page}">${label} ${icon('right',15)}</a>`;
-}
-
-function homePanel(page, title, action) {
+function homePanel(page, title) {
   return `<section class="home-panel home-${page}" aria-labelledby="home-${page}-title">
-    <header><h2 id="home-${page}-title">${icon(sectionIcons[page],20)}${title}</h2>${homeLink(page,action)}</header>
+    <header><h2 id="home-${page}-title">${icon(sectionIcons[page],20)}${title}</h2></header>
     <div class="home-panel-items" data-home-feed="${page}">${homePreview(page)}</div></section>`;
 }
 
@@ -439,7 +434,8 @@ function refreshHomePreview(page) {
 
 function launcherCards(full = false) {
   const source = filtered(libraryGames(full),full);
-  const shown = full ? source : source.slice(0,HOME_GAME_LIMIT);
+  // The featured last launch occupies its own slot: never duplicate it on the right.
+  const shown = full ? source : source.filter(game => game.id !== source[0]?.id).slice(0,HOME_GAME_LIMIT);
   return '<div class="launcher-grid">'+shown.map(game=>{
     const record = summaryFor(game);
     const name = esc(displayName(game));
@@ -460,7 +456,7 @@ function launcherFeature() {
   const art = steamHero(game.steam?.appid) || coverUrl(game.cover);
   return '<article class="launcher-feature">'+
     (art ? '<img class="launcher-feature-art" src="'+esc(art)+'" alt="" data-steam-art="'+(game.steam?.appid ?? '')+'" data-art-kind="hero">' : '')+
-    '<div class="launcher-feature-copy"><small>Недавняя игра</small><h2>'+esc(displayName(game))+'</h2>'+
+    '<div class="launcher-feature-copy"><small>Последний запуск</small><h2>'+esc(displayName(game))+'</h2>'+
     '<p>'+(record?.total ? record.unlocked+' из '+record.total+' достижений' : duration(game.steam?.minutes ?? Math.round(game.hours*60)))+'</p>'+
     (record?.total ? progressBar(achievementPercent(record)) : '')+
     '<a class="btn btn-primary" href="'+gameHref(game)+'">Карточка игры '+icon('right',18)+'</a></div></article>';
@@ -468,12 +464,12 @@ function launcherFeature() {
 function library() {
   return '<div class="home-dashboard">'+
     '<div class="launcher-main"><div id="launcher-feature">'+launcherFeature()+'</div>'+
-    '<section class="launcher-recent"><header><h1>Недавние игры</h1>'+homeLink('all-games','Все игры')+'</header>'+
+    '<section class="launcher-recent"><header><h1>Недавние игры</h1></header>'+
     '<div id="game-results">'+launcherCards()+'</div></section></div>'+
-    '<div class="home-secondary">'+homePanel('collections','Коллекции','Все коллекции')+
-    homePanel('wishlist','Список желаемого','Весь список')+homePanel('news','Новости','Все')+'</div>'+
-    '<div class="home-activity">'+homePanel('achievements','Последние достижения','Все достижения')+
-    homePanel('sessions','Игровые сессии','Все сессии')+'</div></div>';
+    '<div class="home-secondary">'+homePanel('collections','Коллекции')+
+    homePanel('wishlist','Список желаемого')+homePanel('news','Новости')+'</div>'+
+    '<div class="home-activity">'+homePanel('achievements','Последние достижения')+
+    homePanel('sessions','Игровые сессии')+'</div></div>';
 }
 
 function librarySummary() {
@@ -647,21 +643,17 @@ function gameHref(game, tab = '') {
 function deskAccount() {
   const profile = steamProfile;
   if (!profile || profile.account !== state.steam?.account) {
-    return `<div id="desk-account" class="desk-account"><a class="desk-brand" href="#library">${icon('user',25)} Профиль Steam</a>
-   <a class="desk-persona-settings" href="#settings" aria-label="Настройки" title="Настройки">${icon('gear',17)}</a></div>`;
+    return `<div id="desk-account" class="desk-account"><span class="desk-avatar" aria-hidden="true">${icon('user',28)}</span><div class="desk-account-info"><span class="desk-persona">Профиль</span></div></div>`;
   }
-  const { name, avatar, account, createdAt, level, xp, levelStart, remaining } = profile;
+  const { name, avatar, account, level, xp, levelStart, remaining } = profile;
   const gained = xp !== null && levelStart !== null && xp >= levelStart ? xp-levelStart : null;
   const span = gained !== null && remaining !== null ? gained+remaining : 0;
-  const joined = createdAt ? dateFormat.formatToParts(createdAt*1000)
-    .filter(part => part.type === 'month' || part.type === 'year').map(part => part.value).join(' ') : '';
   return `<div id="desk-account" class="desk-account">
     <span class="desk-avatar" aria-hidden="true">
       ${icon('steam',30)}${avatar ? `<img src="${esc(avatar)}" alt="" referrerpolicy="no-referrer">` : ''}
     </span>
     <div class="desk-account-info">
-      <div class="desk-persona"><a class="desk-persona-link" href="https://steamcommunity.com/profiles/${account}/" target="_blank" rel="noopener noreferrer">${esc(name)} ${icon('steam',16)}</a>
-      <a class="desk-persona-settings" href="#settings" aria-label="Настройки" title="Настройки">${icon('gear',17)}</a></div>
+      <div class="desk-persona"><span class="desk-persona-name">${esc(name)}</span><a class="desk-steam-profile-link" href="https://steamcommunity.com/profiles/${account}/" target="_blank" rel="noopener noreferrer" aria-label="Открыть профиль Steam" title="Открыть профиль Steam">${icon('steam',17)}</a></div>
       ${level !== null || xp !== null || remaining !== null ? `<div class="desk-steam-rank">
         ${level !== null ? `<span class="desk-steam-level" aria-label="Уровень Steam ${level}" title="Уровень Steam">${level}</span>` : ''}
         ${xp !== null || remaining !== null ? `<div class="desk-xp"><div class="desk-xp-label">
@@ -670,7 +662,6 @@ function deskAccount() {
           ${span > 0 ? `<progress aria-label="Прогресс уровня Steam" value="${gained}" max="${span}"></progress>` : ''}
         </div>` : ''}
       </div>` : ''}
-      ${joined ? `<small class="desk-member-since">В Steam с ${joined} г.</small>` : ''}
     </div>
   </div>`;
 }
@@ -684,11 +675,10 @@ async function refreshSteamProfile() {
     if (!profile || account !== state.steam?.account || !connected()) return;
     if (JSON.stringify(profile) === JSON.stringify(steamProfile)) return;
     steamProfile = profile;
-    const accountElement = app.querySelector('#desk-account');
-    if (accountElement) {
-      accountElement.outerHTML = deskAccount();
-      imageFallbacks(app.querySelector('#desk-account'));
-    }
+    // The sidebar owns the profile; update it without rebuilding the active view.
+    refreshNavigation();
+    const accountElement = document.querySelector('#navigation #desk-account');
+    if (accountElement) imageFallbacks(accountElement);
   } catch { /* The header keeps the last available profile. */ }
   finally { loadingSteamProfile = false; }
 }
@@ -704,10 +694,10 @@ function refreshNavigation() {
     return link('collections/'+id,item.name,'layers',selected === 'collections' && route.id === id,'nav-child');
   }).join('');
   const nav = document.querySelector('#navigation');
-  const markup = `<nav aria-label="Навигация"><div>${primary}</div>
+  const markup = `<nav aria-label="Навигация"><div class="nav-profile"><a href="#settings" class="nav-settings" aria-label="Настройки" title="Настройки">${icon('gear',20)}</a>${deskAccount()}</div><div>${primary}</div>
     <div class="nav-collections"><div class="nav-collection-head">${link('collections','Коллекции','layers',selected === 'collections' && !route.id)}<button type="button" class="nav-collection-toggle" data-action="toggle-nav-collections" aria-controls="nav-collection-children" aria-expanded="${navigationCollectionsOpen}" aria-label="${navigationCollectionsOpen ? 'Свернуть список коллекций' : 'Развернуть список коллекций'}">${icon('down',16)}</button></div><div class="nav-children" id="nav-collection-children"${navigationCollectionsOpen ? '' : ' hidden'}>${children}</div></div>
     <div>${link('wishlist','Желаемое','heart',selected === 'wishlist')}${link('news','Новости','news',selected === 'news')}</div>
-    <footer>${link('settings','Настройки','gear',selected === 'settings')}</footer></nav>`;
+    </nav>`;
   if (nav.dataset.lastMarkup !== markup) {
     const scroll = nav.querySelector('.nav-children')?.scrollTop || 0;
     nav.innerHTML = markup;
@@ -1418,7 +1408,7 @@ function sessionRingSegment(start,end) {
 }
 
 function sessionGameDistribution(data) {
-  const colors = ['#4f9fe9','#57c4e3','#37bcb6','#4778bb','#80a7c9','#a3bdd0'];
+  const colors = ['#d8c1a3','#bd9773','#a99783','#8e7a68','#73716b','#5b6263'];
   const total = data.metrics.minutes;
   const top = data.ranking.slice(0,5);
   const items = top.map(({game,minutes}) => ({label:displayName(game),minutes}));
@@ -2751,6 +2741,16 @@ const actions = {
     renderLibraryList(true);
   },
   'pick-collection': openCollectionPicker,
+  'game-ach-filter': control => {
+    const value = control.dataset.value;
+    if (!['','yes','no'].includes(value)) return;
+    achievementFilter = value;
+    achievementLimit = 24;
+    control.parentElement.querySelectorAll('button').forEach(button => {
+      button.setAttribute('aria-pressed',String(button === control));
+    });
+    updateAchievementRows(false,true);
+  },
   'achievement-more': () => {
     achievementLimit += 24;
     updateAchievementRows(true);
@@ -3870,11 +3870,10 @@ function drawAchievements(box, record, message = '', loading = false) {
         '<label class="searchbox">' + icon('search',19) +
           '<input type="search" id="achievement-query" aria-label="Поиск достижений" placeholder="Поиск достижений…" value="' + esc(achievementQuery) + '"></label>' +
         '<div class="af-game-ach-filters">' +
-          (archived ? '' : '<label class="af-ach-select-label"><span>Статус</span><select id="achievement-state" aria-label="Статус достижения">' +
-            option('','Все',achievementFilter) +
-            option('yes','Получено · '+earned,achievementFilter) +
-            option('no','Не получено · '+(total-earned),achievementFilter) +
-          '</select></label>') +
+          (archived ? '' : '<div class="af-ach-status-tabs" role="group" aria-label="Фильтр по статусу достижений">' +
+            [['','Все ('+total+')'],['yes','Полученные ('+earned+')'],['no','Не полученные ('+(total-earned)+')']].map(([value,label]) =>
+              '<button type="button" data-action="game-ach-filter" data-value="'+value+'" aria-pressed="'+(achievementFilter === value)+'">'+label+'</button>'
+            ).join('') + '</div>') +
           '<label class="af-ach-select-label"><span>Сортировка</span><select id="achievement-order" aria-label="Сортировка достижений">' +
             option('common','Сначала распространённые',achievementSort) +
             option('rare','Сначала редкие',achievementSort) +
@@ -3924,7 +3923,7 @@ function updateAchievementRows(more = false, animate = false) {
           (Number.isFinite(item.percent) ? numeric(item.percent) + '%' : '—') +
           '</span></span>' +
         '<span class="af-ach-status">' +
-          (item.unlocked ? '<span class="af-ach-status-earned">Получено</span>' +
+          (item.unlocked ? '<span class="af-ach-status-earned">' + icon('check',13) + ' Получено</span>' +
             (stamp ? '<time datetime="' + new Date(item.time*1000).toISOString() + '">' + esc(stamp) + '</time>' : '') :
             '<span class="af-ach-status-locked">Не получено</span>') +
         '</span>' +
