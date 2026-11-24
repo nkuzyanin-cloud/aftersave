@@ -48,6 +48,7 @@ let collectionQuery = '';
 let collectionView = 'grid';
 let memberOrder = 'activity';
 let memberFilter = 'all';
+let memberQuery = '';
 let statsTimeMode = 'months';
 let statsTimePage = 0;
 let autoRecapReady = false;
@@ -57,6 +58,7 @@ let sessionGrouping = 'days';
 let revealHidden = true;
 let toastTimer;
 let route = getRoute();
+let navigationCollectionsOpen = route.section === 'collections';
 let storagePending = false;
 let appUpdateReady = false;
 let syncingSteam = false;
@@ -703,8 +705,7 @@ function refreshNavigation() {
   }).join('');
   const nav = document.querySelector('#navigation');
   const markup = `<nav aria-label="Навигация"><div>${primary}</div>
-    <div class="nav-collections">${link('collections','Коллекции','layers',selected === 'collections' && !route.id)}
-    <div class="nav-children">${children}</div></div>
+    <div class="nav-collections"><div class="nav-collection-head">${link('collections','Коллекции','layers',selected === 'collections' && !route.id)}<button type="button" class="nav-collection-toggle" data-action="toggle-nav-collections" aria-controls="nav-collection-children" aria-expanded="${navigationCollectionsOpen}" aria-label="${navigationCollectionsOpen ? 'Свернуть список коллекций' : 'Развернуть список коллекций'}">${icon('down',16)}</button></div><div class="nav-children" id="nav-collection-children"${navigationCollectionsOpen ? '' : ' hidden'}>${children}</div></div>
     <div>${link('wishlist','Желаемое','heart',selected === 'wishlist')}${link('news','Новости','news',selected === 'news')}</div>
     <footer>${link('settings','Настройки','gear',selected === 'settings')}</footer></nav>`;
   if (nav.dataset.lastMarkup !== markup) {
@@ -712,7 +713,7 @@ function refreshNavigation() {
     nav.innerHTML = markup;
     nav.dataset.lastMarkup = markup;
     nav.querySelector('.nav-children').scrollTop = scroll;
-    nav.querySelector('.nav-child[aria-current]')?.scrollIntoView({block:'nearest'});
+    if (navigationCollectionsOpen) nav.querySelector('.nav-child[aria-current]')?.scrollIntoView({block:'nearest'});
   }
 }
 
@@ -2133,31 +2134,107 @@ function collectionEntries() {
   return list.sort((a,b) => b[collectionSort] - a[collectionSort] || a.item.name.localeCompare(b.item.name,'ru'));
 }
 
+
+function memberProgressState(game, record = summaryFor(game)) {
+  const completion = completionFor(game,record);
+  if (completion) return completion;
+  return gameHours(game) > 0 || (record?.unlocked ?? 0) > 0 ? 'active' : 'unstarted';
+}
+
 function memberCard(game) {
   const record = summaryFor(game);
-  const status = completionFor(game,record);
-  return `<article class="member-card ${status}">
-    <a href="${gameHref(game)}">${cover(game,'member-poster',{detailed:true})}
-      <div class="member-info"><strong>${esc(displayName(game))}</strong>
-        <div class="member-numbers"><span>${icon('clock',15)} ${duration(Math.round(gameHours(game)*60))}</span>
-        ${record?.total ? `<span>${icon('trophy',15)} ${record.unlocked} / ${record.total}</span>` : ''}</div>
-        ${status === 'beaten' ? completionBadge(status) : ''}
-      </div>
-    </a>${status === 'perfect' ? button('completion-results','Идеально','perfect','quiet',`data-id="${esc(game.id)}" aria-haspopup="dialog"`) : ''}
-  </article>`;
+  const status = memberProgressState(game,record);
+  const rate = record?.total ? Math.min(100,Math.round(record.unlocked / record.total * 100)) : null;
+  const labels = {perfect:'Идеально',beaten:'Пройдено',active:'В процессе',unstarted:'Не начато'};
+  const statusIcon = status === 'beaten' ? 'check' : status === 'unstarted' ? 'layers' : 'clock';
+  return '<article class="member-card member-v2-card ' + status + '">' +
+    '<a class="member-v2-link" href="' + gameHref(game) + '">' +
+      '<div class="member-v2-art">' + wideCover(game,true,{lazy:true}) +
+        (status === 'perfect' ? '' : '<span class="member-v2-state ' + status + '">' +
+        icon(statusIcon,14) + esc(labels[status]) + '</span>') + '</div>' +
+      '<div class="member-v2-copy">' +
+        '<strong class="member-v2-game-title">' + esc(displayName(game)) + '</strong>' +
+        '<div class="member-v2-data"><span>' + icon('clock',15) + duration(Math.round(gameHours(game)*60)) + '</span>' +
+        (record?.total ? '<span>' + icon('trophy',15) + numeric(record.unlocked) + ' / ' + numeric(record.total) + '</span>' : '') + '</div>' +
+        '<div class="member-v2-achievement">' +
+          '<span>' + (rate === null ? 'Нет данных о достижениях' : 'Прогресс достижений') + '</span>' +
+          (rate === null ? '' : '<strong>' + rate + '%</strong>') + '</div>' +
+        '<div class="member-v2-track"' + (rate === null ? '' :
+          ' role="progressbar" aria-label="Полученные достижения" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + rate + '"') +
+          '><span style="width:' + (rate ?? 0) + '%"></span></div>' +
+      '</div></a>' +
+    (status === 'perfect' ? button('completion-results','Идеально','perfect','quiet',
+      'data-id="' + esc(game.id) + '" aria-haspopup="dialog" title="Открыть идеальное завершение"') : '') +
+    '</article>';
 }
 
 function memberResults(source) {
-  const matches = source.filter(game => memberFilter === 'all' || (completionFor(game) || 'unmarked') === memberFilter);
+  const query = memberQuery.trim().toLocaleLowerCase('ru');
+  const matches = source.filter(game => {
+    const status = memberProgressState(game);
+    const passesStatus = memberFilter === 'all' || memberFilter === status ||
+      (memberFilter === 'unmarked' && (status === 'active' || status === 'unstarted'));
+    return passesStatus && (!query || displayName(game).toLocaleLowerCase('ru').includes(query));
+  });
   matches.sort((a,b) => {
     if (memberOrder === 'activity' && byLastPlayed(a,b)) return byLastPlayed(a,b);
     if (memberOrder === 'time' && gameHours(a) !== gameHours(b)) return gameHours(b)-gameHours(a);
     return displayName(a).localeCompare(displayName(b),'ru');
   });
-  if (!matches.length) return homeEmpty(source.length ? 'Нет игр с такой отметкой.' : 'В коллекции пока нет игр.');
-  if (collectionView === 'list') return gameList(source,false,false,matches);
-  return `<div class="member-grid">${matches.slice(0,collectionLimit).map(memberCard).join('')}</div>
-    ${matches.length > collectionLimit ? button('more-games','Показать ещё','down','quiet') : ''}`;
+  if (!matches.length) return '<div class="member-v2-empty">' +
+    (source.length ? 'Игры с такими параметрами не найдены.' : 'В этой коллекции пока нет игр.') + '</div>';
+  return '<div class="member-grid member-v2-grid' + (collectionView === 'list' ? ' is-list' : '') + '">' +
+    matches.slice(0,collectionLimit).map(memberCard).join('') + '</div>' +
+    (matches.length > collectionLimit ? '<div class="member-v2-more">' +
+      button('more-games','Показать ещё','down','secondary') + '</div>' : '');
+}
+
+function memberAnalytics(source,totals) {
+  const counts = source.reduce((all,game) => {
+    all[memberProgressState(game)]++;
+    return all;
+  },{perfect:0,beaten:0,active:0,unstarted:0});
+  const complete = counts.perfect + counts.beaten;
+  const count = source.length;
+  const ratio = num => count ? Math.round(num / count * 100) : 0;
+  const completedRate = ratio(complete);
+  const achievementRate = totals.total ? Math.round(totals.unlocked / totals.total * 100) : 0;
+  const r1 = count ? counts.perfect / count * 100 : 0;
+  const r2 = count ? complete / count * 100 : 0;
+  const r3 = count ? (complete + counts.active) / count * 100 : 0;
+  const donut = 'background:conic-gradient(#d4c1a6 0 ' + r1 + '%,#a89882 ' + r1 + '% ' +
+    r2 + '%,#776a5c ' + r2 + '% ' + r3 + '%,#423d37 ' + r3 + '% 100%)';
+  const rows = [['perfect','Идеально'],['beaten','Пройдено'],['active','В процессе'],['unstarted','Не начато']];
+  const leader = collectionShowcaseGames(source,1)[0];
+  const leaderTime = leader ? duration(Math.round(gameHours(leader)*60)) : '';
+  return '<section class="member-v2-analytics-panel">' +
+    '<h3>' + icon('chart',18) + 'Аналитика коллекции</h3>' +
+    '<div class="member-v2-insight"><div class="member-v2-insight-heading">Пройденные игры</div>' +
+      '<div class="member-v2-percent"><strong>' + completedRate + '%</strong><span>' +
+        numeric(complete) + ' из ' + numeric(count) + ' игр</span></div>' +
+      '<div class="member-v2-meter" role="progressbar" aria-label="Пройдено игр" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' +
+        completedRate + '"><span style="width:' + completedRate + '%"></span></div></div>' +
+    '<div class="member-v2-insight"><div class="member-v2-insight-heading">Распределение по статусам</div>' +
+      '<div class="member-v2-status-layout"><div class="member-v2-donut" style="' + donut + '">' +
+        '<div><strong>' + numeric(count) + '</strong><small>игр</small></div></div>' +
+      '<div class="member-v2-status-rows">' +
+        rows.map(([key,label]) => '<div class="member-v2-status-row ' + key + '"><span>' + label +
+          '</span><strong>' + numeric(counts[key]) + '</strong><small>' + ratio(counts[key]) + '%</small></div>').join('') +
+      '</div></div></div>' +
+    '<div class="member-v2-insight member-v2-achievements">' +
+      '<div class="member-v2-insight-heading">' + icon('trophy',15) + 'Достижения</div>' +
+      '<div class="member-v2-ach-total"><strong>' + numeric(totals.unlocked) + ' / ' + numeric(totals.total) +
+        '</strong><span>' + achievementRate + '%</span></div>' +
+      '<div class="member-v2-meter" role="progressbar" aria-label="Прогресс достижений коллекции" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' +
+        achievementRate + '"><span style="width:' + achievementRate + '%"></span></div></div>' +
+    '<div class="member-v2-insight member-v2-time">' +
+      '<div class="member-v2-insight-heading">' + icon('clock',15) + 'Общее время</div>' +
+      '<strong>' + duration(totals.minutes) + '</strong></div>' +
+    (leader && gameHours(leader) > 0 ? '<div class="member-v2-insight member-v2-leader">' +
+      '<div class="member-v2-insight-heading">' + icon('trophy',15) + 'Больше всего времени</div>' +
+      '<div class="member-v2-leader-data">' + cover(leader,'member-v2-leader-cover') +
+        '<div><strong>' + esc(displayName(leader)) + '</strong><small>' + icon('clock',14) + leaderTime + '</small></div></div></div>' : '') +
+    '</section>';
 }
 
 function collectionsPage(collection) {
@@ -2166,27 +2243,33 @@ function collectionsPage(collection) {
     const totals = collectionTotals(source);
     const leader = source.find(game => game.id === collection.artGameId) || collectionShowcaseGames(source,1)[0];
     const id = leader?.steam?.appid;
-    const art = collection.banner || steamHero(id) || (leader && coverUrl(leader.cover));
-    const done = source.filter(game => completionFor(game)).length;
-    return `<div class="desk-collection-detail">
-      <header class="member-hero">
-        ${art ? `<img src="${esc(art)}" alt="" data-steam-art="${id || ''}" data-art-kind="collection-hero">` : ''}
-        <a class="back-link" href="#collections">${icon('back',17)} Все коллекции</a>
-        <h2 id="section-dialog-title">${esc(collection.name)}</h2>
-        <div class="heading-actions">${button('pick-collection','Добавить игру','plus','primary')}
-        ${button('edit-collection','Редактировать','edit','secondary',`data-id="${esc(collection.id)}"`)}</div>
-      </header>
-      <div class="member-summary">
-        <span>${icon('game',20)} Игр: ${numeric(source.length)}</span>
-        <span>${icon('check',20)} Пройдено: ${numeric(done)}</span>
-        <span>${icon('clock',20)} ${duration(totals.minutes)}</span>
-        <span>${icon('trophy',20)} ${numeric(totals.unlocked)} / ${numeric(totals.total)} достижений</span>
-      </div>
-      <div class="member-tools"><select id="member-filter" aria-label="Статус игры">${[['all','Все игры'],['perfect','Идеально'],['beaten','Пройдено'],['unmarked','Без отметок']].map(([k,v])=>option(k,v,memberFilter)).join('')}</select>
-        <select id="member-order" aria-label="Сортировка игр">${[['activity','По активности'],['name','По названию'],['time','По времени']].map(([k,v])=>option(k,v,memberOrder)).join('')}</select>
-        <div class="member-switch">${[['grid','Сетка'],['list','Список']].map(([k,v])=>button('member-view',v,'','quiet',`data-view="${k}" aria-pressed="${collectionView === k}"`)).join('')}</div>
-      </div>
-      <div id="collection-game-results">${memberResults(source)}</div></div>`;
+    const art = collection.banner || (id ? steamHero(id) : '') || (leader ? coverUrl(leader.cover) : '');
+    return '<div class="desk-collection-detail member-v2">' +
+      '<a class="back-link member-v2-back" href="#collections">' + icon('back',17) + ' Все коллекции</a>' +
+      '<header class="member-hero member-v2-hero">' +
+        (art ? '<img src="' + esc(art) + '" alt="" loading="eager" decoding="async"' +
+          (!collection.banner && id ? ' data-steam-art="' + id + '" data-art-kind="collection-hero"' : '') + '>' : '') +
+        '<div class="member-v2-hero-copy"><h2 id="section-dialog-title">' + esc(collection.name) + '</h2>' +
+          '<div class="heading-actions">' + button('pick-collection','Добавить игру','plus','primary') +
+            button('edit-collection','Редактировать','edit','secondary',
+            'data-id="' + esc(collection.id) + '"') + '</div></div></header>' +
+      '<div class="member-v2-layout"><aside class="member-v2-analytics">' +
+        memberAnalytics(source,totals) + '</aside>' +
+        '<div class="member-v2-content">' +
+        '<div class="member-tools member-v2-toolbar"><label class="member-v2-search">' +
+          icon('search',17) + '<input type="search" id="member-game-query" aria-label="Поиск игр в коллекции" placeholder="Поиск по играм..." value="' +
+            esc(memberQuery) + '"></label>' +
+          '<select id="member-filter" aria-label="Статус игры">' +
+            [['all','Все статусы'],['perfect','Идеально'],['beaten','Пройдено'],['active','В процессе'],
+              ['unstarted','Не начато'],['unmarked','Без отметок']].map(([k,v])=>option(k,v,memberFilter)).join('') + '</select>' +
+          '<select id="member-order" aria-label="Сортировка игр">' +
+            [['activity','По активности'],['name','По названию'],['time','По времени']].map(([k,v])=>option(k,v,memberOrder)).join('') + '</select>' +
+          '<div class="member-switch">' +
+            [['grid','Сетка'],['list','Список']].map(([k,v])=>button('member-view',v,k === 'grid' ? 'library' : 'checklist','quiet',
+              'data-view="' + k + '" aria-label="' + v + '" aria-pressed="' + (collectionView === k) + '"')).join('') +
+          '</div></div>' +
+        '<div id="collection-game-results">' + memberResults(source) + '</div>' +
+        '</div></div></div>';
   }
   const entries = collectionEntries();
   const query = collectionQuery.trim().toLocaleLowerCase('ru');
@@ -2287,6 +2370,7 @@ function renderSection() {
     achievements:achievementsPage,sessions:() => sessionsPage(undefined,true),stats:statsPage,settings:settingsPage};
   const wasOpen = !sectionDialog.hidden;
   const changed = sectionDialog.dataset.page !== page || sectionDialog.dataset.id !== (route.id ?? '');
+  if (changed && page === 'collections') memberQuery = '';
   const active = sectionDialog.contains(document.activeElement) ? document.activeElement : null;
   const body = sectionDialog.querySelector('.section-dialog-body');
   const scroll = changed ? 0 : body?.scrollTop ?? 0;
@@ -2639,6 +2723,11 @@ const actions = {
     showBossMap(bossById.get(control.dataset.id));
   },
   'boss-map-place': control => showBossMap(bossById.get(control.dataset.id), Number(control.dataset.place)),
+  'toggle-nav-collections': () => {
+    navigationCollectionsOpen = !navigationCollectionsOpen;
+    refreshNavigation();
+    document.querySelector('#navigation .nav-collection-toggle')?.focus({preventScroll:true});
+  },
   'member-view': control => {
     collectionView = control.dataset.view;
     sectionDialog.querySelectorAll('[data-action=member-view]').forEach(btn => btn.setAttribute('aria-pressed',String(btn === control)));
@@ -2787,6 +2876,11 @@ document.addEventListener('input', event => {
     renderLibraryList(true);
   }
   if (event.target.id === 'collection-query') filterCollectionChoices(event.target.value);
+  if (event.target.id === 'member-game-query') {
+    memberQuery = event.target.value;
+    collectionLimit = 24;
+    renderCollectionGames();
+  }
   if (event.target.id === 'cv3-collection-search') {
     collectionQuery = event.target.value;
     const caret = event.target.selectionStart;
