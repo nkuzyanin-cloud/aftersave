@@ -44,6 +44,7 @@ let libraryHidden = false;
 let achievementQuery = '';
 let achievementSort = 'common';
 let collectionSort = 'games';
+let collectionQuery = '';
 let collectionView = 'grid';
 let memberOrder = 'activity';
 let memberFilter = 'all';
@@ -2021,53 +2022,98 @@ function collectionShowcaseGames(grouped, limit) {
     displayName(a).localeCompare(displayName(b),'ru')).slice(0,limit);
 }
 
-function collectionMetrics(entry, hero = false) {
-  const { grouped, minutes, unlocked, total } = entry;
-  const rate = total ? unlocked / total * 100 : 0;
-  const values = '<div class="collection-metrics-values">' +
-    '<span><strong>' + numeric(grouped.length) + '</strong><small>игр</small></span>' +
-    '<span><strong>' + duration(minutes) + '</strong><small>время в играх</small></span>' +
-    '<span><strong>' + numeric(unlocked) + ' / ' + numeric(total) + '</strong><small>достижений</small></span></div>';
-  const bar = '<div class="collection-metrics-progress"><span>' +
-    (total ? Math.round(rate) + '% достижений' : 'Нет данных о достижениях') +
-    '</span>' + progressBar(rate) + '</div>';
-  return '<div class="collection-metrics' + (hero ? ' collection-metrics-hero' : '') + '">' + values + bar + '</div>';
+function collectionRate(entry) {
+  return entry.total ? Math.round(entry.unlocked / entry.total * 100) : 0;
+}
+
+function collectionStatusCounts(grouped) {
+  return grouped.reduce((count,game) => {
+    const status = completionFor(game);
+    if (status === 'perfect') count.perfect++;
+    else if (status === 'beaten') count.beaten++;
+    else if (gameHours(game) > 0) count.active++;
+    else count.unstarted++;
+    return count;
+  }, {perfect:0,beaten:0,active:0,unstarted:0});
 }
 
 function collectionLeader(grouped) {
   const game = collectionShowcaseGames(grouped,1)[0];
-  return game && gameHours(game) > 0 ? 'Больше всего времени: ' + displayName(game) :
-    grouped.length ? 'Игры из твоей библиотеки' : 'Пока нет игр';
+  return game && gameHours(game) > 0 ? displayName(game) : '';
+}
+
+function collectionArt(entry) {
+  const {item,grouped} = entry;
+  const leading = grouped.find(game => game.id === item.artGameId) || collectionShowcaseGames(grouped,1)[0];
+  const id = leading?.steam?.appid;
+  const background = item.banner || (id ? steamHero(id) : '') || (leading ? coverUrl(leading.cover) : '');
+  return background ? '<img src="' + esc(background) + '" alt="" loading="lazy" decoding="async"' +
+    (!item.banner && id ? ' data-steam-art="' + id + '" data-art-kind="collection-hero"' : '') + '>' : '';
+}
+
+function collectionPosters(grouped,limit) {
+  const selected = collectionShowcaseGames(grouped,limit);
+  return '<div class="cv3-posters" aria-hidden="true">' +
+    selected.map(game => cover(game,'cv3-poster')).join('') +
+    (grouped.length > selected.length ? '<span class="cv3-poster-more">+' +
+      numeric(grouped.length-selected.length) + '</span>' : '') + '</div>';
+}
+
+function collectionFacts(entry) {
+  return '<div class="cv3-facts">' +
+    '<span>' + icon('game',16) + '<strong>' + numeric(entry.grouped.length) + '</strong><small>игр</small></span>' +
+    '<span>' + icon('clock',16) + '<strong>' + duration(entry.minutes) + '</strong><small>время</small></span>' +
+    '<span>' + icon('trophy',16) + '<strong>' + numeric(entry.unlocked) + ' / ' + numeric(entry.total) +
+      '</strong><small>достижений</small></span></div>';
+}
+
+function collectionBreakdown(grouped) {
+  const status = collectionStatusCounts(grouped);
+  return '<div class="cv3-breakdown">' +
+    '<span>' + icon('perfect',15) + '<b>' + numeric(status.perfect) + '</b> идеально</span>' +
+    '<span>' + icon('check',15) + '<b>' + numeric(status.beaten) + '</b> пройдено</span>' +
+    '<span>' + icon('clock',15) + '<b>' + numeric(status.active) + '</b> в процессе</span>' +
+    (status.unstarted ? '<span><b>' + numeric(status.unstarted) + '</b> не начато</span>' : '') +
+    '</div>';
+}
+
+function collectionProgress(entry, featured = false) {
+  const rate = collectionRate(entry);
+  const label = entry.total ? 'Достижения' : 'Нет данных о достижениях';
+  return '<div class="cv3-progress' + (featured ? ' cv3-progress-large' : '') + '">' +
+    '<div class="cv3-progress-caption"><strong>' + numeric(rate) + '%</strong>' +
+      '<span>' + label + '</span></div>' +
+    '<div class="cv3-progress-track" role="progressbar" aria-label="Прогресс достижений" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' +
+      rate + '"><span style="width:' + rate + '%"></span></div></div>';
 }
 
 function collectionHero(entry) {
-  const { item, grouped } = entry;
-  const selected = collectionShowcaseGames(grouped,4);
-  const game = selected.find(game => game.steam?.appid) || selected[0];
-  const id = game?.steam?.appid;
-  const backdrop = id ? steamHero(id) : (game ? coverUrl(game.cover) : '');
-  const image = backdrop ? '<img src="' + esc(backdrop) + '" alt="" decoding="async" loading="lazy"' +
-    (id ? ' data-steam-art="' + id + '" data-art-kind="collection-hero"' : '') + '>' : '';
-  return '<a href="#collections/' + encodeURIComponent(item.id) + '" class="collection-hero">' +
-    '<div class="collection-hero-background" aria-hidden="true">' + image + '</div>' +
-    '<div class="collection-hero-copy">' +
-    '<h2>' + esc(item.name) + '</h2><p>' + esc(collectionLeader(grouped)) + '</p>' +
-    collectionMetrics(entry,true) + '</div>' +
-    '<div class="collection-hero-deck" aria-hidden="true">' +
-    selected.map(game => cover(game,'collection-hero-poster',{detailed:true})).join('') + '</div></a>';
+  const {item,grouped} = entry;
+  const leader = collectionLeader(grouped);
+  const kind = {games:'играм',time:'времени',achievements:'достижениям'}[collectionSort];
+  return '<a href="#collections/' + encodeURIComponent(item.id) + '" class="cv3-feature">' +
+    '<div class="cv3-feature-image" aria-hidden="true">' + collectionArt(entry) + '</div>' +
+    '<div class="cv3-feature-main"><div class="cv3-feature-label">' +
+      icon('perfect',16) + ' Первая по ' + kind + '</div>' +
+    '<h2>' + esc(item.name) + '</h2>' +
+    collectionProgress(entry,true) + collectionFacts(entry) +
+    '<div class="cv3-feature-bottom">' + collectionBreakdown(grouped) +
+      (leader ? '<p>' + icon('trophy',15) + '<span>Лидер по времени: <strong>' + esc(leader) + '</strong></span></p>' : '') +
+    '</div></div><div class="cv3-feature-showcase">' + collectionPosters(grouped,4) + '</div></a>';
 }
 
 function collectionRow(entry) {
-  const { item, grouped } = entry;
-  const selection = collectionShowcaseGames(grouped,5);
-  return '<a href="#collections/' + encodeURIComponent(item.id) + '" class="collection-shelf">' +
-    '<div class="collection-shelf-title"><h2>' + esc(item.name) + '</h2>' +
-    '<p title="' + esc(collectionLeader(grouped)) + '">' + esc(collectionLeader(grouped)) + '</p></div>' +
-    '<div class="collection-shelf-posters" aria-hidden="true">' +
-    selection.map(game=>cover(game,'collection-shelf-poster',{detailed:true})).join('') +
-    (grouped.length > selection.length ? '<span class="collection-shelf-overflow">+' +
-      numeric(grouped.length - selection.length) + '</span>' : '') + '</div>' +
-    collectionMetrics(entry) + '</a>';
+  const {item,grouped} = entry;
+  const leader = collectionLeader(grouped);
+  return '<a href="#collections/' + encodeURIComponent(item.id) + '" class="cv3-card">' +
+    '<div class="cv3-card-image" aria-hidden="true">' + collectionArt(entry) + '</div>' +
+    '<div class="cv3-card-top"><div class="cv3-card-heading"><h2>' + esc(item.name) + '</h2>' +
+      collectionProgress(entry) + '</div>' + collectionPosters(grouped,4) + '</div>' +
+    collectionFacts(entry) +
+    '<div class="cv3-card-bottom">' + collectionBreakdown(grouped) +
+      (leader ? '<p title="' + esc(leader) + '">' + icon('trophy',14) +
+        '<span>Лидер: <strong>' + esc(leader) + '</strong></span></p>' : '') +
+    '</div></a>';
 }
 
 function collectionEntries() {
@@ -2142,30 +2188,42 @@ function collectionsPage(collection) {
       </div>
       <div id="collection-game-results">${memberResults(source)}</div></div>`;
   }
-  const list = collectionEntries();
-  const sorts = [['games', 'Игры', 'game'], ['time', 'Время', 'clock'], ['achievements', 'Достижения', 'trophy']];
+  const entries = collectionEntries();
+  const query = collectionQuery.trim().toLocaleLowerCase('ru');
+  const list = query ? entries.filter(entry => entry.item.name.toLocaleLowerCase('ru').includes(query)) : entries;
   const featured = list[0];
   const rest = list.slice(1);
-  const sortControls = list.length ? '<details class="desk-collection-sort">' +
-    '<summary class="desk-collection-filter-trigger icon-btn" aria-label="Фильтры коллекций" title="Фильтры коллекций">' +
-      icon('filter',18) + '</summary>' +
-    '<div class="desk-collection-sort-controls" role="group" aria-label="Сортировать коллекции по убыванию">' +
-      '<span class="desk-collection-sort-heading">Сортировать по убыванию</span>' +
-      sorts.map(([value,label,glyph]) =>
-        '<button type="button" class="desk-collection-sort-btn" data-action="collection-sort" data-value="' + value +
-        '" aria-pressed="' + (collectionSort === value) + '" title="Сортировать по: ' +
-        label.toLocaleLowerCase('ru') + '">' + icon(glyph,15) + '<span>' + label + '</span></button>'
-      ).join('') + '</div></details>' : '';
-  return '<div class="desk-collections">' +
-    '<div class="desk-collection-toolbar"><span class="desk-collection-count">' +
-      numeric(list.length) + ' коллекций</span><div class="desk-collection-controls">' +
-      sortControls + button('new-collection','Новая коллекция','plus','primary') + '</div></div>' +
+  // Collections can overlap: do not count the same game twice in global totals.
+  const uniqueGames = new Map();
+  entries.forEach(entry => entry.grouped.forEach(game => uniqueGames.set(game.id,game)));
+  const all = collectionTotals([...uniqueGames.values()]);
+  const totalRate = all.total ? Math.round(all.unlocked / all.total * 100) : 0;
+  const sorts = [['games','По количеству игр','game'],['time','По времени','clock'],['achievements','По достижениям','trophy']];
+  const sortTitle = sorts.find(([value]) => value === collectionSort)?.[1] || 'По количеству игр';
+  const sortControls = '<details class="desk-collection-sort cv3-sort">' +
+    '<summary class="desk-collection-filter-trigger cv3-sort-trigger" aria-label="Сортировка коллекций">' +
+      icon('filter',16) + '<span>' + sortTitle + '</span>' + icon('down',14) + '</summary>' +
+    '<div class="desk-collection-sort-controls cv3-sort-menu" role="group" aria-label="Сортировать коллекции по убыванию">' +
+      sorts.map(([value,label,glyph]) => '<button type="button" class="desk-collection-sort-btn" data-action="collection-sort" data-value="' + value +
+        '" aria-pressed="' + (collectionSort === value) + '">' + icon(glyph,16) + '<span>' + label + '</span></button>').join('') +
+    '</div></details>';
+  const overview = '<div class="cv3-overview" aria-label="Общая статистика без повторного подсчёта игр">' +
+    '<div>' + icon('layers',20) + '<span><strong>' + numeric(entries.length) + '</strong><small>коллекций</small></span></div>' +
+    '<div>' + icon('game',20) + '<span><strong>' + numeric(uniqueGames.size) + '</strong><small>уникальных игр</small></span></div>' +
+    '<div>' + icon('clock',20) + '<span><strong>' + duration(all.minutes) + '</strong><small>времени в играх</small></span></div>' +
+    '<div>' + icon('trophy',20) + '<span><strong>' + numeric(all.unlocked) + ' / ' + numeric(all.total) + '</strong><small>достижений</small></span></div>' +
+    '<div class="cv3-overview-rate">' + icon('chart',20) + '<span><strong>' + numeric(totalRate) + '%</strong><small>общий прогресс</small>' +
+      '<i class="cv3-summary-track"><i style="width:' + totalRate + '%"></i></i></span></div></div>';
+  return '<div class="desk-collections cv3-page">' +
+    '<div class="cv3-toolbar"><label class="cv3-search">' + icon('search',18) +
+      '<input id="cv3-collection-search" type="search" placeholder="Поиск по коллекциям" aria-label="Поиск по коллекциям" value="' + esc(collectionQuery) + '"></label>' +
+      sortControls + button('new-collection','Новая коллекция','plus','primary') + '</div>' +
+    overview +
     (featured ? collectionHero(featured) : '') +
-    '<div class="desk-collection-list">' +
+    '<div class="cv3-grid">' +
       (rest.length ? rest.map(collectionRow).join('') :
-        (featured ? '' : '<p class="desk-collection-empty">Здесь появятся твои коллекции. Начни с первой подборки.</p>')) +
+        (featured ? '' : '<p class="cv3-empty">' + (query ? 'По запросу ничего не найдено.' : 'Коллекций пока нет. Создай первую подборку.') + '</p>')) +
     '</div></div>';
-
 }
 
 
@@ -2729,6 +2787,14 @@ document.addEventListener('input', event => {
     renderLibraryList(true);
   }
   if (event.target.id === 'collection-query') filterCollectionChoices(event.target.value);
+  if (event.target.id === 'cv3-collection-search') {
+    collectionQuery = event.target.value;
+    const caret = event.target.selectionStart;
+    renderSection();
+    const field = sectionDialog.querySelector('#cv3-collection-search');
+    field?.focus({preventScroll:true});
+    if (caret !== null && field) field.setSelectionRange(caret,caret);
+  }
   if (event.target.id === 'achievement-query') {
     achievementQuery = event.target.value;
     achievementLimit = 24;
