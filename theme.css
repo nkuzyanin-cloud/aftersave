@@ -368,3 +368,545 @@ dialog:not(#section-dialog) :is(.btn-secondary,.icon-btn):hover {
 @media(prefers-reduced-motion:reduce) {
   #app #section-dialog .member-v2 .member-v2-card:hover {transform:none}
 }
+
+
+/* AFTERSAVE v5: identity moves to the sidebar, leaving every content page title-free. */
+#navigation nav{
+  padding:12px 10px 14px;
+  gap:13px;
+}
+#navigation nav>.nav-profile{
+  position:relative;
+  flex:0 0 auto;
+  display:grid;
+  justify-items:center;
+  padding:36px 5px 19px;
+  min-width:0;
+}
+#navigation .nav-settings{
+  position:absolute;
+  top:0;
+  left:1px;
+  display:grid;
+  place-items:center;
+  width:34px;
+  height:34px;
+  min-height:34px;
+  padding:0;
+  border:1px solid #4e473f;
+  border-radius:8px;
+  background:#272420;
+  color:#e1d5c6;
+}
+#navigation .nav-settings:is(:hover,:focus-visible),
+#navigation .nav-settings[aria-current]{
+  background:#41382e;
+  border-color:#b79e7d;
+  color:#f3e6d4;
+}
+#navigation #desk-account{
+  width:100%;
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:10px;
+  text-align:center;
+}
+#navigation #desk-account .desk-avatar{
+  width:82px;
+  height:82px;
+  border-radius:50%;
+  background:#24201d;
+  color:#d2bea2;
+  border:2px solid #6e5b49;
+  box-shadow:0 3px 15px #0008;
+}
+#navigation #desk-account .desk-account-info{
+  width:100%;
+  min-width:0;
+  display:grid;
+  justify-items:center;
+  gap:10px;
+}
+#navigation #desk-account .desk-persona{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:100%;
+  min-width:0;
+  max-width:100%;
+  gap:5px;
+  color:#f3e9db;
+  font-size:1.02rem;
+  line-height:1.3;
+  font-weight:800;
+}
+#navigation #desk-account .desk-persona-name{
+  min-width:0;
+  max-width:calc(100% - 30px);
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+#navigation #desk-account .desk-steam-profile-link{
+  display:grid;
+  place-items:center;
+  flex:none;
+  width:25px;
+  height:25px;
+  min-height:25px;
+  padding:2px;
+  border:1px solid #65584a;
+  border-radius:7px;
+  background:#292520;
+  color:#dbcbba;
+}
+#navigation #desk-account .desk-steam-profile-link:hover{
+  background:#42372d;
+  border-color:#b49b7a;
+}
+#navigation #desk-account .desk-steam-rank{
+  display:flex;
+  align-items:center;
+  width:100%;
+  min-width:0;
+  gap:9px;
+}
+#navigation #desk-account .desk-steam-level{
+  flex:none;
+  display:grid;
+  place-items:center;
+  width:32px;
+  height:32px;
+  padding:0;
+  border:1px solid #685a48;
+  border-radius:7px;
+  background:#35302a;
+  color:#f3e9db;
+  font-size:.78rem;
+  font-weight:800;
+}
+#navigation #desk-account .desk-xp{
+  width:auto;
+  min-width:0;
+  flex:1;
+}
+#navigation #desk-account .desk-xp-label{
+  color:#c6b8a7;
+  font-size:.69rem;
+  white-space:nowrap;
+}
+#navigation #desk-account .desk-xp-label span:last-child:not(:first-child){
+  display:none;
+}
+#navigation #desk-account .desk-xp progress{
+  height:6px;
+  margin-top:6px;
+  background:#4b443c;
+}
+#navigation #desk-account .desk-xp progress::-webkit-progress-bar{background:#4b443c}
+#navigation #desk-account .desk-xp progress::-webkit-progress-value{background:#d3bea0}
+#navigation #desk-account .desk-xp progress::-moz-progress-bar{background:#d3bea0}
+#app .page.page-library.home-page:has(.home-dashboard){
+  padding-top:clamp(10px,1.5vw,22px);
+}
+#app #section-dialog .section-dialog-body{
+  padding-top:clamp(10px,1.6vw,23px);
+}
+#app #section-dialog .member-v2 .member-v2-back{
+  margin-bottom:3px;
+}
+#app .launcher-recent header{
+  padding-bottom:12px;
+}
+#app .launcher-recent header h1{
+  margin:0;
+}
+#app .home-panel header{
+  justify-content:flex-start;
+}
+#app .home-panel header h2{
+  margin:0;
+}
+
+/* Game achievements: match the approved mockup, without adding a hero progress bar. */
+#app .desk-game-achievement-view{
+  --af-ach-bg:var(--ui-bg);
+  --af-ach-panel:var(--ui-raised);
+  --af-ach-border:var(--ui-border);
+  --af-ach-turquoise:var(--ui-sand);
+  --af-ach-subtle:var(--ui-muted);
+  color:var(--ui-paper);
+}
+#app .desk-game-achievement-view .desk-game-inner{
+  width:min(1400px,calc(100% - 52px));
+}
+#app .desk-game-achievement-view .desk-game-hero{
+  min-height:265px;
+  background:linear-gradient(95deg,#171513,#23201d 50%,#171615);
+}
+#app .desk-game-achievement-view .desk-game-hero::after{
+  background:
+    linear-gradient(90deg,#191715f2 0%,#211e1bb7 34%,#211c197a 67%,#171513e0 100%),
+    linear-gradient(0deg,#131313 0%,transparent 72%);
+}
+#app .desk-game-achievement-view .desk-hero-art{
+  opacity:.6;
+}
+#app .desk-game-achievement-view .desk-game-crumb a,
+#app .desk-game-achievement-view .desk-game-links :is(a,button){
+  color:#dbc6a8;
+}
+#app .desk-game-achievement-view .desk-game-links :is(a,button):hover{
+  color:#f1e1cd;
+}
+#app .desk-game-achievement-view .desk-game-title h1{
+  font-size:clamp(1.65rem,2.6vw,2.5rem);
+  color:#f4e9dc;
+}
+#app .desk-game-achievement-view .desk-game-heading .game-poster{
+  border-color:#746451;
+  box-shadow:0 9px 28px #0008;
+}
+#app .desk-game-achievement-view .desk-game-metrics>div{
+  border-right-color:#5b5045;
+}
+#app .desk-game-achievement-view .desk-game-metrics dt{
+  color:#d0c0ab;
+}
+#app .desk-game-achievement-view .desk-game-metrics dt svg,
+#app .desk-game-achievement-view .desk-icon-text svg{
+  color:#cdb495;
+  stroke:currentColor;
+}
+#app .desk-game-achievement-view .desk-game-metrics dd{
+  color:#f3e9da;
+}
+#app .desk-game-actions .desk-completed span,
+#app .desk-game-actions .icon-btn{
+  background:#292623;
+  border-color:#625648;
+  color:#d0b99a;
+}
+#app .desk-game-actions .desk-completed input:checked+span{
+  background:#d3bea0;
+  border-color:#dac6ab;
+  color:#272019;
+}
+#app .desk-game-actions .desk-completed input:focus-visible+span{
+  outline-color:#d3bea0;
+}
+#app .desk-game-actions :is(.desk-completed:hover span,.icon-btn:hover){
+  background:#40372c;
+  border-color:#baa080;
+  color:#f0deca;
+}
+#app .desk-game-achievement-view .af-game-ach-shell{gap:17px}
+#app .desk-game-achievement-view .af-game-ach-toolbar{
+  gap:12px;
+  justify-content:space-between;
+}
+#app .desk-game-achievement-view .af-game-ach-toolbar>.searchbox{
+  flex:1 1 255px;
+  width:auto;
+  max-width:390px;
+  min-width:200px;
+  background:#282522;
+  border-color:#564c42;
+  color:#bcae9c;
+}
+#app .desk-game-achievement-view .af-game-ach-toolbar .searchbox:focus-within{
+  border-color:#bca17e;
+}
+#app .desk-game-achievement-view .af-game-ach-filters{
+  flex:1 1 auto;
+  display:flex;
+  justify-content:flex-end;
+  gap:10px;
+}
+#app .desk-game-achievement-view .af-ach-status-tabs{
+  display:inline-flex;
+  align-items:center;
+  gap:2px;
+  border:1px solid #605548;
+  border-radius:9px;
+  padding:3px;
+  background:#211e1b;
+  white-space:nowrap;
+}
+#app .desk-game-achievement-view .af-ach-status-tabs button{
+  display:inline-flex;
+  align-items:center;
+  min-height:35px;
+  padding:6px 11px;
+  border:1px solid transparent;
+  border-radius:6px;
+  background:transparent;
+  color:#d0c4b5;
+  font-size:.82rem;
+  font-weight:750;
+  cursor:pointer;
+}
+#app .desk-game-achievement-view .af-ach-status-tabs button:is(:hover,:focus-visible){
+  background:#39312a;
+  color:#f5e8d7;
+}
+#app .desk-game-achievement-view .af-ach-status-tabs button[aria-pressed=true]{
+  background:#dfc7a5;
+  border-color:#e9d4b9;
+  color:#251e17;
+}
+#app .desk-game-achievement-view .af-ach-select-label{
+  color:#bdb0a0;
+}
+#app .desk-game-achievement-view .af-ach-select-label select,
+#app .desk-game-achievement-view .af-ach-extra>summary{
+  color:#ede1d1;
+  background:#282522;
+  border-color:#5e5345;
+  border-radius:8px;
+}
+#app .desk-game-achievement-view .af-ach-extra>summary:is(:hover,:focus-visible){
+  background:#3e342b;
+  border-color:#b59b7c;
+}
+#app .desk-game-achievement-view .af-ach-extra>label{
+  background:#2b2621;
+  color:#e6d8c8;
+  border-color:#766450;
+}
+#app .desk-game-achievement-view .af-ach-extra input{
+  accent-color:#cbb493;
+}
+#app .desk-game-achievement-view .af-ach-list .af-ach-row{
+  grid-template-columns:58px minmax(0,1fr) 100px 172px;
+  gap:16px;
+  padding:9px 15px;
+  min-height:77px;
+  border-color:#4a4139;
+  background:linear-gradient(115deg,#282421,#1d1b19);
+}
+#app .desk-game-achievement-view .af-ach-list .af-ach-row:is(:hover,:focus-within){
+  background:linear-gradient(115deg,#3a312a,#29231f);
+  border-color:#8e7961;
+}
+#app .desk-game-achievement-view .af-ach-list .af-ach-icon{
+  background:#25221f;
+  border-color:#5a4c40;
+  color:#c5b39e;
+}
+#app .desk-game-achievement-view .af-ach-list .af-ach-copy strong{
+  color:#f4e9db;
+}
+#app .desk-game-achievement-view .af-ach-list .af-ach-copy p{
+  color:#c1b6a9;
+}
+#app .desk-game-achievement-view .af-ach-list .af-ach-rarity{
+  color:#d5c5b2;
+}
+#app .desk-game-achievement-view .af-ach-list .af-ach-status{
+  border-left-color:#5b4e42;
+}
+#app .desk-game-achievement-view .af-ach-status-earned,
+#app .desk-game-achievement-view .af-ach-status-locked{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  padding:4px 8px;
+  border:1px solid #77634c;
+  border-radius:6px;
+  background:#544534;
+  color:#f0dcc3;
+  font-size:.75rem;
+  font-weight:750;
+}
+#app .desk-game-achievement-view .af-ach-status-locked{
+  background:#34312e;
+  border-color:#625a51;
+  color:#bfb6ab;
+}
+#app .desk-game-achievement-view .af-ach-status time{
+  color:#bfb2a2;
+}
+
+/* Sessions: controls, stat badges, recent cards, tooltips, and active labels. */
+#app #section-dialog .session-dashboard{
+  --session-panel:#282522;
+  --session-border:var(--ui-border);
+  --session-accent:var(--ui-sand);
+  color:var(--ui-paper);
+}
+#app #section-dialog .session-dashboard .session-dashboard-head{
+  min-height:40px;
+}
+#app #section-dialog .session-dashboard .session-switch{
+  background:#211f1d;
+  border-color:#554c42;
+  border-radius:8px;
+  padding:3px;
+}
+#app #section-dialog .session-dashboard .session-switch button{
+  color:#cabfaf;
+  border-color:transparent;
+  background:transparent;
+  border-radius:6px;
+}
+#app #section-dialog .session-dashboard .session-switch button:is(:hover,:focus-visible){
+  color:#f2e6d6;
+  background:#42382e;
+}
+#app #section-dialog .session-dashboard .session-switch button[aria-pressed=true]{
+  color:#271f17;
+  border-color:#e1c9aa;
+  background:#d3bea0;
+  box-shadow:none;
+}
+#app #section-dialog .session-dashboard .session-dashboard-actions>.btn{
+  color:#d7c1a4;
+  border-left-color:#52483d;
+}
+#app #section-dialog .session-dashboard .session-panel-head h2 svg{
+  color:#d4ba98;
+  stroke:currentColor;
+}
+#app #section-dialog .session-dashboard .session-kpi:first-child{
+  border-color:#76634e;
+  background:linear-gradient(120deg,#342d25,#25211e);
+  box-shadow:none;
+}
+#app #section-dialog .session-dashboard .session-kpi-icon{
+  background:#393126;
+  color:#d7bb94;
+}
+#app #section-dialog .session-dashboard .session-kpi small{
+  color:#c4b8aa;
+}
+#app #section-dialog .session-dashboard .session-delta:not(.is-down){
+  color:#e3cda5;
+  background:#51412e;
+}
+#app #section-dialog .session-dashboard .session-recent-card{
+  background:linear-gradient(115deg,#302b26,#23201d);
+  border-color:#544b41;
+  color:#f1e8dc;
+}
+#app #section-dialog .session-dashboard .session-recent-card:is(:hover,:focus-visible){
+  background:#42382f;
+  border-color:#b09a7f;
+}
+#app #section-dialog .session-dashboard .session-recent-copy strong,
+#app #section-dialog .session-dashboard .session-top-copy strong{
+  color:#eee5d9;
+}
+#app #section-dialog .session-dashboard .session-recent-copy small,
+#app #section-dialog .session-dashboard .session-top-copy small,
+#app #section-dialog .session-dashboard .session-chart-axis,
+#app #section-dialog .session-dashboard .session-bar-col>small,
+#app #section-dialog .session-dashboard .session-donut small{
+  color:#c4b8a8;
+}
+#app #section-dialog .session-dashboard .session-recent-copy svg,
+#app #section-dialog .session-dashboard .session-top-copy svg{
+  color:#c9ad8b;
+}
+#app #section-dialog .session-dashboard .session-top-list li+li{
+  border-top-color:#514941;
+}
+#app #section-dialog .session-dashboard .session-top-game:hover{
+  background:#39322a;
+}
+#app #section-dialog .session-dashboard .session-text-action{
+  color:#d5b99a;
+}
+#app #section-dialog .session-dashboard .session-text-action:hover{
+  color:#f3dfc9;
+}
+#app #section-dialog .session-dashboard .session-share-list li strong,
+#app #section-dialog .session-dashboard .session-share-list li small{
+  color:#e5d7c6;
+}
+#app #section-dialog .session-dashboard .session-share-list .is-highlighted{
+  background:#514435;
+}
+#app #section-dialog .session-dashboard .session-chart-tooltip,
+#app #section-dialog .session-dashboard .session-chart-tooltip::after{
+  background:#2c2621;
+  border-color:#73604e;
+  color:#eee1d1;
+}
+#app #section-dialog .session-dashboard .session-tip-content :is(header,footer,time){
+  color:#c8b8a6;
+}
+#app #section-dialog .session-dashboard .session-tip-content footer{
+  border-top-color:#5b4d41;
+}
+#app #section-dialog .session-dashboard .session-tip-content b,
+#app #section-dialog .session-dashboard .session-tip-game strong{
+  color:#eee3d6;
+}
+
+/* Compact sidebar and achievement toolbar remain useful on small viewports. */
+@media(max-width:1450px){
+  #app .desk-game-achievement-view .af-game-ach-toolbar>.searchbox{
+    max-width:none;
+  }
+  #app .desk-game-achievement-view .af-game-ach-filters{
+    justify-content:flex-start;
+  }
+}
+@media(max-width:1150px){
+  #app .desk-game-achievement-view .af-game-ach-toolbar>.searchbox{
+    flex:1 1 100%;
+  }
+  #app .desk-game-achievement-view .af-game-ach-filters{
+    flex:1 1 100%;
+    justify-content:space-between;
+  }
+}
+@media(max-width:950px){
+  #app .desk-game-achievement-view .af-ach-list .af-ach-row{
+    grid-template-columns:50px minmax(0,1fr) 85px 144px;
+    gap:9px;
+  }
+  #navigation #desk-account .desk-avatar{width:70px;height:70px}
+  #navigation #desk-account .desk-persona{font-size:.91rem}
+}
+@media(max-width:680px){
+  #navigation nav{padding:8px 5px 12px;gap:8px}
+  #navigation nav>.nav-profile{padding:35px 0 10px}
+  #navigation .nav-settings{
+    width:32px;height:32px;
+    left:50%;transform:translateX(-50%);
+  }
+  #navigation #desk-account{gap:0}
+  #navigation #desk-account .desk-avatar{
+    width:39px;height:39px;border-width:1px;
+  }
+  #navigation #desk-account .desk-account-info{display:none}
+  #app .desk-game-achievement-view .desk-game-inner{
+    width:calc(100% - 24px);
+  }
+  #app .desk-game-achievement-view .desk-game-hero{min-height:0}
+  #app .desk-game-achievement-view .af-game-ach-filters{
+    justify-content:flex-start;
+    flex-wrap:wrap;
+  }
+  #app .desk-game-achievement-view .af-ach-status-tabs{
+    max-width:100%;
+    overflow-x:auto;
+  }
+  #app .desk-game-achievement-view .af-ach-status-tabs button{
+    font-size:.72rem;
+    padding:5px 8px;
+  }
+  #app .desk-game-achievement-view .af-ach-select-label select{max-width:225px}
+  #app .desk-game-achievement-view .af-ach-list .af-ach-row{
+    grid-template-columns:44px minmax(0,1fr) 72px;
+    gap:9px;
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  #app .desk-game-achievement-view .af-ach-status-tabs button,
+  #navigation .desk-steam-profile-link{transition:none}
+}
