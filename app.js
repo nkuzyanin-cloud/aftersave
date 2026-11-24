@@ -2217,7 +2217,7 @@ function collectionsPage(collection) {
   return '<div class="desk-collections cv3-page">' +
     '<div class="cv3-toolbar"><label class="cv3-search">' + icon('search',18) +
       '<input id="cv3-collection-search" type="search" placeholder="Поиск по коллекциям" aria-label="Поиск по коллекциям" value="' + esc(collectionQuery) + '"></label>' +
-      sortControls + button('new-collection','Новая коллекция','plus','primary','class="cv3-create"') + '</div>' +
+      sortControls + button('new-collection','Новая коллекция','plus','primary') + '</div>' +
     overview +
     (featured ? collectionHero(featured) : '') +
     '<div class="cv3-grid">' +
