@@ -3612,3 +3612,29 @@ body,body:has(.page-game){background:radial-gradient(ellipse at 52% 0,#292521,tr
 @media(prefers-reduced-motion:reduce){
   .member-v2 .member-v2-card,#navigation .nav-collection-toggle svg{transition:none!important}
 }
+
+
+/* Make the collapsed navigation useful on the narrow icon-only sidebar. */
+@media(max-width:680px){
+  #navigation .nav-collections{position:relative}
+  #navigation .nav-children:not([hidden]){
+    display:flex;
+    flex-direction:column;
+    position:fixed;top:195px;left:var(--rail);
+    width:min(228px,calc(100vw - var(--rail) - 10px));
+    max-height:calc(100vh - 210px);
+    z-index:50;overflow:auto;
+    padding:7px;
+    background:#24211e;border:1px solid #555047;border-radius:8px;
+    box-shadow:0 10px 35px #0009;
+  }
+  #navigation .nav-children a.nav-child{
+    justify-content:flex-start;gap:8px;
+    padding:10px 9px;color:#ddd3c5;
+  }
+  #navigation .nav-children a.nav-child span{
+    position:static;display:inline;
+    width:auto;height:auto;overflow:visible;clip-path:none;
+    font-size:.85rem;
+  }
+}
