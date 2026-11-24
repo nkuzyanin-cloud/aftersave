@@ -694,7 +694,7 @@ function refreshNavigation() {
     return link('collections/'+id,item.name,'layers',selected === 'collections' && route.id === id,'nav-child');
   }).join('');
   const nav = document.querySelector('#navigation');
-  const markup = `<nav aria-label="Навигация"><div class="nav-profile"><a href="#settings" class="nav-settings" aria-label="Настройки" title="Настройки">${icon('gear',20)}</a>${deskAccount()}</div><div>${primary}</div>
+  const markup = `<nav aria-label="Навигация"><div class="nav-profile"><a href="#settings" class="nav-settings" aria-label="Настройки" title="Настройки"${selected === 'settings' ? ' aria-current="page"' : ''}>${icon('gear',20)}</a>${deskAccount()}</div><div>${primary}</div>
     <div class="nav-collections"><div class="nav-collection-head">${link('collections','Коллекции','layers',selected === 'collections' && !route.id)}<button type="button" class="nav-collection-toggle" data-action="toggle-nav-collections" aria-controls="nav-collection-children" aria-expanded="${navigationCollectionsOpen}" aria-label="${navigationCollectionsOpen ? 'Свернуть список коллекций' : 'Развернуть список коллекций'}">${icon('down',16)}</button></div><div class="nav-children" id="nav-collection-children"${navigationCollectionsOpen ? '' : ' hidden'}>${children}</div></div>
     <div>${link('wishlist','Желаемое','heart',selected === 'wishlist')}${link('news','Новости','news',selected === 'news')}</div>
     </nav>`;
