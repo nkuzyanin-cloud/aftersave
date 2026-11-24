@@ -48,6 +48,7 @@ let collectionQuery = '';
 let collectionView = 'grid';
 let memberOrder = 'activity';
 let memberFilter = 'all';
+let memberQuery = '';
 let statsTimeMode = 'months';
 let statsTimePage = 0;
 let autoRecapReady = false;
@@ -57,6 +58,7 @@ let sessionGrouping = 'days';
 let revealHidden = true;
 let toastTimer;
 let route = getRoute();
+let navigationCollectionsOpen = route.section === 'collections';
 let storagePending = false;
 let appUpdateReady = false;
 let syncingSteam = false;
@@ -703,8 +705,7 @@ function refreshNavigation() {
   }).join('');
   const nav = document.querySelector('#navigation');
   const markup = `<nav aria-label="Навигация"><div>${primary}</div>
-    <div class="nav-collections">${link('collections','Коллекции','layers',selected === 'collections' && !route.id)}
-    <div class="nav-children">${children}</div></div>
+    <div class="nav-collections"><div class="nav-collection-head">${link('collections','Коллекции','layers',selected === 'collections' && !route.id)}<button type="button" class="nav-collection-toggle" data-action="toggle-nav-collections" aria-controls="nav-collection-children" aria-expanded="${navigationCollectionsOpen}" aria-label="${navigationCollectionsOpen ? 'Свернуть список коллекций' : 'Развернуть список коллекций'}">${icon('down',16)}</button></div><div class="nav-children" id="nav-collection-children"${navigationCollectionsOpen ? '' : ' hidden'}>${children}</div></div>
     <div>${link('wishlist','Желаемое','heart',selected === 'wishlist')}${link('news','Новости','news',selected === 'news')}</div>
     <footer>${link('settings','Настройки','gear',selected === 'settings')}</footer></nav>`;
   if (nav.dataset.lastMarkup !== markup) {
@@ -712,7 +713,7 @@ function refreshNavigation() {
     nav.innerHTML = markup;
     nav.dataset.lastMarkup = markup;
     nav.querySelector('.nav-children').scrollTop = scroll;
-    nav.querySelector('.nav-child[aria-current]')?.scrollIntoView({block:'nearest'});
+    if (navigationCollectionsOpen) nav.querySelector('.nav-child[aria-current]')?.scrollIntoView({block:'nearest'});
   }
 }
 
@@ -2639,6 +2640,11 @@ const actions = {
     showBossMap(bossById.get(control.dataset.id));
   },
   'boss-map-place': control => showBossMap(bossById.get(control.dataset.id), Number(control.dataset.place)),
+  'toggle-nav-collections': () => {
+    navigationCollectionsOpen = !navigationCollectionsOpen;
+    refreshNavigation();
+    document.querySelector('#navigation .nav-collection-toggle')?.focus({preventScroll:true});
+  },
   'member-view': control => {
     collectionView = control.dataset.view;
     sectionDialog.querySelectorAll('[data-action=member-view]').forEach(btn => btn.setAttribute('aria-pressed',String(btn === control)));
