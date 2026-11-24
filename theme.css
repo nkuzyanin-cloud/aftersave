@@ -1,0 +1,370 @@
+/*
+ * AFTERSAVE unified graphite / parchment theme.
+ * The main dashboard is the visual source of truth.
+ * Keep overrides scoped to the application's existing components.
+ */
+:root {
+  --ui-bg:#131313;
+  --ui-surface:#211f1e;
+  --ui-raised:#292623;
+  --ui-border:#45413c;
+  --ui-hover:#39342e;
+  --ui-paper:#eee9df;
+  --ui-muted:#b9b4ad;
+  --ui-sand:#d3bea0;
+  --ui-track:#47423c;
+  --ui-fill:linear-gradient(90deg,#a9977e,#d7c1a2);
+  --bg:var(--ui-bg);
+  --panel:var(--ui-surface);
+  --raised:var(--ui-raised);
+  --border:var(--ui-border);
+  --text:var(--ui-paper);
+  --muted:var(--ui-muted);
+  --dim:#aba398;
+  --accent:var(--ui-sand);
+  --dashboard-surface:var(--ui-raised);
+  --dashboard-border:var(--ui-border);
+  --dashboard-text:var(--ui-paper);
+  --dashboard-muted:var(--ui-muted);
+  --dashboard-accent:var(--ui-sand);
+  --dashboard-track:var(--ui-track);
+  --dashboard-fill:var(--ui-fill);
+  --session-panel:var(--ui-raised);
+  --session-border:var(--ui-border);
+  --session-accent:var(--ui-sand);
+  scrollbar-color:#5a534b #171615;
+}
+
+/* In-page sections, forms and controls: no blue legacy focus/selection surfaces. */
+#app #section-dialog .section-dialog-body {
+  --dashboard-text:var(--ui-paper);
+  --dashboard-muted:var(--ui-muted);
+  --dashboard-track:var(--ui-track);
+  --dashboard-fill:var(--ui-fill);
+}
+#app #section-dialog :is(.stats-panel,.session-panel,.session-card,.desk-panel,
+  .settings-card,.ach-history-table,.ach-locked-feature,.ach-near-game,
+  .desk-wishlist li,.desk-news-card) {
+  background:linear-gradient(115deg,#282623,#1e1d1b);
+  border-color:var(--ui-border);
+  color:var(--ui-paper);
+}
+#app #section-dialog :is(input,select,textarea,.searchbox) {
+  background-color:var(--ui-raised);
+  border-color:#504b44;
+  color:var(--ui-paper);
+}
+#app #section-dialog :is(input,select,textarea):focus-visible,
+#app #section-dialog :is(.searchbox,.home-search):focus-within {
+  outline:2px solid var(--ui-sand);
+  outline-offset:2px;
+  border-color:var(--ui-sand);
+}
+#app #section-dialog :is(.btn-primary,.ach-tab.is-active) {
+  background:var(--ui-sand);
+  border-color:#dcc9af;
+  color:#231e18;
+  box-shadow:none;
+}
+#app #section-dialog .btn-primary:hover {
+  background:#e4d0b3;
+  border-color:#e4d0b3;
+}
+#app #section-dialog :is(.btn-secondary,.icon-btn) {
+  background:var(--ui-raised);
+  border-color:#504b44;
+  color:var(--ui-paper);
+}
+#app #section-dialog :is(.btn-secondary,.icon-btn):hover {
+  background:var(--ui-hover);
+  border-color:#8f806c;
+}
+#app #section-dialog :is(.desk-news-card,.desk-wishlist li,.desk-game):is(:hover,:focus-within) {
+  border-color:#92816c;
+}
+#app #section-dialog .desk-wishlist-group h2,
+#app #section-dialog .desk-news-card :is(.desk-news-link,.desk-news-tag),
+#app #section-dialog .quiet-link {
+  color:#dac4a5;
+}
+#app #section-dialog :is(.progress-track,.ach-progress-track) {
+  background:var(--ui-track);
+}
+#app #section-dialog :is(.progress-track>span,.ach-progress-track>i) {
+  background:var(--ui-fill);
+}
+
+/* Achievements: earned/locked tabs, hover, rows, badges and progress. */
+#app #section-dialog .achievements-v3 .ach-tab {
+  background:#292623;
+  border-color:#504b44;
+  color:#d4cbbf;
+  box-shadow:none;
+}
+#app #section-dialog .achievements-v3 .ach-tab svg {color:#cbb89b}
+#app #section-dialog .achievements-v3 .ach-tab:is(:hover,:focus-visible) {
+  background:#39332d;
+  border-color:#a48e72;
+  color:var(--ui-paper);
+}
+#app #section-dialog .achievements-v3 .ach-tab.is-active {
+  background:#4a4034;
+  border-color:#c4a987;
+  color:#f4e9da;
+  box-shadow:inset 0 1px #ffffff10;
+}
+#app #section-dialog .achievements-v3 .ach-tab.is-active svg {color:#e0c9a8}
+#app #section-dialog .achievements-v3 .ach-item,
+#app #section-dialog .achievements-v3 .ach-near-game,
+#app #section-dialog .achievements-v3 .ach-feature,
+#app #section-dialog .achievements-v3 .ach-history-table {
+  background:var(--ui-raised);
+  border-color:var(--ui-border);
+  color:var(--ui-paper);
+}
+#app #section-dialog .achievements-v3 :is(.ach-item,.ach-near-game):is(:hover,:focus-within) {
+  background:#39342e;
+  border-color:#877763;
+}
+#app #section-dialog .achievements-v3 .ach-history-table .ach-item {
+  background:transparent;
+  border-bottom-color:#514a42;
+}
+#app #section-dialog .achievements-v3 .ach-history-table .ach-item:is(:hover,:focus-within) {
+  background:#39342e;
+  border-radius:7px;
+}
+#app #section-dialog .achievements-v3 .ach-history-columns,
+#app #section-dialog .achievements-v3 .ach-feature-row {
+  border-bottom-color:#514a42;
+}
+#app #section-dialog .achievements-v3 .ach-feature-rarity {
+  border-left-color:#514a42;
+}
+#app #section-dialog .achievements-v3 .ach-history-sort:is(:hover,[aria-pressed=true]) {
+  color:#f2e3cf;
+  background:#453a2f;
+}
+#app #section-dialog .achievements-v3 :is(.ach-feature-info small,.ach-item-game,
+  .ach-history-columns,.ach-feature-date,.ach-item-date) {
+  color:var(--ui-muted);
+}
+#app #section-dialog .achievements-v3 .ach-earned-feature {
+  background:
+    linear-gradient(90deg,#211e1beb 0%,#211e1b69 37%,#29241fcd 59%,#1d1b19f5 100%),
+    url('./assets/achievements-hero.webp') center 51%/cover no-repeat #211e1b;
+}
+#app #section-dialog .achievements-v3 .ach-progress-track {background:var(--ui-track)}
+#app #section-dialog .achievements-v3 .ach-progress-track>i {background:var(--ui-fill)}
+#app #section-dialog .achievements-v3 :is(.ach-feature-rarity svg,.ach-hero-total svg) {
+  color:var(--ui-sand);
+}
+#app .desk-game-achievement-view .af-ach-list .af-ach-row {
+  background:linear-gradient(110deg,#292724,#1e1d1b);
+  border-color:var(--ui-border);
+}
+#app .desk-game-achievement-view .af-ach-list .af-ach-row:is(:hover,:focus-within) {
+  background:#353029;
+  border-color:#92816c;
+}
+#app .desk-game-achievement-view :is(.af-game-ach-toolbar>.searchbox,.af-ach-select-label select) {
+  background:#292623;
+  border-color:#504b44;
+}
+#app .desk-game-achievement-view .af-game-ach-toolbar .searchbox:focus-within {
+  border-color:var(--ui-sand);
+}
+
+/* Statistics: one warm palette for numeric bars, histogram, donut and controls. */
+#app #section-dialog .stats-dashboard {
+  --stats-cyan:var(--ui-sand);
+  --stats-muted:var(--ui-muted);
+  --stats-line:var(--ui-border);
+  color:var(--ui-paper);
+}
+#app #section-dialog .stats-dashboard .stats-panel {
+  background:linear-gradient(115deg,#282623,#1e1d1b);
+  border-color:var(--ui-border);
+}
+#app #section-dialog .stats-dashboard .stats-heading {color:var(--ui-paper)}
+#app #section-dialog .stats-dashboard :is(.stats-heading svg,.stats-games-symbol,
+  .stats-watermark,.stats-bottom-watermark) {color:#cdb697}
+#app #section-dialog .stats-dashboard :is(.stats-achievements-value>span,
+  .stats-games-total>span,.stats-games-split small,
+  .stats-achievements-year,.stats-bottom-value span) {color:var(--ui-muted)}
+#app #section-dialog .stats-dashboard .stats-games-split>div {border-left-color:#514a42}
+#app #section-dialog .stats-dashboard .stats-unmarked-symbol::before {
+  border-color:#c8b396;
+}
+#app #section-dialog .stats-dashboard :is(.stats-track,.stats-top-track) {
+  background:var(--ui-track);
+}
+#app #section-dialog .stats-dashboard :is(.stats-track>i,.stats-top-track i) {
+  background:var(--ui-fill);
+}
+#app #section-dialog .stats-dashboard .stats-period-controls {
+  background:#211f1d;
+  border-color:var(--ui-border);
+}
+#app #section-dialog .stats-dashboard .stats-period-controls button {color:#cfc4b5}
+#app #section-dialog .stats-dashboard .stats-period-controls button:is(:hover,:focus-visible) {
+  background:#39342e;
+  color:var(--ui-paper);
+}
+#app #section-dialog .stats-dashboard .stats-period-controls button[aria-pressed=true] {
+  background:#4a4034;
+  border:1px solid #c4a987;
+  color:#f4e9da;
+  box-shadow:none;
+}
+#app #section-dialog .stats-dashboard .stats-time-chart {
+  background:repeating-linear-gradient(to top,
+    transparent 0,transparent calc(25% - 1px),#675b4b66 25%);
+}
+#app #section-dialog .stats-dashboard button.stats-time-column:is(:hover,:focus-visible) {
+  background:#a9977e20;
+}
+#app #section-dialog .stats-dashboard .stats-time-column-track i {
+  background:linear-gradient(180deg,#d8c4a8,#93806a);
+  box-shadow:inset 0 1px #ffffff25;
+}
+#app #section-dialog .stats-dashboard button.stats-time-column:is([aria-current=true],:hover,:focus-visible) .stats-time-column-track i {
+  background:linear-gradient(180deg,#ead8bf,#b49a78);
+  box-shadow:0 0 10px #d2b79333;
+}
+#app #section-dialog .stats-dashboard .stats-time-column strong {color:var(--ui-paper)}
+#app #section-dialog .stats-dashboard .stats-library-ring {
+  background:conic-gradient(#d3bea0 var(--stats-library-pct),#47423c 0);
+}
+#app #section-dialog .stats-dashboard .stats-library-ring::after {background:var(--ui-raised)}
+
+/* Sessions and other dashboard charts use the same neutral track / sand fill. */
+#app #section-dialog .session-bars {
+  border-left-color:var(--ui-border);
+  background:repeating-linear-gradient(to bottom,#514a4266 0 1px,
+    transparent 1px calc(var(--session-chart-height)/var(--session-ticks)));
+  background-size:100% var(--session-chart-height);
+  background-repeat:no-repeat;
+}
+#app #section-dialog .session-bar-track {border-bottom-color:var(--ui-border)}
+#app #section-dialog .session-bar-track i {
+  background:linear-gradient(180deg,#dcc8aa,#a28d73 73%,#766655);
+  box-shadow:inset 0 1px #ffffff29;
+}
+#app #section-dialog .session-bar-track:focus-visible {
+  outline-color:var(--ui-sand);
+}
+
+/* Native dialogs stay modal; the in-page #section-dialog stays an ordinary section. */
+dialog:not(#section-dialog):not(.period-recap-dialog) {
+  background:var(--ui-surface);
+  border-color:var(--ui-border);
+  color:var(--ui-paper);
+}
+dialog:not(#section-dialog):not(.period-recap-dialog) :is(.dialog-head,.dialog-footer) {
+  background:#292623;
+  border-color:var(--ui-border);
+}
+dialog.desk-completion-dialog .dialog-head {background:transparent!important}
+dialog:not(#section-dialog) .field :is(input,textarea,select),
+dialog:not(#section-dialog) :is(.searchbox,select) {
+  background:#292623;
+  color:var(--ui-paper);
+  border-color:#504b44;
+}
+dialog:not(#section-dialog) .field :is(input,textarea,select):focus-visible {
+  outline:2px solid var(--ui-sand);
+  border-color:var(--ui-sand);
+}
+dialog:not(#section-dialog) .btn-primary {
+  background:var(--ui-sand);
+  border-color:#dcc9af;
+  color:#231e18;
+}
+dialog:not(#section-dialog) .btn-primary:hover {
+  background:#e4d0b3;
+  border-color:#e4d0b3;
+}
+dialog:not(#section-dialog) :is(.btn-secondary,.icon-btn) {
+  background:#302c27;
+  border-color:#5b5248;
+  color:var(--ui-paper);
+}
+dialog:not(#section-dialog) :is(.btn-secondary,.icon-btn):hover {
+  background:#413930;
+  border-color:#9b886e;
+}
+.toast:not(.toast-error) {
+  background:#302b25;
+  border-color:#786c59;
+  color:#f1e7da;
+}
+
+/* Collection detail: give analytics room to breathe, without shrinking the grid. */
+#app #section-dialog .member-v2-layout {
+  grid-template-columns:minmax(315px,340px) minmax(0,1fr);
+  gap:18px;
+}
+#app #section-dialog .member-v2 .member-v2-analytics-panel {padding:18px;gap:12px}
+#app #section-dialog .member-v2 .member-v2-analytics-panel>h3 {font-size:1.22rem}
+#app #section-dialog .member-v2 .member-v2-insight {padding:15px;gap:12px}
+#app #section-dialog .member-v2 .member-v2-insight-heading {font-size:.86rem}
+#app #section-dialog .member-v2 .member-v2-percent>span {font-size:.8rem}
+#app #section-dialog .member-v2 .member-v2-status-layout {
+  display:grid;
+  grid-template-columns:minmax(0,1fr);
+  justify-items:center;
+  gap:14px;
+}
+#app #section-dialog .member-v2 .member-v2-donut {width:108px}
+#app #section-dialog .member-v2 .member-v2-status-rows {
+  width:100%;
+  gap:9px;
+}
+#app #section-dialog .member-v2 .member-v2-status-row {font-size:.8rem}
+#app #section-dialog .member-v2 .member-v2-status-row small {font-size:.74rem}
+
+/* Complete game artwork must remain visible. Hero/banner photography may crop. */
+#app #section-dialog .member-v2 .member-v2-art,
+#app #section-dialog .member-v2 .member-v2-leader-cover {
+  background:#191816;
+}
+#app #section-dialog .member-v2 .member-v2-art>.wide-cover img,
+#app #section-dialog .member-v2 .member-v2-leader-cover.cover img,
+#app #section-dialog .cv3-poster.cover img,
+#app :is(.game-card .card-art,.launcher-game>.cover) img,
+#app #section-dialog .desk-game .card-art img {
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  object-position:center;
+}
+#app #section-dialog .member-v2 .member-v2-card:hover .member-v2-art img {
+  transform:none;
+}
+#app #section-dialog .member-v2 .member-v2-art>.wide-cover {
+  background:linear-gradient(120deg,#25221f,#161513);
+}
+
+/* The homepage may scroll only when content really exceeds the viewport. */
+#app .page.page-library.home-page:has(.home-dashboard) {
+  padding-bottom:0;
+}
+@media(max-width:1450px) and (min-width:1061px) {
+  #app #section-dialog .member-v2-layout {
+    grid-template-columns:minmax(280px,300px) minmax(0,1fr);
+  }
+}
+@media(max-width:1060px) {
+  #app #section-dialog .member-v2-layout {
+    grid-template-columns:minmax(0,1fr);
+  }
+  #app #section-dialog .member-v2-analytics {position:static}
+}
+@media(max-width:720px) {
+  #app #section-dialog .member-v2 .member-v2-analytics-panel {padding:12px}
+  #app #section-dialog .member-v2 .member-v2-insight {padding:12px}
+}
+@media(prefers-reduced-motion:reduce) {
+  #app #section-dialog .member-v2 .member-v2-card:hover {transform:none}
+}
