@@ -211,7 +211,7 @@ function cover(game, className = '', {detailed = false, eager = false} = {}) {
   const bundled = id && game.catalogId && original === './assets/covers/' + game.catalogId + '.jpg';
   const detailedUrl = detailed ? steamCover2x(id, bundled ? stock : original || stock) : '';
   const url = detailedUrl || original || stock;
-  return `<div class="cover ${className}" style="--cover-accent:${/^#[\da-f]{6}$/i.test(game.accent ?? '') ? game.accent : '#5083a7'}">
+  return `<div class="cover ${className}" style="--cover-accent:${/^#[\da-f]{6}$/i.test(game.accent ?? '') ? game.accent : '#6896b3'}">
     <span class="cover-fallback">${icon('game', 42)}</span>${url ? `<img src="${esc(url)}" alt="" decoding="async" loading="${eager ? 'eager' : 'lazy'}"
       referrerpolicy="no-referrer" data-steam-art="${id ?? ''}" data-art-kind="cover"${detailedUrl ? ' data-detailed-cover' : ''}
       ${detailedUrl && original ? `data-cover-fallback="${esc(original)}"` : ''}>` : ''}</div>`;
@@ -1408,7 +1408,7 @@ function sessionRingSegment(start,end) {
 }
 
 function sessionGameDistribution(data) {
-  const colors = ['#d8c1a3','#bd9773','#a99783','#8e7a68','#73716b','#5b6263'];
+  const colors = ['#a7d7e9','#8ebbd5','#6896b3','#7391a7','#557084','#405063'];
   const total = data.metrics.minutes;
   const top = data.ranking.slice(0,5);
   const items = top.map(({game,minutes}) => ({label:displayName(game),minutes}));
@@ -2179,8 +2179,8 @@ function memberAnalytics(source,totals) {
   const r1 = count ? counts.perfect / count * 100 : 0;
   const r2 = count ? complete / count * 100 : 0;
   const r3 = count ? (complete + counts.active) / count * 100 : 0;
-  const donut = 'background:conic-gradient(#d4c1a6 0 ' + r1 + '%,#a89882 ' + r1 + '% ' +
-    r2 + '%,#776a5c ' + r2 + '% ' + r3 + '%,#423d37 ' + r3 + '% 100%)';
+  const donut = 'background:conic-gradient(#a7d7e9 0 ' + r1 + '%,#8ebbd5 ' + r1 + '% ' +
+    r2 + '%,#6896b3 ' + r2 + '% ' + r3 + '%,#405063 ' + r3 + '% 100%)';
   const rows = [['perfect','Идеально'],['beaten','Пройдено'],['active','В процессе'],['unstarted','Не начато']];
   const leader = collectionShowcaseGames(source,1)[0];
   const leaderTime = leader ? duration(Math.round(gameHours(leader)*60)) : '';
@@ -2304,7 +2304,7 @@ const VERIFIED_WIDE_ART = new Map([
 function wideCover(game, showFallback = false, {lazy = false, image = ''} = {}) {
   const id = game.steam?.appid;
   const artwork = image || VERIFIED_WIDE_ART.get(id) || steamHeader(id);
-  return id ? `<div class="cover wide-cover" style="--cover-accent:#5083a7">${showFallback ? `<span class="cover-fallback">${icon('game',24)}</span>` : ''}<img src="${esc(artwork)}" alt="" decoding="async" ${lazy ? 'loading="lazy"' : ''} referrerpolicy="no-referrer" data-steam-art="${id}" data-art-kind="wide"></div>` : cover(game,'wide-cover');
+  return id ? `<div class="cover wide-cover" style="--cover-accent:#6896b3">${showFallback ? `<span class="cover-fallback">${icon('game',24)}</span>` : ''}<img src="${esc(artwork)}" alt="" decoding="async" ${lazy ? 'loading="lazy"' : ''} referrerpolicy="no-referrer" data-steam-art="${id}" data-art-kind="wide"></div>` : cover(game,'wide-cover');
 }
 
 function settingsPage() {
