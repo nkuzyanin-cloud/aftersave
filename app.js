@@ -216,7 +216,7 @@ function filtered(source, applyFilters) {
   return source.filter(game => {
     const haystack = [game.title, displayName(game), game.genre, game.platform, game.steam?.appid, ...game.tags].join(' ').toLocaleLowerCase('ru');
     return (!query || query.split(/\s+/).every(term => haystack.includes(term))) &&
-      (!status || (status === 'unmarked' ? !['perfect','beaten'].includes(completionFor(game)) : completionFor(game) === status));
+      (!status || gameProgressState(game,summaryFor(game)) === status);
   }).sort((a,b) => byLastPlayed(a,b) || displayName(a).localeCompare(displayName(b),'ru'));
 }
 
@@ -289,7 +289,7 @@ function libraryTools() {
     <details class="desk-library-filter">
       <summary class="icon-btn" aria-label="Фильтры библиотеки" title="Фильтры библиотеки" data-active="${Boolean(filter.status || libraryHidden)}">${icon('filter',18)}</summary>
       <div class="desk-library-filter-panel" role="group" aria-label="Статус игры">
-        ${[['','Все'],['perfect','Идеально'],['beaten','Пройдено'],['unmarked','Без отметок']].map(([value,label]) => {
+        ${[['','Все'],['perfect','Идеально'],['beaten','Пройдено'],['active','Начато'],['unstarted','Не начато']].map(([value,label]) => {
           const active = filter.status === value;
           return button('library-status',label,'check','quiet',`data-value="${value}" aria-pressed="${active}"`);
         }).join('')}
@@ -1746,9 +1746,8 @@ function statsPage() {
   const linked = games().filter(game => game.steam && !game.hidden);
   const active = linked.filter(game => isInLibrary(game));
   const totals = collectionTotals(linked,summaryFor);
-  const completed = active.filter(game => completionFor(game) === 'perfect').length;
-  const beaten = active.filter(game => completionFor(game) === 'beaten').length;
-  const other = active.length-completed-beaten;
+  const statuses = countGameStatuses(active,summaryFor);
+  const {perfect:completed,beaten} = statuses;
   const unlocked = totals.unlocked, total = totals.total;
   const completionRate = total ? unlocked/total*100 : 0;
   const finished = completed+beaten;
@@ -1784,7 +1783,8 @@ function statsPage() {
         '<div class="stats-games-split">'+
           '<div><span class="stats-games-symbol">'+icon('perfect',20)+'</span><strong>'+numeric(completed)+'</strong><small>идеально</small></div>'+
           '<div><span class="stats-games-symbol">'+icon('check',20)+'</span><strong>'+numeric(beaten)+'</strong><small>пройдено</small></div>'+
-          '<div><span class="stats-games-symbol stats-unmarked-symbol" aria-hidden="true"></span><strong>'+numeric(other)+'</strong><small>без отметки</small></div>'+
+          '<div><span class="stats-games-symbol">'+icon('clock',20)+'</span><strong>'+numeric(statuses.active)+'</strong><small>начато</small></div>'+
+          '<div><span class="stats-games-symbol stats-unmarked-symbol" aria-hidden="true"></span><strong>'+numeric(statuses.unstarted)+'</strong><small>не начато</small></div>'+
         '</div></div>'+
     '</section>'+
     '<section class="stats-panel stats-panel-time">'+
@@ -1953,7 +1953,7 @@ function collectionBreakdown(grouped) {
   return '<div class="cv3-breakdown" aria-label="Статусы игр">' +
     '<span>' + icon('perfect',15) + '<span>Идеально</span><b>' + numeric(status.perfect) + '</b></span>' +
     '<span>' + icon('check',15) + '<span>Пройдено</span><b>' + numeric(status.beaten) + '</b></span>' +
-    '<span>' + icon('clock',15) + '<span>В процессе</span><b>' + numeric(status.active) + '</b></span>' +
+    '<span>' + icon('clock',15) + '<span>Начато</span><b>' + numeric(status.active) + '</b></span>' +
     '</div>';
 }
 
@@ -1995,7 +1995,7 @@ function memberCard(game) {
   const record = summaryFor(game);
   const status = memberProgressState(game,record);
   const rate = record?.total ? Math.min(100,Math.round(record.unlocked / record.total * 100)) : null;
-  const labels = {perfect:'Идеально',beaten:'Пройдено',active:'В процессе',unstarted:'Не начато'};
+  const labels = {perfect:'Идеально',beaten:'Пройдено',active:'Начато',unstarted:'Не начато'};
   const statusIcon = status === 'beaten' ? 'check' : status === 'unstarted' ? 'layers' : 'clock';
   return '<article class="member-card member-v2-card ' + status + '">' +
     '<a class="member-v2-link" href="' + gameHref(game) + '">' +
@@ -2022,8 +2022,7 @@ function memberResults(source) {
   const query = memberQuery.trim().toLocaleLowerCase('ru');
   const matches = source.filter(game => {
     const status = memberProgressState(game);
-    const passesStatus = memberFilter === 'all' || memberFilter === status ||
-      (memberFilter === 'unmarked' && (status === 'active' || status === 'unstarted'));
+    const passesStatus = memberFilter === 'all' || memberFilter === status;
     return passesStatus && (!query || displayName(game).toLocaleLowerCase('ru').includes(query));
   });
   matches.sort((a,b) => {
@@ -2054,7 +2053,7 @@ function memberAnalytics(source,totals) {
   const r3 = count ? (complete + counts.active) / count * 100 : 0;
   const donut = 'background:conic-gradient(#a7d7e9 0 ' + r1 + '%,#8ebbd5 ' + r1 + '% ' +
     r2 + '%,#6896b3 ' + r2 + '% ' + r3 + '%,#405063 ' + r3 + '% 100%)';
-  const rows = [['perfect','Идеально'],['beaten','Пройдено'],['active','В процессе'],['unstarted','Не начато']];
+  const rows = [['perfect','Идеально'],['beaten','Пройдено'],['active','Начато'],['unstarted','Не начато']];
   const leader = collectionShowcaseGames(source,1)[0];
   const leaderTime = leader ? duration(Math.round(gameHours(leader)*60)) : '';
   return '<section class="member-v2-analytics-panel">' +
@@ -2110,8 +2109,8 @@ function collectionsPage(collection) {
           icon('search',17) + '<input type="search" id="member-game-query" aria-label="Поиск игр в коллекции" placeholder="Поиск по играм..." value="' +
             esc(memberQuery) + '"></label>' +
           '<select id="member-filter" aria-label="Статус игры">' +
-            [['all','Все статусы'],['perfect','Идеально'],['beaten','Пройдено'],['active','В процессе'],
-              ['unstarted','Не начато'],['unmarked','Без отметок']].map(([k,v])=>option(k,v,memberFilter)).join('') + '</select>' +
+            [['all','Все статусы'],['perfect','Идеально'],['beaten','Пройдено'],['active','Начато'],
+              ['unstarted','Не начато']].map(([k,v])=>option(k,v,memberFilter)).join('') + '</select>' +
           '<select id="member-order" aria-label="Сортировка игр">' +
             [['activity','По активности'],['name','По названию'],['time','По времени']].map(([k,v])=>option(k,v,memberOrder)).join('') + '</select>' +
           '<div class="member-switch">' +
