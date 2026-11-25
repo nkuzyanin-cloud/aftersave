@@ -52,8 +52,6 @@ let collectionView = 'grid';
 let memberOrder = 'activity';
 let memberFilter = 'all';
 let memberQuery = '';
-let statsTimeMode = 'months';
-let statsTimePage = 0;
 let autoRecapReady = false;
 let autoRecapVisitDay = dayNumber(Date.now());
 let sessionPeriod = '30';
@@ -120,7 +118,7 @@ const coverUrl = value => {
 
 function getRoute() {
   const [original, id, tab, extra] = location.hash.slice(1).split('/');
-  const target = original === 'profile' ? 'settings' : original;
+  const target = original === 'profile' ? 'settings' : original === 'sessions' ? 'stats' : original;
   const section = Object.hasOwn(sectionIcons,target) ? target : '';
   return {page:target === 'game' ? 'game' : 'library', section, id,
     tab: !extra && ['notes', 'sessions'].includes(tab) ? tab : 'overview',
@@ -666,7 +664,7 @@ async function refreshSteamProfile() {
 function refreshNavigation() {
   const selected = route.section || (route.page === 'game' ? 'all-games' : 'library');
   const link = (path,title,glyph,active,extra='') => `<a class="${extra}" href="#${esc(path)}"${active ? ' aria-current="page"' : ''}>${icon(glyph,19)}<span>${esc(title)}</span></a>`;
-  const primary = ['library','all-games','achievements','sessions','stats'].map(page =>
+  const primary = ['library','all-games','achievements','stats'].map(page =>
     link(page,page === 'library' ? 'Главная' : labels[page],sectionIcons[page] || 'game',selected === page)).join('');
   const children = collections().map(item => {
     const id = encodeURIComponent(item.id);
@@ -1248,9 +1246,9 @@ function sessionActivityChart(data) {
   const magnitude = 10 ** Math.floor(Math.log10(Math.max(1,max/300)));
   const step = [1,2,3,5,10].map(value => value*magnitude).find(value => value >= max/300);
   const divisions = Math.ceil(max/(step*60)) || 1;
-  const options = sessionPeriod === 'all' ? [['months','По месяцам'],['years','По годам']] : [['days','По дням'],['weeks','По неделям']];
+  const options = sessionPeriod === 'all' ? [['months','По месяцам'],['years','По годам']] : [['days','По дням'],['weeks','По неделям'],['months','По месяцам']];
   const heading = {days:'по дням',weeks:'по неделям',months:'по месяцам',years:'по годам'}[sessionGrouping];
-  const labelEvery = points.length <= 31 ? 1 : 3;
+  const labelEvery = points.length <= 31 ? 1 : Math.ceil(points.length/30);
   return `<section class="session-card session-chart-panel">
     <div class="session-panel-head"><h2>${icon('chart',19)}Игровое время ${heading}</h2>
       ${sessionSwitch('session-group','Группировка графика',options,sessionGrouping)}</div>
@@ -1260,7 +1258,7 @@ function sessionActivityChart(data) {
       <div class="session-chart-scroll" aria-label="Игровое время за выбранный период">
         <div class="session-bars" style="--session-bars:${points.length};--session-ticks:${divisions}">
           ${points.map((point,index) => `<div class="session-bar-col">
-            <div class="session-bar-track" ${point.minutes ? `tabindex="0" data-session-bar
+            <div class="session-bar-track" ${point.minutes ? `tabindex="0" data-session-bar ${sessionGrouping !== 'days' ? `data-action="stats-period-recap" data-mode="${sessionGrouping}" data-period="${point.periodKey}" aria-haspopup="dialog"` : ''}
               aria-label="${esc([point.title,sessionDuration(point.minutes),...point.games.map(({game,minutes}) =>
                 displayName(game) + ' — ' + sessionDuration(minutes))].join(', '))}"` : ''}>
               ${point.minutes ? `<i style="--session-height:${point.minutes/(divisions*step*60)*100}%;--item-delay:${Math.min(index,24)*12}ms"></i>
@@ -1272,11 +1270,12 @@ function sessionActivityChart(data) {
   </section>`;
 }
 
-function sessionTopRows(ranking) {
-  return `<ul class="session-top-list">${ranking.map(({game,count,minutes}) => `<li>
-    <a href="${gameHref(game)}" class="session-top-game">${cover(game,'',{detailed:true})}
+function sessionTopRows(ranking, visual = false) {
+  const max = ranking[0]?.minutes || 1;
+  return `<ul class="session-top-list">${ranking.map(({game,count,minutes},index) => `<li>
+    <a href="${gameHref(game)}" class="session-top-game">${visual ? `<span class="analytics-rank">${index+1}</span>` : ''}${cover(game,'',{detailed:true})}
       <span class="session-top-copy"><strong>${esc(displayName(game))}</strong>
-        <small>${icon('clock',12)}${sessionRecordCount(count)}</small></span>
+        ${visual ? `<span class="analytics-meter"><i style="width:${percent(minutes/max*100)}%"></i></span>` : `<small>${icon('clock',12)}${sessionRecordCount(count)}</small>`}</span>
       <strong class="session-top-time">${sessionDuration(minutes)}</strong>
     </a></li>`).join('')}</ul>`;
 }
@@ -1285,7 +1284,7 @@ function sessionTopGames(data) {
   return `<section class="session-card session-top-panel">
     <div class="session-panel-head"><h2>${icon('game',19)}Топ игр за период</h2>
       ${data.ranking.length > 5 ? `<button type="button" class="session-text-action" data-action="session-top" aria-haspopup="dialog">Подробнее ${icon('right',15)}</button>` : ''}
-    </div>${data.ranking.length ? sessionTopRows(data.ranking.slice(0,5)) : '<p class="session-empty">Нет данных за этот период.</p>'}
+    </div>${data.ranking.length ? sessionTopRows(data.ranking.slice(0,5),true) : '<p class="session-empty">Нет данных за этот период.</p>'}
   </section>`;
 }
 
@@ -1306,51 +1305,6 @@ function sessionRecentCards(data) {
   </section>`;
 }
 
-function sessionRingSegment(start,end) {
-  const point = (turn,radius) => {
-    const angle = turn*2*Math.PI - Math.PI/2;
-    return `${100+radius*Math.cos(angle)} ${100+radius*Math.sin(angle)}`;
-  };
-  const large = Number(end-start > .5);
-  return `M ${point(start,98)} A 98 98 0 ${large} 1 ${point(end,98)}
-    L ${point(end,60)} A 60 60 0 ${large} 0 ${point(start,60)} Z`;
-}
-
-function sessionGameDistribution(data) {
-  const colors = ['#a7d7e9','#8ebbd5','#6896b3','#7391a7','#557084','#405063'];
-  const total = data.metrics.minutes;
-  const top = data.ranking.slice(0,5);
-  const items = top.map(({game,minutes}) => ({label:displayName(game),minutes}));
-  const rest = data.ranking.slice(5);
-  if (rest.length > 1) items.push({label:'Другие игры · '+numeric(rest.length),
-    minutes:rest.reduce((sum,item) => sum+item.minutes,0), description:'Сумма времени по играм за пределами топ-5'});
-  else if (rest.length) items.push({label:displayName(rest[0].game),minutes:rest[0].minutes});
-  let start = 0;
-  const segments = items.map((item,index) => {
-    const end = start+item.minutes/total;
-    const props = `data-session-share="${index}"`;
-    const shape = items.length === 1 ? `<circle ${props} cx="100" cy="100" r="79" fill="none" stroke="${colors[index]}" stroke-width="38"/>` :
-      `<path ${props} d="${sessionRingSegment(start,end)}" fill="${colors[index]}"/>`;
-    start = end;
-    return shape;
-  }).join('');
-  return `<section class="session-card session-share-panel">
-    <div class="session-panel-head"><h2>${icon('pie',19)}Распределение по играм</h2></div>
-    ${total ? `<div class="session-share-layout"><div class="session-donut">
-      <svg viewBox="0 0 200 200" aria-hidden="true" focusable="false">
-        <defs><mask id="session-donut-mask"><circle class="session-ring-sweep" cx="100" cy="100" r="79" pathLength="100"
-          fill="none" stroke="white" stroke-width="42" transform="rotate(-90 100 100)"/></mask></defs>
-        <g mask="url(#session-donut-mask)">${segments}</g></svg>
-      <div class="session-donut-total"><strong>${sessionDuration(total)}</strong><small>всего</small></div></div>
-      <ul class="session-share-list">${items.map(({label,minutes,description},index) =>
-        `<li data-session-share="${index}" tabindex="0"><i style="background:${colors[index]}"></i>
-          <span title="${esc(description ? label + ' · ' + description : label)}">${esc(label)}</span>
-          <strong>${numeric(Math.round(minutes/total*1000)/10)}%</strong>
-          <small>${sessionDuration(minutes)}</small></li>`).join('')}</ul></div>` :
-      '<p class="session-empty">Появится после записи игрового времени.</p>'}
-  </section>`;
-}
-
 function sessionDelta(value, previous, mode) {
   if (!previous) return '';
   const difference = value - previous;
@@ -1362,35 +1316,7 @@ function sessionDelta(value, previous, mode) {
     ${sign}${text}</span>`;
 }
 
-function sessionsPage(game, inSection = false) {
-  if (game) return legacySessionsPage(game);
-  const data = sessionDashboardData(sessionContext(),sessionPeriod);
-  const period = sessionPeriod === 'all' ? 'за всё время' : 'за ' + sessionPeriod + ' дней';
-  const cards = [
-    ['clock','Время ' + period,'minutes','percent',''],
-    ['game','Записей сессий','count','count','Одна запись на игру за календарный день'],
-    ['flame','Серия игровых дней','currentStreak',null,'Дни подряд с игровым временем по всем сохранённым сессиям. Серия может продолжиться сегодня, если ты играл вчера.'],
-    ['trophy','Достижений за сессии','achievements','percent','Достижения, полученные в игре в день с записью']
-  ];
-  return `<div id="desk-feed" class="session-dashboard">
-    <div class="session-dashboard-head">${inSection ? '' : '<h1>' + icon('clock',22) + 'Игровые сессии</h1>'}
-      <div class="session-dashboard-actions">
-        ${sessionSwitch('session-period','Период',[['7','7 дней'],['30','30 дней'],['all','Всё время']],sessionPeriod)}
-        ${button('steam-sync','Обновить','refresh','quiet',syncingSteam ? 'disabled' : '')}</div></div>
-    ${steamMessage && (syncingSteam || steamError) ? `<p class="steam-message" role="status">${esc(steamMessage)}</p>` : ''}
-    <div class="session-kpis">${cards.map(([glyph,title,key,mode,tip]) => {
-      const value = data.metrics[key];
-      const label = key === 'minutes' ? sessionDuration(value) :
-        key === 'currentStreak' ? numeric(value) + ' дн.' : (key === 'achievements' && value ? '+' : '') + numeric(value);
-      return `<section class="session-card session-kpi" ${tip ? `title="${tip}"` : ''}>
-        <div class="session-kpi-icon">${icon(glyph,22)}</div><div><small>${title}</small>
-          <div class="session-kpi-value"><strong>${label}</strong>
-          ${mode ? sessionDelta(value,data.previous?.[key],mode) : ''}</div></div></section>`;
-    }).join('')}</div>
-    <div class="session-main-grid">${sessionActivityChart(data)}${sessionTopGames(data)}</div>
-    <div class="session-bottom-grid">${sessionRecentCards(data)}${sessionGameDistribution(data)}</div>
-  </div>`;
-}
+function sessionsPage(game) { return legacySessionsPage(game); }
 
 function showSessionChartHover(event) {
   const target = event.target instanceof Element ? event.target : null;
@@ -1419,30 +1345,14 @@ function showSessionChartHover(event) {
   tooltip.style.top = (above ? anchor.top-tooltip.offsetHeight-10 : anchor.top+10) - box.top + 'px';
 }
 
-function showSessionShareHover(event) {
-  const target = event.target instanceof Element ? event.target.closest('[data-session-share]') : null;
-  const panel = target?.closest('.session-share-panel');
-  if (!panel) return;
-  const related = event.relatedTarget instanceof Element ? event.relatedTarget.closest('[data-session-share]') : null;
-  const isLeaving = event.type === 'pointerout' || event.type === 'focusout';
-  const focusedLegend = document.activeElement?.matches('.session-share-list [data-session-share]:focus-visible') ? document.activeElement : null;
-  const next = isLeaving ? related ?? (event.type === 'pointerout' ? focusedLegend : null) : target;
-  const active = panel.contains(next) ? next.dataset.sessionShare : undefined;
-  panel.querySelectorAll('[data-session-share]').forEach(item => {
-    item.classList.toggle('is-dimmed',active !== undefined && item.dataset.sessionShare !== active);
-    item.classList.toggle('is-highlighted',item.dataset.sessionShare === active);
-  });
-}
-
 for (const event of ['pointerover','pointerout','focusin','focusout']) {
   sectionDialog.addEventListener(event,showSessionChartHover);
-  sectionDialog.addEventListener(event,showSessionShareHover);
 }
 
 
 function openSessionArchive(limit=20) {
-  if (route.section !== 'sessions') return;
-  const context=sessionContext(),data=sessionDashboardData(context,sessionPeriod);
+  if (route.section !== 'stats') return;
+  const context=analyticsContext(),data=sessionDashboardData(context,sessionPeriod);
   const content='<div class="dialog-body session-archive-body">' +
     '<p class="session-archive-caption">Записи сгруппированы по игре и календарному дню.</p>' +
     sessionRows({...context,events:data.events,launches:[]},limit,false) +
@@ -1456,7 +1366,7 @@ function openSessionArchive(limit=20) {
     const refreshed=dialog.querySelector('.session-archive-body');
     if (refreshed) refreshed.scrollTop=scroll;
   } else {
-    const title=sessionPeriod==='7'?'Последние 7 дней':sessionPeriod==='30'?'Последние 30 дней':'Все время';
+    const title=sessionPeriod==='all'?'Вся история':'Последние '+sessionPeriod+' дней';
     showDialog('Игровые записи',title,content,'session-archive-dialog');
   }
   imageFallbacks(dialog);
@@ -1517,52 +1427,6 @@ function statsPeriodLabel(key, mode, short = false) {
   return short ? monthDay.format(first) : statsWeekDates.formatRange(first,last);
 }
 
-function statsHourChart(events) {
-  const mode = statsTimeMode;
-  const {count} = statsPeriods[mode];
-  const today = dayNumber(Date.now());
-  const anchor = statsPeriodKey(today,mode);
-  const amounts = new Map();
-  for (const event of events) {
-    if (!Number.isInteger(event.day) || event.day > today || !Number.isFinite(event.minutes) || event.minutes <= 0) continue;
-    const key = statsPeriodKey(event.day,mode);
-    addDaily(amounts,key,event.minutes);
-  }
-
-  const last = anchor - statsTimePage*count;
-  const first = last-count+1;
-  const points = Array.from({length:count},(_,index) => ({key:first+index,minutes:amounts.get(first+index) ?? 0}));
-  const max = Math.max(0,...points.map(point=>point.minutes));
-  const chart = max ? '<div class="stats-time-chart" style="--stats-chart-columns:'+count+'" role="group" aria-label="Игровые часы по записанным сессиям">'+
-    points.map(({key,minutes})=>{
-      const label = statsPeriodLabel(key,mode,true);
-      const value = minutes ? sessionDuration(minutes) : '';
-      const column = '<strong>'+esc(value)+'</strong>'+
-        '<span class="stats-time-column-track"><i style="height:'+percent(minutes/max*100)+'%"></i></span>'+
-        '<small>'+esc(label)+'</small>';
-      return minutes ? '<button type="button" class="stats-time-column" data-action="stats-period-recap" data-period="'+key+
-        '" aria-haspopup="dialog" aria-label="'+esc(statsPeriodLabel(key,mode)+', '+value+'. Открыть итоги')+
-        '" title="'+esc(statsPeriodLabel(key,mode)+': '+value)+'">'+column+'</button>' :
-        '<div class="stats-time-column" aria-label="'+esc(statsPeriodLabel(key,mode)+'. Нет записей')+'">'+column+'</div>';
-    }).join('')+'</div>' :
-    '<div class="stats-time-chart-empty">Нет записанных сессий за выбранный период.</div>';
-  const pages = [...new Set([0,...[...amounts.keys()].map(key=>Math.floor((anchor-key)/count))])].sort((a,b)=>a-b);
-  const older = pages.find(page=>page > statsTimePage);
-  const newer = pages.findLast(page=>page < statsTimePage);
-  const pageButton = (label, glyph, page) => button('stats-time-history',label,glyph,'quiet',
-    page === undefined ? 'disabled' : 'data-page="'+page+'"');
-  const navigation = older !== undefined || newer !== undefined ?
-    '<div class="stats-time-history" role="group" aria-label="История игрового времени">'+
-    pageButton('Раньше','back',older)+pageButton('Позже','right',newer)+'</div>' : '';
-  return '<div class="stats-time-series">'+chart+'<div class="stats-time-footer">'+
-    (max ? '<small>Нажми на столбец, чтобы открыть итоги периода</small>' : '')+navigation+'</div></div>';
-}
-
-function redrawStatsHours() {
-  sectionDialog.querySelector('.stats-time-series').outerHTML = statsHourChart(statsSessionEvents());
-  startStatsMotion(sectionDialog.querySelector('.stats-time-chart'),'chart-enter');
-}
-
 function periodRecapMetrics(mode, daily, total, gameCount, achievements, from, to) {
   const metrics = [
     ['Игровых дней',numeric(daily.size)],
@@ -1608,10 +1472,12 @@ function openStatsPeriod(control) {
   const key = Number(control.dataset.period);
   if (!Number.isSafeInteger(key)) return;
   const now = Date.now();
-  const activity = statsPeriodActivity(statsTimeMode,key,statsSessionEvents(),now);
+  const mode = control.dataset.mode;
+  if (!Object.hasOwn(statsPeriods,mode)) return;
+  const activity = statsPeriodActivity(mode,key,statsSessionEvents(),now);
   if (!activity.events.length) return;
   control.focus({preventScroll:true});
-  showStatsPeriod(statsTimeMode,key,activity,now);
+  showStatsPeriod(mode,key,activity,now);
 }
 
 function recapRanking(entries, limit, row) {
@@ -1742,98 +1608,105 @@ function checkRecapsOnVisit() {
   void maybeShowAutomaticResults();
 }
 
+
+function analyticsContext() {
+  const context = sessionContext();
+  const linked = new Map(games().filter(game=>game.steam && !game.hidden).map(game=>[game.steam.appid,game]));
+  context.events = withArchivedActivity(context.events,state.steam?.activityDays,linked)
+    .sort((a,b)=>b.day-a.day || (b.observedTo??0)-(a.observedTo??0));
+  return context;
+}
+
+function analyticsPanel(title,glyph,body,cls='',action='') {
+  return '<section class="session-card analytics-panel '+cls+'"><div class="session-panel-head"><h2>'+
+    icon(glyph,19)+title+'</h2>'+action+'</div>'+body+'</section>';
+}
+
+function analyticsLibrary(library) {
+  const counts = countGameStatuses(library,summaryFor);
+  const total = library.length;
+  const rate = value => total ? value/total*100 : 0;
+  const complete = counts.perfect+counts.beaten;
+  const colors = ['#b5e3f3','#8ebbd5','#6896b3','#405063'];
+  const labels = [['perfect','Идеально'],['beaten','Пройдено'],['active','Начато'],['unstarted','Не начато']];
+  let end=0;
+  const stops=labels.map(([key],i)=>{
+    const start=end;end+=rate(counts[key]);
+    return colors[i]+' '+start+'% '+end+'%';
+  }).join(',');
+  const ring=total?'conic-gradient('+stops+')':'var(--arctic-border)';
+  return analyticsPanel('Прогресс библиотеки','layers',
+    '<div class="analytics-library-body"><div class="analytics-library-ring" style="background:'+ring+'" role="img" aria-label="Пройдено '+numeric(Math.round(rate(complete)*10)/10)+'% игр">'+
+      '<div><strong>'+numeric(Math.round(rate(complete)*10)/10)+'%</strong><small>пройдено</small><small>'+numeric(complete)+' из '+numeric(total)+' игр</small></div></div>'+
+    '<div class="analytics-status-list">'+labels.map(([key,label],i)=>
+      '<div><i style="background:'+colors[i]+'"></i><span>'+label+'</span><b>'+numeric(counts[key])+'</b><small>'+numeric(Math.round(rate(counts[key])*10)/10)+'%</small></div>').join('')+
+    '</div></div>', 'analytics-library');
+}
+
+function analyticsAchievements(totals, dated) {
+  const known=dated.filter(({item})=>Number.isFinite(item.percent));
+  const rare=known.filter(({item})=>item.percent<10).length;
+  const ultra=known.filter(({item})=>item.percent<1).length;
+  const groups=new Map();
+  for (const {game} of dated) {
+    const entry=groups.get(game.id)??{game,count:0};entry.count++;groups.set(game.id,entry);
+  }
+  const ranked=[...groups.values()].sort((a,b)=>b.count-a.count || displayName(a.game).localeCompare(displayName(b.game),'ru'));
+  const value=totals.total?numeric(Math.round(totals.unlocked/totals.total*1000)/10)+'%':'—';
+  const metric=(label,value,tip='')=>'<div'+(tip?' title="'+esc(tip)+'"':'')+'><small>'+label+'</small><strong>'+value+'</strong></div>';
+  return analyticsPanel('Достижения за период','trophy',
+    '<div class="analytics-ach-metrics">'+metric('Редкие',known.length?numeric(rare):'—','Менее 10% игроков Steam')+
+    metric('Очень редкие',known.length?numeric(ultra):'—','Менее 1% игроков Steam; входят в число редких')+'</div>'+
+    '<div class="analytics-subheading">Больше всего достижений</div>'+
+    (ranked.length?'<div class="analytics-ach-ranking">'+ranked.slice(0,3).map(({game,count})=>
+      '<a href="'+gameHref(game,'achievements')+'">'+cover(game,'',{detailed:true})+'<strong>'+esc(displayName(game))+'</strong><b>+'+numeric(count)+'</b></a>').join('')+'</div>':
+      '<p class="session-empty">Нет датированных достижений за период.</p>')+
+    '<div class="analytics-ach-total"><span>Всего получено: <b>'+numeric(totals.unlocked)+' / '+numeric(totals.total)+'</b></span><strong>'+value+'</strong></div>'+
+    '<div class="analytics-meter"><i style="width:'+percent(totals.total?totals.unlocked/totals.total*100:0)+'%"></i></div>',
+    'analytics-achievements','<a class="session-text-action" href="#achievements">Достижения '+icon('right',15)+'</a>');
+}
+
+function analyticsSessionSummary(data, totals) {
+  const count=data.events.length, days=new Set(data.events.map(event=>event.day)).size;
+  const longest=data.events.reduce((max,event)=>Math.max(max,event.minutes),0);
+  const metrics=[
+    ['Игровых записей',numeric(count)],
+    ['В среднем на запись',count?sessionDuration(data.metrics.minutes/count):'—'],
+    ['Самая длинная запись',count?sessionDuration(longest):'—'],
+    ['Записей в игровой день',days?numeric(Math.round(count/days*10)/10):'—']
+  ];
+  return analyticsPanel('Сводка по сессиям','clock','<div class="analytics-session-metrics">'+metrics.map(([label,value])=>
+    '<div><small>'+label+'</small><strong>'+value+'</strong></div>').join('')+
+    '</div><p class="analytics-note">Одна запись — игровое время одной игры за календарный день.</p>'+
+    '<div class="analytics-ach-total"><span>Общее время Steam</span><strong>'+sessionDuration(totals.minutes)+'</strong></div>','analytics-summary');
+}
+
 function statsPage() {
-  const linked = games().filter(game => game.steam && !game.hidden);
-  const active = linked.filter(game => isInLibrary(game));
-  const totals = collectionTotals(linked,summaryFor);
-  const statuses = countGameStatuses(active,summaryFor);
-  const {perfect:completed,beaten} = statuses;
-  const unlocked = totals.unlocked, total = totals.total;
-  const completionRate = total ? unlocked/total*100 : 0;
-  const finished = completed+beaten;
-  const libraryRate = active.length ? finished/active.length*100 : 0;
-  const earned = achievementEntries().filter(({item}) => item.unlocked);
-  const dated = earned.filter(({item}) => item.time > 0);
-  const days = achievementDays(dated);
-  const today = dayNumber(Date.now());
-  const earnedThisYear = [...days].reduce((sum,[day,value]) =>
-    sum+(day >= today-364 && day <= today ? value : 0),0);
-  const streak = streaks(days,today);
-  const rarityMeasured = earned.filter(({item}) => Number.isFinite(item.percent));
-  const rareCount = rarityMeasured.filter(({item}) => item.percent < 10).length;
-  const top = [...linked].sort((a,b)=>(b.steam?.minutes ?? 0)-(a.steam?.minutes ?? 0)).slice(0,5);
-  const topMax = top[0]?.steam?.minutes || 1;
-  return '<div id="desk-feed" class="stats-dashboard">'+
-    '<section class="stats-panel stats-panel-achievements">'+
-      '<h2 class="stats-heading">'+icon('trophy',23)+'Достижения</h2>'+
-      '<span class="stats-watermark" aria-hidden="true">'+icon('trophy',118)+'</span>'+
-      '<div class="stats-achievements-value"><strong>'+numeric(unlocked)+'</strong><span>/ '+numeric(total)+'</span></div>'+
-      '<div class="stats-achievements-progress">'+
-        '<div class="stats-track" role="progressbar" aria-label="Получено достижений" aria-valuemin="0" aria-valuemax="100" aria-valuenow="'+Math.round(completionRate)+'">'+
-          '<i style="width:'+percent(completionRate)+'%"></i></div>'+
-        '<strong>'+numeric(Math.round(completionRate*10)/10)+'%</strong>'+
-      '</div>'+
-      '<p class="stats-achievements-year">'+icon('trend',19)+'<strong>+'+numeric(earnedThisYear)+'</strong><span>за последние 365 дней</span></p>'+
-    '</section>'+
-    '<section class="stats-panel stats-panel-games">'+
-      '<h2 class="stats-heading">'+icon('game',23)+'Игры</h2>'+
-      '<span class="stats-watermark" aria-hidden="true">'+icon('game',112)+'</span>'+
-      '<div class="stats-games-content">'+
-        '<div class="stats-games-total"><strong>'+numeric(active.length)+'</strong><span>игр</span></div>'+
-        '<div class="stats-games-split">'+
-          '<div><span class="stats-games-symbol">'+icon('perfect',20)+'</span><strong>'+numeric(completed)+'</strong><small>идеально</small></div>'+
-          '<div><span class="stats-games-symbol">'+icon('check',20)+'</span><strong>'+numeric(beaten)+'</strong><small>пройдено</small></div>'+
-          '<div><span class="stats-games-symbol">'+icon('clock',20)+'</span><strong>'+numeric(statuses.active)+'</strong><small>начато</small></div>'+
-          '<div><span class="stats-games-symbol stats-unmarked-symbol" aria-hidden="true"></span><strong>'+numeric(statuses.unstarted)+'</strong><small>не начато</small></div>'+
-        '</div></div>'+
-    '</section>'+
-    '<section class="stats-panel stats-panel-time">'+
-      '<div class="stats-panel-top"><h2 class="stats-heading">'+icon('clock',23)+'Игровое время</h2>'+
-        '<div class="stats-period-controls" role="group" aria-label="Период истории игровых сессий">'+
-          Object.entries(statsPeriods).map(([mode,{label}])=>
-            '<button type="button" data-action="stats-time-period" data-value="'+mode+'" aria-pressed="'+(statsTimeMode===mode)+'">'+label+'</button>'
-          ).join('')+
-        '</div></div>'+
-      '<div class="stats-total-hours"><strong>'+numeric(Math.round(totals.minutes/60))+' ч</strong>'+
-        '<span>общее время Steam</span></div>'+
-      statsHourChart(statsSessionEvents())+
-      
-    '</section>'+
-    '<section class="stats-panel stats-panel-top-time">'+
-      '<h2 class="stats-heading">'+icon('trophy',23)+'Топ игр по времени</h2>'+
-      '<div class="stats-top-list">'+
-        (top.length ? top.map((game,index) => {
-          const minutes=game.steam?.minutes??0;
-          return '<a class="stats-top-game" href="'+gameHref(game)+'">'+
-            '<span class="stats-top-index">'+(index+1)+'.</span>'+cover(game,'',{detailed:true})+
-            '<div class="stats-top-game-info"><div><strong>'+esc(displayName(game))+'</strong>'+
-              '<span>'+duration(minutes)+'</span></div>'+
-            '<div class="stats-top-track"><i style="width:'+percent(minutes/topMax*100)+'%"></i></div>'+
-            '</div></a>';
-        }).join('') : '<p class="stats-empty">Нет данных об игровом времени.</p>')+
-      '</div></section>'+
-    '<section class="stats-panel stats-panel-rare">'+
-      '<h2 class="stats-heading">'+icon('gem',23)+'Редкие достижения</h2>'+
-      '<span class="stats-bottom-watermark" aria-hidden="true">'+icon('gem',108)+'</span>'+
-      '<strong class="stats-bottom-value">'+(rarityMeasured.length ? numeric(rareCount) : '—')+'</strong>'+
-      '<p>Получено достижений с редкостью менее 10% игроков Steam.</p>'+
-      
-    '</section>'+
-    '<section class="stats-panel stats-panel-streak">'+
-      '<h2 class="stats-heading">'+icon('flame',23)+'Серия достижений</h2>'+
-      '<span class="stats-bottom-watermark" aria-hidden="true">'+icon('flame',112)+'</span>'+
-      '<strong class="stats-bottom-value">'+numeric(streak.current)+' <span>дн.</span></strong>'+
-      
-      '<div class="stats-record">'+icon('trophy',17)+'Рекорд за 365 дней: <strong>'+numeric(streak.best)+' дн.</strong></div>'+
-    '</section>'+
-    '<section class="stats-panel stats-panel-library">'+
-      '<h2 class="stats-heading">'+icon('layers',23)+'Прогресс библиотеки</h2>'+
-      '<div class="stats-library-inner"><div>'+
-        '<strong class="stats-bottom-value">'+numeric(Math.round(libraryRate*10)/10)+'%</strong>'+
-        '<p>Пройдено игр ('+numeric(finished)+' из '+numeric(active.length)+')</p>'+
-      '</div><div class="stats-library-ring" role="img" aria-label="Пройдено '+numeric(Math.round(libraryRate*10)/10)+'% игр" style="--stats-library-pct:'+percent(libraryRate)+'%"></div></div>'+
-    '</section>'+
-  '</div>';
+  const context=analyticsContext();
+  const data=sessionDashboardData(context,sessionPeriod);
+  const linked=games().filter(game=>game.steam && !game.hidden);
+  const library=linked.filter(game=>isInLibrary(game));
+  const totals=collectionTotals(linked,summaryFor);
+  const now=Date.now();
+  const first=sessionPeriod==='all'?-Infinity:data.today-Number(sessionPeriod)+1;
+  const dated=achievementEntries().filter(({item})=>item.unlocked && item.time>0 && item.time*1000<=now && dayNumber(item.time*1000)>=first);
+  const distinctDays=new Set(data.events.map(event=>event.day)).size;
+  const cards=[
+    ['clock','Игровое время',sessionDuration(data.metrics.minutes),sessionDelta(data.metrics.minutes,data.previous?.minutes,'percent')],
+    ['game','Игр за период',numeric(data.ranking.length),''],
+    ['calendar','Игровых дней',numeric(distinctDays),''],
+    ['trophy','Получено достижений','+'+numeric(dated.length),''],
+    ['flame','Текущая игровая серия',numeric(data.metrics.currentStreak)+' дн.','']
+  ];
+  return '<div id="desk-feed" class="session-dashboard analytics-dashboard">'+
+    '<div class="session-dashboard-head"><div class="analytics-title"><h1>'+icon('chart',26)+'Статистика</h1><p>Игровая активность, достижения и библиотека</p></div>'+
+    '<div class="session-dashboard-actions">'+sessionSwitch('session-period','Период',[['7','7 дней'],['30','30 дней'],['90','90 дней'],['all','Всё время']],sessionPeriod)+
+    button('steam-sync','Обновить','refresh','quiet',syncingSteam?'disabled':'')+'</div></div>'+
+    (steamMessage&&(syncingSteam||steamError)?'<p class="steam-message" role="status">'+esc(steamMessage)+'</p>':'')+
+    '<div class="session-kpis analytics-kpis">'+cards.map(([glyph,label,value,delta])=>'<section class="session-card session-kpi"><div class="session-kpi-icon">'+icon(glyph,22)+'</div><div><small>'+label+'</small><div class="session-kpi-value"><strong>'+value+'</strong>'+delta+'</div></div></section>').join('')+'</div>'+
+    '<div class="analytics-main">'+sessionActivityChart(data)+analyticsLibrary(library)+'</div>'+
+    '<div class="analytics-insights">'+analyticsAchievements(totals,dated)+sessionTopGames(data)+analyticsSessionSummary(data,totals)+'</div>'+
+    sessionRecentCards(data)+'</div>';
 }
 
 function showHeatDay(event) {
@@ -1894,26 +1767,19 @@ function updateViewChildren(current, nextView) {
   existing.slice(children.length).forEach(node => node.remove());
 }
 
-function startStatsMotion(element, motion) {
-  if (!element) return;
-  element.classList.add(motion);
-  setTimeout(() => element.classList.remove(motion),1000);
-}
-
 function refreshDeskFeed(motionClass, background = false) {
   const root = route.section ? sectionDialog : app;
   const feed = root.querySelector('#desk-feed');
   if (!feed) return;
   const view = route.section === 'achievements' ? achievementsPage() : route.section === 'stats' ? statsPage() :
-    sessionsPage(route.page === 'game' ? findByRoute(games()) : undefined, route.section === 'sessions');
+    sessionsPage(findByRoute(games()));
   if (background && route.section === 'stats' && !motionClass) {
     updateViewChildren(feed,parseView(view).firstElementChild);
     return;
   }
   feed.outerHTML = view;
   const updated = root.querySelector('#desk-feed');
-  if (motionClass === 'stats-charts-enter') startStatsMotion(updated,motionClass);
-  else if (motionClass) updated.classList.add(motionClass);
+  if (motionClass) updated.classList.add(motionClass);
   imageFallbacks(updated);
 }
 
@@ -2221,7 +2087,7 @@ function renderSection() {
   document.title = labels[page] + ' · AFTERSAVE';
   const collection = page === 'collections' ? findByRoute(collections()) : null;
   const views = {'all-games':allGamesPage,wishlist:storeFeedPage,news:storeFeedPage,collections:() => collectionsPage(collection),
-    achievements:achievementsPage,sessions:() => sessionsPage(undefined,true),stats:statsPage,settings:settingsPage};
+    achievements:achievementsPage,stats:statsPage,settings:settingsPage};
   const wasOpen = !sectionDialog.hidden;
   const changed = sectionDialog.dataset.page !== page || sectionDialog.dataset.id !== (route.id ?? '');
   if (changed && page === 'collections') memberQuery = '';
@@ -2235,8 +2101,7 @@ function renderSection() {
   sectionDialog.innerHTML = `<div class="section-dialog-body page page-${page}">${views[page](page)}</div>`;
   if (!wasOpen || changed) {
     sectionDialog.querySelector('.desk-collections')?.classList.add('collection-reveal');
-    if (page === 'stats') startStatsMotion(sectionDialog.querySelector('.stats-dashboard'),'stats-charts-enter');
-    if (page === 'sessions') sectionDialog.querySelector('.session-dashboard').classList.add('session-charts-enter');
+    if (page === 'stats') sectionDialog.querySelector('.session-dashboard')?.classList.add('session-charts-enter');
   } else if (active) {
     const target = active.id ? sectionDialog.querySelector('#' + CSS.escape(active.id)) :
       active.dataset.action ? sectionDialog.querySelector('[data-action="' + CSS.escape(active.dataset.action) + '"]') : null;
@@ -2486,30 +2351,6 @@ const actions = {
     }
     updateStoreFeed('news',true);
   },
-  'stats-time-period': control => {
-    const mode = control.dataset.value;
-    if (!Object.hasOwn(statsPeriods,mode) || mode === statsTimeMode) return;
-    statsTimeMode = mode;
-    statsTimePage = 0;
-    redrawStatsHours();
-    for (const button of control.parentElement.querySelectorAll('button')) {
-      button.setAttribute('aria-pressed',String(button === control));
-    }
-  },
-  'stats-time-history': control => {
-    const page = Number(control.dataset.page);
-    if (!Number.isSafeInteger(page) || page < 0) return;
-    const older = page > statsTimePage;
-    statsTimePage = page;
-    redrawStatsHours();
-    const series = sectionDialog.querySelector('.stats-time-series');
-    const history = [...series.querySelectorAll('[data-action="stats-time-history"]')];
-    const next = older ? history[0] : history[1];
-    const target = next && !next.disabled ? next : history.find(button=>!button.disabled) ??
-      series.querySelector('[data-action="stats-period-recap"]') ??
-      sectionDialog.querySelector('[data-action="stats-time-period"][aria-pressed=true]');
-    target?.focus({preventScroll:true});
-  },
   'stats-period-recap': openStatsPeriod,
   'desk-feed-more': () => { feedLimit += 24; refreshDeskFeed(); },
   'earned-achievement-sort': control => {
@@ -2522,7 +2363,7 @@ const actions = {
   },
   'session-period': control => {
     const value = control.dataset.value;
-    if (!['7','30','all'].includes(value) || sessionPeriod === value) return;
+    if (!['7','30','90','all'].includes(value) || sessionPeriod === value) return;
     sessionPeriod = value;
     sessionGrouping = value === 'all' ? 'months' : 'days';
     refreshDeskFeed('session-charts-enter');
@@ -2530,16 +2371,16 @@ const actions = {
   },
   'session-group': control => {
     const value = control.dataset.value;
-    const allowed = sessionPeriod === 'all' ? ['months','years'] : ['days','weeks'];
+    const allowed = sessionPeriod === 'all' ? ['months','years'] : ['days','weeks','months'];
     if (!allowed.includes(value) || sessionGrouping === value) return;
     sessionGrouping = value;
-    sectionDialog.querySelector('.session-chart-panel').outerHTML = sessionActivityChart(sessionDashboardData(sessionContext(),sessionPeriod));
+    sectionDialog.querySelector('.session-chart-panel').outerHTML = sessionActivityChart(sessionDashboardData(analyticsContext(),sessionPeriod));
     const chart = sectionDialog.querySelector('.session-chart-panel');
     chart.classList.add('session-charts-enter');
     chart.querySelector('[data-action="session-group"][aria-pressed="true"]')?.focus({preventScroll:true});
   },
   'session-top': control => {
-    const data = sessionDashboardData(sessionContext(),sessionPeriod);
+    const data = sessionDashboardData(analyticsContext(),sessionPeriod);
     control.focus({preventScroll:true});
     showDialog('Топ игр за период','', '<div class="dialog-body session-archive-body">' +
       sessionTopRows(data.ranking) + '</div>','session-archive-dialog');
@@ -3150,7 +2991,7 @@ async function refreshSteamSummaries(repaint = true) {
   if (!repaint || dialog.open) return;
   if (route.page === 'library') refreshLibrary();
   if (['achievements','sessions','stats'].includes(route.section) || route.page === 'game' && route.tab === 'sessions') {
-    refreshDeskFeed(firstLoad ? ({stats:'stats-charts-enter',sessions:'session-charts-enter'})[route.section] : undefined,true);
+    refreshDeskFeed(firstLoad && route.section==='stats' ? 'session-charts-enter' : undefined,true);
   }
   const game = route.page === 'game' ? findByRoute(games()) : null;
   if (game?.steam && displayedAchievements) {

@@ -42,3 +42,16 @@ test('session periods and chart grouping agree on minutes',()=>{
   assert.equal(data.metrics.minutes,50);
   assert.equal(sessionChartPoints(data,'days').reduce((n,p)=>n+p.minutes,0),50);
 });
+
+test('weekly chart points retain the period recap key',()=>{
+  const context={events:[{game,minutes:20,day:11}],unlocks:new Map()};
+  const data=sessionDashboardData(context,'7',11);
+  const point=sessionChartPoints(data,'weeks').find(p=>p.minutes>0);
+  assert.equal(point.periodKey,Math.floor((11+3)/7));
+});
+test('90-day analytics uses the selected period and preserves the total',()=>{
+  const context={events:[{game,minutes:15,day:1},{game,minutes:50,day:91}],unlocks:new Map()};
+  const data=sessionDashboardData(context,'90',91);
+  assert.equal(data.metrics.minutes,50);
+  assert.equal(sessionChartPoints(data,'months').reduce((n,p)=>n+p.minutes,0),50);
+});

@@ -59,6 +59,6 @@ export function sessionChartPoints({start,today,events}, mode) {
     const title = mode === 'years' ? label : mode === 'months' ? fullMonth.format(date) : mode === 'weeks'
       ? shortDay.format(calendarDate(Math.max(start,key))) + ' — ' + shortDay.format(calendarDate(Math.min(today,key+6)))
       : shortDay.format(date);
-    return {label,title,minutes:entries.reduce((sum,event) => sum+event.minutes,0),games:sessionRank(entries)};
+    return {label,title,periodKey:mode === 'weeks' ? Math.floor((key+3)/7) : key,minutes:entries.reduce((sum,event) => sum+event.minutes,0),games:sessionRank(entries)};
   });
 }
