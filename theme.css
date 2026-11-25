@@ -1,26 +1,26 @@
 /*
- * AFTERSAVE unified graphite / parchment theme.
+ * AFTERSAVE Arctic Graphite theme.
  * The main dashboard is the visual source of truth.
  * Keep overrides scoped to the application's existing components.
  */
 :root {
-  --ui-bg:#131313;
-  --ui-surface:#211f1e;
-  --ui-raised:#292623;
-  --ui-border:#45413c;
-  --ui-hover:#39342e;
-  --ui-paper:#eee9df;
-  --ui-muted:#b9b4ad;
-  --ui-sand:#d3bea0;
-  --ui-track:#47423c;
-  --ui-fill:linear-gradient(90deg,#a9977e,#d7c1a2);
+  --ui-bg:var(--arctic-bg);
+  --ui-surface:var(--arctic-surface);
+  --ui-raised:var(--arctic-raised);
+  --ui-border:var(--arctic-border);
+  --ui-hover:var(--arctic-hover);
+  --ui-paper:var(--arctic-text);
+  --ui-muted:var(--arctic-muted);
+  --ui-sand:var(--arctic-accent);
+  --ui-track:var(--arctic-track);
+  --ui-fill:linear-gradient(90deg,var(--arctic-accent-mid),var(--arctic-accent-light));
   --bg:var(--ui-bg);
   --panel:var(--ui-surface);
   --raised:var(--ui-raised);
   --border:var(--ui-border);
   --text:var(--ui-paper);
   --muted:var(--ui-muted);
-  --dim:#aba398;
+  --dim:#a4b5c5;
   --accent:var(--ui-sand);
   --dashboard-surface:var(--ui-raised);
   --dashboard-border:var(--ui-border);
@@ -32,7 +32,7 @@
   --session-panel:var(--ui-raised);
   --session-border:var(--ui-border);
   --session-accent:var(--ui-sand);
-  scrollbar-color:#5a534b #171615;
+  scrollbar-color:#557084 #101820;
 }
 
 /* In-page sections, forms and controls: no blue legacy focus/selection surfaces. */
@@ -45,13 +45,13 @@
 #app #section-dialog :is(.stats-panel,.session-panel,.session-card,.desk-panel,
   .settings-card,.ach-history-table,.ach-locked-feature,.ach-near-game,
   .desk-wishlist li,.desk-news-card) {
-  background:linear-gradient(115deg,#282623,#1e1d1b);
+  background:linear-gradient(115deg,#29394a,#192430);
   border-color:var(--ui-border);
   color:var(--ui-paper);
 }
 #app #section-dialog :is(input,select,textarea,.searchbox) {
   background-color:var(--ui-raised);
-  border-color:#504b44;
+  border-color:#405063;
   color:var(--ui-paper);
 }
 #app #section-dialog :is(input,select,textarea):focus-visible,
@@ -62,30 +62,30 @@
 }
 #app #section-dialog :is(.btn-primary,.ach-tab.is-active) {
   background:var(--ui-sand);
-  border-color:#dcc9af;
-  color:#231e18;
+  border-color:#c5e4f1;
+  color:#192430;
   box-shadow:none;
 }
 #app #section-dialog .btn-primary:hover {
-  background:#e4d0b3;
-  border-color:#e4d0b3;
+  background:#a7d7e9;
+  border-color:#a7d7e9;
 }
 #app #section-dialog :is(.btn-secondary,.icon-btn) {
   background:var(--ui-raised);
-  border-color:#504b44;
+  border-color:#405063;
   color:var(--ui-paper);
 }
 #app #section-dialog :is(.btn-secondary,.icon-btn):hover {
   background:var(--ui-hover);
-  border-color:#8f806c;
+  border-color:#879aac;
 }
 #app #section-dialog :is(.desk-news-card,.desk-wishlist li,.desk-game):is(:hover,:focus-within) {
-  border-color:#92816c;
+  border-color:#879aac;
 }
 #app #section-dialog .desk-wishlist-group h2,
 #app #section-dialog .desk-news-card :is(.desk-news-link,.desk-news-tag),
 #app #section-dialog .quiet-link {
-  color:#dac4a5;
+  color:#c5e4f1;
 }
 #app #section-dialog :is(.progress-track,.ach-progress-track) {
   background:var(--ui-track);
@@ -96,24 +96,24 @@
 
 /* Achievements: earned/locked tabs, hover, rows, badges and progress. */
 #app #section-dialog .achievements-v3 .ach-tab {
-  background:#292623;
-  border-color:#504b44;
-  color:#d4cbbf;
+  background:#29394a;
+  border-color:#405063;
+  color:#bbcbd9;
   box-shadow:none;
 }
-#app #section-dialog .achievements-v3 .ach-tab svg {color:#cbb89b}
+#app #section-dialog .achievements-v3 .ach-tab svg {color:#a7d7e9}
 #app #section-dialog .achievements-v3 .ach-tab:is(:hover,:focus-visible) {
-  background:#39332d;
-  border-color:#a48e72;
+  background:#222d3a;
+  border-color:#879aac;
   color:var(--ui-paper);
 }
 #app #section-dialog .achievements-v3 .ach-tab.is-active {
-  background:#4a4034;
-  border-color:#c4a987;
-  color:#f4e9da;
+  background:#405063;
+  border-color:#8ebbd5;
+  color:#e7edf4;
   box-shadow:inset 0 1px #ffffff10;
 }
-#app #section-dialog .achievements-v3 .ach-tab.is-active svg {color:#e0c9a8}
+#app #section-dialog .achievements-v3 .ach-tab.is-active svg {color:#c5e4f1}
 #app #section-dialog .achievements-v3 .ach-item,
 #app #section-dialog .achievements-v3 .ach-near-game,
 #app #section-dialog .achievements-v3 .ach-feature,
@@ -123,27 +123,27 @@
   color:var(--ui-paper);
 }
 #app #section-dialog .achievements-v3 :is(.ach-item,.ach-near-game):is(:hover,:focus-within) {
-  background:#39342e;
-  border-color:#877763;
+  background:#344758;
+  border-color:#748ca1;
 }
 #app #section-dialog .achievements-v3 .ach-history-table .ach-item {
   background:transparent;
-  border-bottom-color:#514a42;
+  border-bottom-color:#405063;
 }
 #app #section-dialog .achievements-v3 .ach-history-table .ach-item:is(:hover,:focus-within) {
-  background:#39342e;
+  background:#344758;
   border-radius:7px;
 }
 #app #section-dialog .achievements-v3 .ach-history-columns,
 #app #section-dialog .achievements-v3 .ach-feature-row {
-  border-bottom-color:#514a42;
+  border-bottom-color:#405063;
 }
 #app #section-dialog .achievements-v3 .ach-feature-rarity {
-  border-left-color:#514a42;
+  border-left-color:#405063;
 }
 #app #section-dialog .achievements-v3 .ach-history-sort:is(:hover,[aria-pressed=true]) {
-  color:#f2e3cf;
-  background:#453a2f;
+  color:#e7edf4;
+  background:#29394a;
 }
 #app #section-dialog .achievements-v3 :is(.ach-feature-info small,.ach-item-game,
   .ach-history-columns,.ach-feature-date,.ach-item-date) {
@@ -151,8 +151,8 @@
 }
 #app #section-dialog .achievements-v3 .ach-earned-feature {
   background:
-    linear-gradient(90deg,#211e1beb 0%,#211e1b69 37%,#29241fcd 59%,#1d1b19f5 100%),
-    url('./assets/achievements-hero.webp') center 51%/cover no-repeat #211e1b;
+    linear-gradient(90deg,#192430eb 0%,#19243069 37%,#202c39cd 59%,#192430f5 100%),
+    url('./assets/achievements-hero.webp') center 51%/cover no-repeat #192430;
 }
 #app #section-dialog .achievements-v3 .ach-progress-track {background:var(--ui-track)}
 #app #section-dialog .achievements-v3 .ach-progress-track>i {background:var(--ui-fill)}
@@ -160,22 +160,22 @@
   color:var(--ui-sand);
 }
 #app .desk-game-achievement-view .af-ach-list .af-ach-row {
-  background:linear-gradient(110deg,#292724,#1e1d1b);
+  background:linear-gradient(110deg,#202c39,#192430);
   border-color:var(--ui-border);
 }
 #app .desk-game-achievement-view .af-ach-list .af-ach-row:is(:hover,:focus-within) {
-  background:#353029;
-  border-color:#92816c;
+  background:#222d3a;
+  border-color:#879aac;
 }
 #app .desk-game-achievement-view :is(.af-game-ach-toolbar>.searchbox,.af-ach-select-label select) {
-  background:#292623;
-  border-color:#504b44;
+  background:#29394a;
+  border-color:#405063;
 }
 #app .desk-game-achievement-view .af-game-ach-toolbar .searchbox:focus-within {
   border-color:var(--ui-sand);
 }
 
-/* Statistics: one warm palette for numeric bars, histogram, donut and controls. */
+/* Statistics: one Arctic palette for numeric bars, histogram, donut and controls. */
 #app #section-dialog .stats-dashboard {
   --stats-cyan:var(--ui-sand);
   --stats-muted:var(--ui-muted);
@@ -183,18 +183,18 @@
   color:var(--ui-paper);
 }
 #app #section-dialog .stats-dashboard .stats-panel {
-  background:linear-gradient(115deg,#282623,#1e1d1b);
+  background:linear-gradient(115deg,#29394a,#192430);
   border-color:var(--ui-border);
 }
 #app #section-dialog .stats-dashboard .stats-heading {color:var(--ui-paper)}
 #app #section-dialog .stats-dashboard :is(.stats-heading svg,.stats-games-symbol,
-  .stats-watermark,.stats-bottom-watermark) {color:#cdb697}
+  .stats-watermark,.stats-bottom-watermark) {color:#a7d7e9}
 #app #section-dialog .stats-dashboard :is(.stats-achievements-value>span,
   .stats-games-total>span,.stats-games-split small,
   .stats-achievements-year,.stats-bottom-value span) {color:var(--ui-muted)}
-#app #section-dialog .stats-dashboard .stats-games-split>div {border-left-color:#514a42}
+#app #section-dialog .stats-dashboard .stats-games-split>div {border-left-color:#405063}
 #app #section-dialog .stats-dashboard .stats-unmarked-symbol::before {
-  border-color:#c8b396;
+  border-color:#a7d7e9;
 }
 #app #section-dialog .stats-dashboard :is(.stats-track,.stats-top-track) {
   background:var(--ui-track);
@@ -203,52 +203,52 @@
   background:var(--ui-fill);
 }
 #app #section-dialog .stats-dashboard .stats-period-controls {
-  background:#211f1d;
+  background:#192430;
   border-color:var(--ui-border);
 }
-#app #section-dialog .stats-dashboard .stats-period-controls button {color:#cfc4b5}
+#app #section-dialog .stats-dashboard .stats-period-controls button {color:#bbcbd9}
 #app #section-dialog .stats-dashboard .stats-period-controls button:is(:hover,:focus-visible) {
-  background:#39342e;
+  background:#344758;
   color:var(--ui-paper);
 }
 #app #section-dialog .stats-dashboard .stats-period-controls button[aria-pressed=true] {
-  background:#4a4034;
-  border:1px solid #c4a987;
-  color:#f4e9da;
+  background:#405063;
+  border:1px solid #8ebbd5;
+  color:#e7edf4;
   box-shadow:none;
 }
 #app #section-dialog .stats-dashboard .stats-time-chart {
   background:repeating-linear-gradient(to top,
-    transparent 0,transparent calc(25% - 1px),#675b4b66 25%);
+    transparent 0,transparent calc(25% - 1px),#55708466 25%);
 }
 #app #section-dialog .stats-dashboard button.stats-time-column:is(:hover,:focus-visible) {
-  background:#a9977e20;
+  background:#a4b5c520;
 }
 #app #section-dialog .stats-dashboard .stats-time-column-track i {
-  background:linear-gradient(180deg,#d8c4a8,#93806a);
+  background:linear-gradient(180deg,#c5e4f1,#879aac);
   box-shadow:inset 0 1px #ffffff25;
 }
 #app #section-dialog .stats-dashboard button.stats-time-column:is([aria-current=true],:hover,:focus-visible) .stats-time-column-track i {
-  background:linear-gradient(180deg,#ead8bf,#b49a78);
-  box-shadow:0 0 10px #d2b79333;
+  background:linear-gradient(180deg,#c5e4f1,#8ebbd5);
+  box-shadow:0 0 10px #a7d7e933;
 }
 #app #section-dialog .stats-dashboard .stats-time-column strong {color:var(--ui-paper)}
 #app #section-dialog .stats-dashboard .stats-library-ring {
-  background:conic-gradient(#d3bea0 var(--stats-library-pct),#47423c 0);
+  background:conic-gradient(#8ebbd5 var(--stats-library-pct),#405063 0);
 }
 #app #section-dialog .stats-dashboard .stats-library-ring::after {background:var(--ui-raised)}
 
-/* Sessions and other dashboard charts use the same neutral track / sand fill. */
+/* Sessions and other dashboard charts use the same neutral track / ice-blue fill. */
 #app #section-dialog .session-bars {
   border-left-color:var(--ui-border);
-  background:repeating-linear-gradient(to bottom,#514a4266 0 1px,
+  background:repeating-linear-gradient(to bottom,#40506366 0 1px,
     transparent 1px calc(var(--session-chart-height)/var(--session-ticks)));
   background-size:100% var(--session-chart-height);
   background-repeat:no-repeat;
 }
 #app #section-dialog .session-bar-track {border-bottom-color:var(--ui-border)}
 #app #section-dialog .session-bar-track i {
-  background:linear-gradient(180deg,#dcc8aa,#a28d73 73%,#766655);
+  background:linear-gradient(180deg,#c5e4f1,#879aac 73%,#64798e);
   box-shadow:inset 0 1px #ffffff29;
 }
 #app #section-dialog .session-bar-track:focus-visible {
@@ -262,15 +262,15 @@ dialog:not(#section-dialog):not(.period-recap-dialog) {
   color:var(--ui-paper);
 }
 dialog:not(#section-dialog):not(.period-recap-dialog) :is(.dialog-head,.dialog-footer) {
-  background:#292623;
+  background:#29394a;
   border-color:var(--ui-border);
 }
 dialog.desk-completion-dialog .dialog-head {background:transparent!important}
 dialog:not(#section-dialog) .field :is(input,textarea,select),
 dialog:not(#section-dialog) :is(.searchbox,select) {
-  background:#292623;
+  background:#29394a;
   color:var(--ui-paper);
-  border-color:#504b44;
+  border-color:#405063;
 }
 dialog:not(#section-dialog) .field :is(input,textarea,select):focus-visible {
   outline:2px solid var(--ui-sand);
@@ -278,26 +278,26 @@ dialog:not(#section-dialog) .field :is(input,textarea,select):focus-visible {
 }
 dialog:not(#section-dialog) .btn-primary {
   background:var(--ui-sand);
-  border-color:#dcc9af;
-  color:#231e18;
+  border-color:#c5e4f1;
+  color:#192430;
 }
 dialog:not(#section-dialog) .btn-primary:hover {
-  background:#e4d0b3;
-  border-color:#e4d0b3;
+  background:#a7d7e9;
+  border-color:#a7d7e9;
 }
 dialog:not(#section-dialog) :is(.btn-secondary,.icon-btn) {
-  background:#302c27;
-  border-color:#5b5248;
+  background:#222d3a;
+  border-color:#557084;
   color:var(--ui-paper);
 }
 dialog:not(#section-dialog) :is(.btn-secondary,.icon-btn):hover {
-  background:#413930;
-  border-color:#9b886e;
+  background:#29394a;
+  border-color:#879aac;
 }
 .toast:not(.toast-error) {
-  background:#302b25;
-  border-color:#786c59;
-  color:#f1e7da;
+  background:#222d3a;
+  border-color:#64798e;
+  color:#e7edf4;
 }
 
 /* Collection detail: give analytics room to breathe, without shrinking the grid. */
@@ -327,7 +327,7 @@ dialog:not(#section-dialog) :is(.btn-secondary,.icon-btn):hover {
 /* Complete game artwork must remain visible. Hero/banner photography may crop. */
 #app #section-dialog .member-v2 .member-v2-art,
 #app #section-dialog .member-v2 .member-v2-leader-cover {
-  background:#191816;
+  background:#101820;
 }
 #app #section-dialog .member-v2 .member-v2-leader-cover.cover img,
 #app #section-dialog .cv3-poster.cover img,
@@ -342,7 +342,7 @@ dialog:not(#section-dialog) :is(.btn-secondary,.icon-btn):hover {
   transform:none;
 }
 #app #section-dialog .member-v2 .member-v2-art>.wide-cover {
-  background:linear-gradient(120deg,#25221f,#161513);
+  background:linear-gradient(120deg,#192430,#101820);
 }
 
 /* The homepage may scroll only when content really exceeds the viewport. */
@@ -392,16 +392,16 @@ dialog:not(#section-dialog) :is(.btn-secondary,.icon-btn):hover {
   height:34px;
   min-height:34px;
   padding:0;
-  border:1px solid #4e473f;
+  border:1px solid #405063;
   border-radius:8px;
-  background:#272420;
-  color:#e1d5c6;
+  background:#202c39;
+  color:#c5e4f1;
 }
 #navigation .nav-settings:is(:hover,:focus-visible),
 #navigation .nav-settings[aria-current]{
-  background:#41382e;
-  border-color:#b79e7d;
-  color:#f3e6d4;
+  background:#29394a;
+  border-color:#8ebbd5;
+  color:#e7edf4;
 }
 #navigation #desk-account{
   width:100%;
@@ -416,10 +416,10 @@ dialog:not(#section-dialog) :is(.btn-secondary,.icon-btn):hover {
   width:82px;
   height:82px;
   border-radius:50%;
-  background:#24201d;
-  color:#d2bea2;
-  border:2px solid #6e5b49;
-  box-shadow:0 3px 15px #0008;
+  background:#192430;
+  color:#a7d7e9;
+  border:2px solid #64798e;
+  box-shadow:0 3px 15px #00000088;
 }
 #navigation #desk-account .desk-account-info{
   width:100%;
@@ -436,7 +436,7 @@ dialog:not(#section-dialog) :is(.btn-secondary,.icon-btn):hover {
   min-width:0;
   max-width:100%;
   gap:5px;
-  color:#f3e9db;
+  color:#e7edf4;
   font-size:1.02rem;
   line-height:1.3;
   font-weight:800;
@@ -456,14 +456,14 @@ dialog:not(#section-dialog) :is(.btn-secondary,.icon-btn):hover {
   height:25px;
   min-height:25px;
   padding:2px;
-  border:1px solid #65584a;
+  border:1px solid #557084;
   border-radius:7px;
-  background:#292520;
-  color:#dbcbba;
+  background:#202c39;
+  color:#c5e4f1;
 }
 #navigation #desk-account .desk-steam-profile-link:hover{
-  background:#42372d;
-  border-color:#b49b7a;
+  background:#29394a;
+  border-color:#8ebbd5;
 }
 #navigation #desk-account .desk-steam-rank{
   display:flex;
@@ -479,10 +479,10 @@ dialog:not(#section-dialog) :is(.btn-secondary,.icon-btn):hover {
   width:32px;
   height:32px;
   padding:0;
-  border:1px solid #685a48;
+  border:1px solid #557084;
   border-radius:7px;
-  background:#35302a;
-  color:#f3e9db;
+  background:#222d3a;
+  color:#e7edf4;
   font-size:.78rem;
   font-weight:800;
 }
@@ -492,7 +492,7 @@ dialog:not(#section-dialog) :is(.btn-secondary,.icon-btn):hover {
   flex:1;
 }
 #navigation #desk-account .desk-xp-label{
-  color:#c6b8a7;
+  color:#a7d7e9;
   font-size:.69rem;
   white-space:nowrap;
 }
@@ -502,11 +502,11 @@ dialog:not(#section-dialog) :is(.btn-secondary,.icon-btn):hover {
 #navigation #desk-account .desk-xp progress{
   height:6px;
   margin-top:6px;
-  background:#4b443c;
+  background:#405063;
 }
-#navigation #desk-account .desk-xp progress::-webkit-progress-bar{background:#4b443c}
-#navigation #desk-account .desk-xp progress::-webkit-progress-value{background:#d3bea0}
-#navigation #desk-account .desk-xp progress::-moz-progress-bar{background:#d3bea0}
+#navigation #desk-account .desk-xp progress::-webkit-progress-bar{background:#405063}
+#navigation #desk-account .desk-xp progress::-webkit-progress-value{background:#8ebbd5}
+#navigation #desk-account .desk-xp progress::-moz-progress-bar{background:#8ebbd5}
 #app .page.page-library.home-page:has(.home-dashboard){
   padding-top:clamp(10px,1.5vw,22px);
 }
@@ -543,63 +543,63 @@ dialog:not(#section-dialog) :is(.btn-secondary,.icon-btn):hover {
 }
 #app .desk-game-achievement-view .desk-game-hero{
   min-height:265px;
-  background:linear-gradient(95deg,#171513,#23201d 50%,#171615);
+  background:linear-gradient(95deg,#101820,#192430 50%,#101820);
 }
 #app .desk-game-achievement-view .desk-game-hero::after{
   background:
-    linear-gradient(90deg,#191715f2 0%,#211e1bb7 34%,#211c197a 67%,#171513e0 100%),
-    linear-gradient(0deg,#131313 0%,transparent 72%);
+    linear-gradient(90deg,#101820f2 0%,#192430b7 34%,#1924307a 67%,#101820e0 100%),
+    linear-gradient(0deg,#131a23 0%,transparent 72%);
 }
 #app .desk-game-achievement-view .desk-hero-art{
   opacity:.6;
 }
 #app .desk-game-achievement-view .desk-game-crumb a,
 #app .desk-game-achievement-view .desk-game-links :is(a,button){
-  color:#dbc6a8;
+  color:#c5e4f1;
 }
 #app .desk-game-achievement-view .desk-game-links :is(a,button):hover{
-  color:#f1e1cd;
+  color:#e7edf4;
 }
 #app .desk-game-achievement-view .desk-game-title h1{
   font-size:clamp(1.65rem,2.6vw,2.5rem);
-  color:#f4e9dc;
+  color:#e7edf4;
 }
 #app .desk-game-achievement-view .desk-game-heading .game-poster{
-  border-color:#746451;
-  box-shadow:0 9px 28px #0008;
+  border-color:#64798e;
+  box-shadow:0 9px 28px #00000088;
 }
 #app .desk-game-achievement-view .desk-game-metrics>div{
-  border-right-color:#5b5045;
+  border-right-color:#557084;
 }
 #app .desk-game-achievement-view .desk-game-metrics dt{
-  color:#d0c0ab;
+  color:#c5e4f1;
 }
 #app .desk-game-achievement-view .desk-game-metrics dt svg,
 #app .desk-game-achievement-view .desk-icon-text svg{
-  color:#cdb495;
+  color:#a7d7e9;
   stroke:currentColor;
 }
 #app .desk-game-achievement-view .desk-game-metrics dd{
-  color:#f3e9da;
+  color:#e7edf4;
 }
 #app .desk-game-actions .desk-completed span,
 #app .desk-game-actions .icon-btn{
-  background:#292623;
-  border-color:#625648;
-  color:#d0b99a;
+  background:#29394a;
+  border-color:#557084;
+  color:#a7d7e9;
 }
 #app .desk-game-actions .desk-completed input:checked+span{
-  background:#d3bea0;
-  border-color:#dac6ab;
-  color:#272019;
+  background:#8ebbd5;
+  border-color:#c5e4f1;
+  color:#192430;
 }
 #app .desk-game-actions .desk-completed input:focus-visible+span{
-  outline-color:#d3bea0;
+  outline-color:#8ebbd5;
 }
 #app .desk-game-actions :is(.desk-completed:hover span,.icon-btn:hover){
-  background:#40372c;
-  border-color:#baa080;
-  color:#f0deca;
+  background:#29394a;
+  border-color:#8ebbd5;
+  color:#e7edf4;
 }
 #app .desk-game-achievement-view .af-game-ach-shell{gap:17px}
 #app .desk-game-achievement-view .af-game-ach-toolbar{
@@ -611,12 +611,12 @@ dialog:not(#section-dialog) :is(.btn-secondary,.icon-btn):hover {
   width:auto;
   max-width:390px;
   min-width:200px;
-  background:#282522;
-  border-color:#564c42;
-  color:#bcae9c;
+  background:#202c39;
+  border-color:#557084;
+  color:#bbcbd9;
 }
 #app .desk-game-achievement-view .af-game-ach-toolbar .searchbox:focus-within{
-  border-color:#bca17e;
+  border-color:#8ebbd5;
 }
 #app .desk-game-achievement-view .af-game-ach-filters{
   flex:1 1 auto;
@@ -628,10 +628,10 @@ dialog:not(#section-dialog) :is(.btn-secondary,.icon-btn):hover {
   display:inline-flex;
   align-items:center;
   gap:2px;
-  border:1px solid #605548;
+  border:1px solid #557084;
   border-radius:9px;
   padding:3px;
-  background:#211e1b;
+  background:#192430;
   white-space:nowrap;
 }
 #app .desk-game-achievement-view .af-ach-status-tabs button{
@@ -642,70 +642,70 @@ dialog:not(#section-dialog) :is(.btn-secondary,.icon-btn):hover {
   border:1px solid transparent;
   border-radius:6px;
   background:transparent;
-  color:#d0c4b5;
+  color:#bbcbd9;
   font-size:.82rem;
   font-weight:750;
   cursor:pointer;
 }
 #app .desk-game-achievement-view .af-ach-status-tabs button:is(:hover,:focus-visible){
-  background:#39312a;
-  color:#f5e8d7;
+  background:#222d3a;
+  color:#e7edf4;
 }
 #app .desk-game-achievement-view .af-ach-status-tabs button[aria-pressed=true]{
-  background:#dfc7a5;
-  border-color:#e9d4b9;
-  color:#251e17;
+  background:#c5e4f1;
+  border-color:#c5e4f1;
+  color:#192430;
 }
 #app .desk-game-achievement-view .af-ach-select-label{
-  color:#bdb0a0;
+  color:#bbcbd9;
 }
 #app .desk-game-achievement-view .af-ach-select-label select,
 #app .desk-game-achievement-view .af-ach-extra>summary{
-  color:#ede1d1;
-  background:#282522;
-  border-color:#5e5345;
+  color:#e7edf4;
+  background:#202c39;
+  border-color:#557084;
   border-radius:8px;
 }
 #app .desk-game-achievement-view .af-ach-extra>summary:is(:hover,:focus-visible){
-  background:#3e342b;
-  border-color:#b59b7c;
+  background:#29394a;
+  border-color:#8ebbd5;
 }
 #app .desk-game-achievement-view .af-ach-extra>label{
-  background:#2b2621;
-  color:#e6d8c8;
-  border-color:#766450;
+  background:#202c39;
+  color:#c5e4f1;
+  border-color:#64798e;
 }
 #app .desk-game-achievement-view .af-ach-extra input{
-  accent-color:#cbb493;
+  accent-color:#a7d7e9;
 }
 #app .desk-game-achievement-view .af-ach-list .af-ach-row{
   grid-template-columns:58px minmax(0,1fr) 100px 172px;
   gap:16px;
   padding:9px 15px;
   min-height:77px;
-  border-color:#4a4139;
-  background:linear-gradient(115deg,#282421,#1d1b19);
+  border-color:#405063;
+  background:linear-gradient(115deg,#202c39,#192430);
 }
 #app .desk-game-achievement-view .af-ach-list .af-ach-row:is(:hover,:focus-within){
-  background:linear-gradient(115deg,#3a312a,#29231f);
-  border-color:#8e7961;
+  background:linear-gradient(115deg,#222d3a,#202c39);
+  border-color:#748ca1;
 }
 #app .desk-game-achievement-view .af-ach-list .af-ach-icon{
-  background:#25221f;
-  border-color:#5a4c40;
-  color:#c5b39e;
+  background:#192430;
+  border-color:#557084;
+  color:#a7d7e9;
 }
 #app .desk-game-achievement-view .af-ach-list .af-ach-copy strong{
-  color:#f4e9db;
+  color:#e7edf4;
 }
 #app .desk-game-achievement-view .af-ach-list .af-ach-copy p{
-  color:#c1b6a9;
+  color:#bbcbd9;
 }
 #app .desk-game-achievement-view .af-ach-list .af-ach-rarity{
-  color:#d5c5b2;
+  color:#c5e4f1;
 }
 #app .desk-game-achievement-view .af-ach-list .af-ach-status{
-  border-left-color:#5b4e42;
+  border-left-color:#557084;
 }
 #app .desk-game-achievement-view .af-ach-status-earned,
 #app .desk-game-achievement-view .af-ach-status-locked{
@@ -713,25 +713,25 @@ dialog:not(#section-dialog) :is(.btn-secondary,.icon-btn):hover {
   align-items:center;
   gap:5px;
   padding:4px 8px;
-  border:1px solid #77634c;
+  border:1px solid #64798e;
   border-radius:6px;
-  background:#544534;
-  color:#f0dcc3;
+  background:#405063;
+  color:#e7edf4;
   font-size:.75rem;
   font-weight:750;
 }
 #app .desk-game-achievement-view .af-ach-status-locked{
-  background:#34312e;
-  border-color:#625a51;
-  color:#bfb6ab;
+  background:#222d3a;
+  border-color:#557084;
+  color:#bbcbd9;
 }
 #app .desk-game-achievement-view .af-ach-status time{
-  color:#bfb2a2;
+  color:#bbcbd9;
 }
 
 /* Sessions: controls, stat badges, recent cards, tooltips, and active labels. */
 #app #section-dialog .session-dashboard{
-  --session-panel:#282522;
+  --session-panel:#202c39;
   --session-border:var(--ui-border);
   --session-accent:var(--ui-sand);
   color:var(--ui-paper);
@@ -740,109 +740,109 @@ dialog:not(#section-dialog) :is(.btn-secondary,.icon-btn):hover {
   min-height:40px;
 }
 #app #section-dialog .session-dashboard .session-switch{
-  background:#211f1d;
-  border-color:#554c42;
+  background:#192430;
+  border-color:#557084;
   border-radius:8px;
   padding:3px;
 }
 #app #section-dialog .session-dashboard .session-switch button{
-  color:#cabfaf;
+  color:#bbcbd9;
   border-color:transparent;
   background:transparent;
   border-radius:6px;
 }
 #app #section-dialog .session-dashboard .session-switch button:is(:hover,:focus-visible){
-  color:#f2e6d6;
-  background:#42382e;
+  color:#e7edf4;
+  background:#29394a;
 }
 #app #section-dialog .session-dashboard .session-switch button[aria-pressed=true]{
-  color:#271f17;
-  border-color:#e1c9aa;
-  background:#d3bea0;
+  color:#192430;
+  border-color:#c5e4f1;
+  background:#8ebbd5;
   box-shadow:none;
 }
 #app #section-dialog .session-dashboard .session-dashboard-actions>.btn{
-  color:#d7c1a4;
-  border-left-color:#52483d;
+  color:#c5e4f1;
+  border-left-color:#405063;
 }
 #app #section-dialog .session-dashboard .session-panel-head h2 svg{
-  color:#d4ba98;
+  color:#a7d7e9;
   stroke:currentColor;
 }
 #app #section-dialog .session-dashboard .session-kpi:first-child{
-  border-color:#76634e;
-  background:linear-gradient(120deg,#342d25,#25211e);
+  border-color:#64798e;
+  background:linear-gradient(120deg,#222d3a,#192430);
   box-shadow:none;
 }
 #app #section-dialog .session-dashboard .session-kpi-icon{
-  background:#393126;
-  color:#d7bb94;
+  background:#222d3a;
+  color:#a7d7e9;
 }
 #app #section-dialog .session-dashboard .session-kpi small{
-  color:#c4b8aa;
+  color:#bbcbd9;
 }
 #app #section-dialog .session-dashboard .session-delta:not(.is-down){
-  color:#e3cda5;
-  background:#51412e;
+  color:#c5e4f1;
+  background:#405063;
 }
 #app #section-dialog .session-dashboard .session-recent-card{
-  background:linear-gradient(115deg,#302b26,#23201d);
-  border-color:#544b41;
-  color:#f1e8dc;
+  background:linear-gradient(115deg,#222d3a,#192430);
+  border-color:#405063;
+  color:#e7edf4;
 }
 #app #section-dialog .session-dashboard .session-recent-card:is(:hover,:focus-visible){
-  background:#42382f;
-  border-color:#b09a7f;
+  background:#29394a;
+  border-color:#a4b5c5;
 }
 #app #section-dialog .session-dashboard .session-recent-copy strong,
 #app #section-dialog .session-dashboard .session-top-copy strong{
-  color:#eee5d9;
+  color:#e7edf4;
 }
 #app #section-dialog .session-dashboard .session-recent-copy small,
 #app #section-dialog .session-dashboard .session-top-copy small,
 #app #section-dialog .session-dashboard .session-chart-axis,
 #app #section-dialog .session-dashboard .session-bar-col>small,
 #app #section-dialog .session-dashboard .session-donut small{
-  color:#c4b8a8;
+  color:#bbcbd9;
 }
 #app #section-dialog .session-dashboard .session-recent-copy svg,
 #app #section-dialog .session-dashboard .session-top-copy svg{
-  color:#c9ad8b;
+  color:#a7d7e9;
 }
 #app #section-dialog .session-dashboard .session-top-list li+li{
-  border-top-color:#514941;
+  border-top-color:#405063;
 }
 #app #section-dialog .session-dashboard .session-top-game:hover{
-  background:#39322a;
+  background:#222d3a;
 }
 #app #section-dialog .session-dashboard .session-text-action{
-  color:#d5b99a;
+  color:#a7d7e9;
 }
 #app #section-dialog .session-dashboard .session-text-action:hover{
-  color:#f3dfc9;
+  color:#e7edf4;
 }
 #app #section-dialog .session-dashboard .session-share-list li strong,
 #app #section-dialog .session-dashboard .session-share-list li small{
-  color:#e5d7c6;
+  color:#c5e4f1;
 }
 #app #section-dialog .session-dashboard .session-share-list .is-highlighted{
-  background:#514435;
+  background:#405063;
 }
 #app #section-dialog .session-dashboard .session-chart-tooltip,
 #app #section-dialog .session-dashboard .session-chart-tooltip::after{
-  background:#2c2621;
-  border-color:#73604e;
-  color:#eee1d1;
+  background:#202c39;
+  border-color:#64798e;
+  color:#e7edf4;
 }
 #app #section-dialog .session-dashboard .session-tip-content :is(header,footer,time){
-  color:#c8b8a6;
+  color:#a7d7e9;
 }
 #app #section-dialog .session-dashboard .session-tip-content footer{
-  border-top-color:#5b4d41;
+  border-top-color:#557084;
 }
 #app #section-dialog .session-dashboard .session-tip-content b,
 #app #section-dialog .session-dashboard .session-tip-game strong{
-  color:#eee3d6;
+  color:#e7edf4;
 }
 
 /* Compact sidebar and achievement toolbar remain useful on small viewports. */
@@ -915,12 +915,12 @@ dialog:not(#section-dialog) :is(.btn-secondary,.icon-btn):hover {
  * Do not letterbox a wide header inside the old 16:9 frame. */
 #app #section-dialog .member-v2 .member-v2-art{
   aspect-ratio:460/215;
-  background:#211e1b;
+  background:#192430;
 }
 #app #section-dialog .member-v2 .member-v2-art>.wide-cover{
   border-radius:0;
   overflow:hidden;
-  background:#211e1b;
+  background:#192430;
 }
 #app #section-dialog .member-v2 .member-v2-art>.wide-cover>img,
 #app .launcher-game>.wide-cover>img{
