@@ -2308,9 +2308,16 @@ function dateLabel(value) {
 
 function gamePage() { return gameDashboard(); }
 
+// Steam's legacy /appid/header.jpg is absent for some newer releases.
+// Prefer this verified, official, correctly proportioned wide capsule for Valor Mortis.
+const VERIFIED_WIDE_ART = new Map([
+  [2828710, 'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/2828710/e729c7f909db5c52ea780923d9b258517162866a/header.jpg']
+]);
+
 function wideCover(game, showFallback = false, {lazy = false, image = ''} = {}) {
   const id = game.steam?.appid;
-  return id ? `<div class="cover wide-cover" style="--cover-accent:#5083a7">${showFallback ? `<span class="cover-fallback">${icon('game',24)}</span>` : ''}<img src="${esc(image || steamHeader(id))}" alt="" decoding="async" ${lazy ? 'loading="lazy"' : ''} referrerpolicy="no-referrer" data-steam-art="${id}" data-art-kind="wide"></div>` : cover(game,'wide-cover');
+  const artwork = image || VERIFIED_WIDE_ART.get(id) || steamHeader(id);
+  return id ? `<div class="cover wide-cover" style="--cover-accent:#5083a7">${showFallback ? `<span class="cover-fallback">${icon('game',24)}</span>` : ''}<img src="${esc(artwork)}" alt="" decoding="async" ${lazy ? 'loading="lazy"' : ''} referrerpolicy="no-referrer" data-steam-art="${id}" data-art-kind="wide"></div>` : cover(game,'wide-cover');
 }
 
 function settingsPage() {
@@ -3148,7 +3155,8 @@ function imageFallbacks(root) {
         [image.dataset.fallbackIcon, ...achievementIconAlternatives(image.src), ...achievementIconAlternatives(image.dataset.fallbackIcon)] :
         kind === 'cover' ? [portrait, image.dataset.coverFallback, detailed ? steamCover2x(id,artwork?.cover) : '',
           artwork?.cover, artwork?.header, steamHeader(id), artwork?.hero, steamHero(id)] :
-        kind === 'wide' ? [steamHeader(id), artwork?.header, portrait, artwork?.cover] :
+        kind === 'wide' ? [VERIFIED_WIDE_ART.get(id), steamHeader(id), artwork?.header,
+          artwork?.hero, steamHero(id), portrait, artwork?.cover] :
         kind === 'collection-hero' ? [steamHeader(id), artwork?.hero, artwork?.header, portrait] :
         [artwork?.hero, steamHeader(id), artwork?.header, portrait, artwork?.cover];
       const next = alternatives.find(url => url && !tried.has(url));
@@ -3161,7 +3169,20 @@ function imageFallbacks(root) {
         image.removeEventListener('error', fail);
       }
     };
-    image.addEventListener('load', () => { image.hidden = false; });
+    image.addEventListener('load', () => {
+      image.hidden = false;
+      // Store headers are ~460:215; unknown assets may be portrait or panoramic.
+      // Preserve the whole nonstandard picture, with artwork in the background rather than black bars.
+      if (kind === 'wide' && image.parentElement?.classList.contains('wide-cover')) {
+        const frame = image.parentElement;
+        const ratio = image.naturalHeight ? image.naturalWidth / image.naturalHeight : 0;
+        const nonstandard = ratio > 0 && (ratio < 1.9 || ratio > 2.42);
+        frame.classList.toggle('wide-cover-nonstandard', nonstandard);
+        if (nonstandard) frame.style.setProperty('--wide-cover-backdrop',
+          'url(' + JSON.stringify(image.currentSrc || image.src) + ')');
+        else frame.style.removeProperty('--wide-cover-backdrop');
+      }
+    });
     image.addEventListener('error', fail);
     if (image.complete && !image.naturalWidth) fail();
   });
