@@ -60,24 +60,48 @@ export function sessionsWithLocalHistory(windows, localSessions, gameByAppId) {
   for (const {appid, startedAt, endedAt} of localSessions ?? []) {
     const game = gameByAppId.get(appid);
     if (!game) continue;
-    const intervals = exactByGame.get(appid) ?? [];
-    intervals.push({startedAt,endedAt});
-    exactByGame.set(appid,intervals);
-    let cursor = Math.max(startedAt,Date.UTC(2003,0,1));
+    if (!Number.isFinite(startedAt) || !Number.isFinite(endedAt) || endedAt <= startedAt) continue;
+    const start = Math.max(startedAt,Date.UTC(2003,0,1));
     const end = Math.min(endedAt,Date.now());
-    while (cursor < end) {
-      const midnight = new Date(cursor);
-      midnight.setHours(24,0,0,0);
-      const stop = Math.min(end,midnight.getTime());
-      add(game,dayNumber(cursor),(stop-cursor)/60000,stop,'local');
-      cursor = stop;
+    if (end <= start) continue;
+    const intervals = exactByGame.get(appid) ?? [];
+    intervals.push({startedAt:start,endedAt:end});
+    exactByGame.set(appid,intervals);
+  }
+  // Merge overlapping imported intervals before counting exact minutes.
+  for (const [appid, intervals] of exactByGame) {
+    const game = gameByAppId.get(appid);
+    const merged = [];
+    for (const interval of intervals.sort((a,b) => a.startedAt - b.startedAt)) {
+      const previous = merged[merged.length-1];
+      if (previous && interval.startedAt <= previous.endedAt) {
+        previous.endedAt = Math.max(previous.endedAt,interval.endedAt);
+      } else merged.push({...interval});
+    }
+    exactByGame.set(appid,merged);
+    for (const {startedAt,endedAt} of merged) {
+      let cursor = startedAt;
+      while (cursor < endedAt) {
+        const midnight = new Date(cursor);
+        midnight.setHours(24,0,0,0);
+        const stop = Math.min(endedAt,midnight.getTime());
+        add(game,dayNumber(cursor),(stop-cursor)/60000,stop,'local');
+        cursor = stop;
+      }
     }
   }
   for (const {appid, minutes, observedFrom, observedTo} of windows ?? []) {
     const game = gameByAppId.get(appid);
-    if (!game || exactByGame.get(appid)?.some(session => session.startedAt < observedTo && session.endedAt > observedFrom)) continue;
+    if (!game || !Number.isFinite(minutes) || minutes <= 0 || !Number.isFinite(observedFrom) ||
+        !Number.isFinite(observedTo) || observedTo <= observedFrom) continue;
+    // Steam provides a cumulative delta, not exact start/end timestamps. Deduct only
+    // known overlapping exact minutes instead of dropping the whole observation.
+    const exact = (exactByGame.get(appid) ?? []).reduce((sum, session) =>
+      sum + Math.max(0, Math.min(session.endedAt,observedTo) - Math.max(session.startedAt,observedFrom))/60000,0);
+    const remaining = Math.max(0,minutes-exact);
+    if (remaining <= 0) continue;
     const day = dayNumber(observedTo);
-    add(game,day,minutes,observedTo,day === dayNumber(observedFrom) ? 'estimated' : 'uncertain');
+    add(game,day,remaining,observedTo,day === dayNumber(observedFrom) ? 'estimated' : 'uncertain');
   }
   return [...days.values()].sort((a,b) => b.day-a.day || b.observedTo-a.observedTo);
 }

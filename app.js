@@ -3,8 +3,7 @@ import {
   STORAGE_KEY, load, save, emptyState, exportJSON, importJSON, exportCSV, isEldenRing
 } from './data.js';
 import { icon } from './icons.js';
-import { bossRegions, bossById } from './elden-ring.js';
-import { bossArt } from './elden-ring-art.js';
+import { gameHours, trophyFor, achievementPercent, displayName, collectionRate, gameCompletion, gameProgressState, countGameStatuses } from './game-model.js';
 import { mergeSteam, fetchLibrary, connect, disconnect, connected, steamCover, steamCover2x, steamHeader, steamHero, fetchSteamArtwork,
   fetchAchievements, cachedAchievements, achievementRecords, achievementIconAlternatives,
   cachedSteamProfile, fetchSteamProfile, fetchSteamFeed } from './steam.js';
@@ -82,9 +81,6 @@ let recentRevealStartedAt;
 let scanningAchievements = false;
 let stopAchievementScan = false;
 let scanMessage = '';
-let bossRegion = 0;
-let bossArea = '';
-const gameHours = game => Math.max(game.hours, (game.steam?.minutes ?? 0) / 60);
 const steamDate = value => value ? dateFormat.format(new Date(value * 1000)) : '—';
 
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char =>
@@ -119,13 +115,12 @@ const coverUrl = value => {
 };
 
 function getRoute() {
-  const [original, id, tab, note] = location.hash.slice(1).split('/');
+  const [original, id, tab, extra] = location.hash.slice(1).split('/');
   const target = original === 'profile' ? 'settings' : original;
   const section = Object.hasOwn(sectionIcons,target) ? target : '';
   return {page:target === 'game' ? 'game' : 'library', section, id,
-    tab: ['notes', 'sessions'].includes(tab) ? tab : 'overview',
-    trophy: !section && target === 'library' && id === 'cup' && Object.hasOwn(cups,tab) ? tab : '',
-    ngPlus: tab === 'notes' && note === 'ng-plus' };
+    tab: !extra && ['notes', 'sessions'].includes(tab) ? tab : 'overview',
+    trophy: !section && target === 'library' && id === 'cup' && Object.hasOwn(cups,tab) ? tab : '' };
 }
 
 function go(page, id = '') {
@@ -187,22 +182,6 @@ function shell(content, enter) {
   </main>`;
 }
 
-function trophyFor(record) {
-  if (!record?.total || !record.unlocked) return '';
-  if (record.unlocked === record.total) return 'platinum';
-  return record.unlocked * 5 <= record.total * 3 ? 'sapphire' : 'silver';
-}
-
-function achievementPercent(record) {
-  if (!record.unlocked) return 0;
-  const rate = record.unlocked / record.total * 100;
-  return rate === 100 ? 100 : Math.min(99.9, Math.max(0.1, Math.round(rate * 10) / 10));
-}
-
-function trophyBadge(trophy) {
-  return trophy ? `<span class="cup-label cup-${trophy}">${icon('trophy',23)}<span>${cups[trophy]}</span></span>` : '';
-}
-
 function cover(game, className = '', {detailed = false, eager = false} = {}) {
   const id = game.steam?.appid;
   const stored = coverUrl(game.cover);
@@ -235,10 +214,6 @@ function filtered(source, applyFilters) {
     return (!query || query.split(/\s+/).every(term => haystack.includes(term))) &&
       (!status || (status === 'unmarked' ? !['perfect','beaten'].includes(completionFor(game)) : completionFor(game) === status));
   }).sort((a,b) => byLastPlayed(a,b) || displayName(a).localeCompare(displayName(b),'ru'));
-}
-
-function displayName(game, full = false) {
-  return game.steam?.appid === 292030 ? (full ? 'Ведьмак 3: Дикая Охота' : 'Ведьмак 3') : game.title;
 }
 
 function gameCard(game, inLibrary, canRestore) {
@@ -511,7 +486,7 @@ function recentUnlocks(record) {
 }
 
 function completionFor(game, record = summaryFor(game)) {
-  return trophyFor(record) === 'platinum' ? 'perfect' : game.status === 'completed' ? 'beaten' : '';
+  return gameCompletion(game,record);
 }
 
 function completionBadge(status) {
@@ -2013,19 +1988,8 @@ function collectionShowcaseGames(grouped, limit) {
     displayName(a).localeCompare(displayName(b),'ru')).slice(0,limit);
 }
 
-function collectionRate(entry) {
-  return entry.total ? Math.round(entry.unlocked / entry.total * 100) : 0;
-}
-
 function collectionStatusCounts(grouped) {
-  return grouped.reduce((count,game) => {
-    const status = completionFor(game);
-    if (status === 'perfect') count.perfect++;
-    else if (status === 'beaten') count.beaten++;
-    else if (gameHours(game) > 0) count.active++;
-    else count.unstarted++;
-    return count;
-  }, {perfect:0,beaten:0,active:0,unstarted:0});
+  return countGameStatuses(grouped, summaryFor);
 }
 
 function collectionArt(entry) {
@@ -2113,9 +2077,7 @@ function collectionEntries() {
 
 
 function memberProgressState(game, record = summaryFor(game)) {
-  const completion = completionFor(game,record);
-  if (completion) return completion;
-  return gameHours(game) > 0 || (record?.unlocked ?? 0) > 0 ? 'active' : 'unstarted';
+  return gameProgressState(game,record);
 }
 
 function memberCard(game) {
@@ -2327,9 +2289,7 @@ function settingsPage() {
 }
 
 function render(focusMain = false, enter = false) {
-  const regionOffset = app.querySelector('.boss-region-index')?.scrollTop;
   app.innerHTML = shell(route.section ? '' : route.page === 'game' ? gamePage() : library(),enter);
-  restoreBossRegionScroll(regionOffset);
   imageFallbacks(app);
   if (route.page === 'game') showAchievements();
   else if (!route.section) refreshStoreFeeds();
@@ -2689,24 +2649,6 @@ const actions = {
   'desk-heat-year': openHeatYear,
   'desk-game-sessions': control => openGameSessions(findByRoute(games()),control),
   'desk-game-sessions-more': control => openGameSessions(findByRoute(games()),null,Number(control.dataset.limit)),
-  'boss-region': control => {
-    const index = Number(control.dataset.region);
-    if (index === bossRegion) return;
-    bossRegion = index;
-    bossArea = '';
-    refreshBossTracker(control);
-  },
-  'boss-area': control => {
-    bossArea = control.dataset.area;
-    refreshBossTracker(control);
-  },
-  'boss-win': control => updateBossProgress(control),
-  'boss-death': control => updateBossProgress(control, Number(control.dataset.delta)),
-  'boss-map': control => {
-    control.focus({ preventScroll: true });
-    showBossMap(bossById.get(control.dataset.id));
-  },
-  'boss-map-place': control => showBossMap(bossById.get(control.dataset.id), Number(control.dataset.place)),
   'toggle-nav-collections': () => {
     navigationCollectionsOpen = !navigationCollectionsOpen;
     refreshNavigation();
@@ -3040,8 +2982,6 @@ function updateRoute() {
   }
   if (next.trophy) libraryHidden = false;
   if (next.id !== previous.id) {
-    bossRegion = 0;
-    bossArea = '';
     achievementSort = 'common';
     revealHidden = true;
   }
@@ -3468,7 +3408,6 @@ function journalOrder(items) {
 function gameDashboard() {
   const game = findByRoute(games());
   if (!game) return `<div class="empty"><h2>Игра не найдена</h2><a class="btn btn-secondary" href="#library">К играм</a></div>`;
-  if (route.ngPlus && isEldenRing(game)) return bossTracker(game);
   const url = gameHref(game);
   const archived = !isInLibrary(game);
   const summary = summaryFor(game);
@@ -3497,7 +3436,6 @@ function gameDashboard() {
             ${archived ? '<span class="desk-game-archived">Вне библиотеки Steam</span>' : ''}
             ${game.steam ? `<a href="https://store.steampowered.com/app/${game.steam.appid}/" target="_blank" rel="noopener">${icon('upRight',14)} Страница игры</a>
               <button type="button" data-action="desk-game-sessions" aria-haspopup="dialog">${icon('clock',14)} Игровые сессии</button>` : ''}
-            ${isEldenRing(game) ? `<a class="desk-ng-link" href="${url}/notes/ng-plus">${icon('checklist',16)} NG+</a>` : ''}
             ${game.journal.length || game.runs.length ? `<a href="${url}/notes">${icon('edit',14)} Личный журнал</a>` : ''}
             </div>
           </div>
@@ -3519,210 +3457,15 @@ function gameDashboard() {
   </div>`;
 }
 
-function bossSummary(game, bosses = bossById.values()) {
-  let won = 0;
-  let deaths = 0;
-  let total = 0;
-  for (const boss of bosses) {
-    total++;
-    const saved = game.bossProgress[boss.id];
-    if (saved?.won) won++;
-    deaths += Object.values(saved?.deaths ?? {}).reduce((total, count) => total + count, 0);
-  }
-  return { won, deaths, total, percent: total ? Math.round(won * 1000 / total) / 10 : 0 };
-}
-
-function bossNote(game) {
-  const stats = bossSummary(game);
-  return `<a class="boss-note" href="#game/${encodeURIComponent(game.id)}/notes/ng-plus">
-    <span class="boss-note-icon">${icon('checklist',28)}</span>
-    <span><strong>${stats.won ? 'Продолжить NG+' : 'Открыть NG+'}</strong><small>${stats.won} из ${stats.total} целей</small></span>
-    ${progressBar(stats.percent)}${icon('right',24)}</a>`;
-}
-
-function bossRow(game, boss) {
-  const { won, deaths } = bossSummary(game, [boss]);
-  const id = `data-id="${esc(boss.id)}"`;
-  const type = boss.type ? `<span class="boss-type">${esc(boss.type)}</span>` : '';
-  const portrait = bossArt[boss.id];
-  const deathButton = (delta, label, glyph, disabled = false) => iconButton('boss-death',
-    `${label}: ${esc(boss.name)}`, glyph, `${id} data-delta="${delta}" ${disabled ? 'disabled' : ''}`);
-  return `<li class="boss-row${won ? ' is-defeated' : ''}">
-    <button type="button" class="boss-win" data-action="boss-win" ${id} role="checkbox" aria-checked="${Boolean(won)}" aria-label="Побеждён: ${esc(boss.name)}">${won ? icon('check',23) : ''}</button>
-    <div class="boss-portrait" aria-hidden="true">${icon('shield',23)}${portrait ? `<img src="${esc(portrait)}" alt="" loading="lazy" decoding="async">` : ''}</div>
-    <div class="boss-row-copy">
-      <strong>${boss.night ? `<span title="Появляется ночью">${icon('moon',19)}</span> ` : ''}${esc(boss.name)} ${type}</strong>
-      <span>${esc(boss.location)}</span>
-      ${boss.note ? `<small>${esc(boss.note)}</small>` : ''}
-    </div>
-    <div class="boss-row-actions">
-      <div class="boss-death-stepper" role="group" aria-label="Смерти: ${esc(boss.name)}">
-        ${deathButton(1, 'Добавить смерть', 'plus')}<span aria-label="${deaths} смертей">${numeric(deaths)}</span>
-        ${deathButton(-1, 'Убавить смерть', 'minus', !deaths)}
-      </div>
-      ${button('boss-map', 'На карте', 'pin', 'secondary', `${id} aria-haspopup="dialog"`)}
-    </div></li>`;
-}
-
-function bossRegionPanel(game, region, stats, defeatedOpen, celebrated) {
-  const filter = region.areas.find(area => area.name === bossArea);
-  const remaining = [];
-  const defeated = [];
-  for (const boss of filter?.bosses ?? region.bosses) {
-    (game.bossProgress[boss.id]?.won ? defeated : remaining).push(boss);
-  }
-  const areaButton = (name, label) => `<button type="button" data-action="boss-area" data-area="${esc(name)}" aria-pressed="${bossArea === name}">${label}</button>`;
-  return `<section id="boss-region-bosses" class="boss-region" aria-labelledby="boss-region-heading">
-    <header class="boss-region-head"><h2 id="boss-region-heading">${esc(region.name)}</h2><span>${stats.won} из ${stats.total}</span></header>
-    ${region.areas.length > 1 ? `<div class="boss-area-tabs" role="group" aria-label="Части региона">
-      ${areaButton('', 'Все')}${region.areas.map(area =>
-        areaButton(area.name,`<span>${esc(area.name)}</span> <small>${bossSummary(game, area.bosses).won}/${area.bosses.length}</small>`)).join('')}
-    </div>` : ''}
-    ${remaining.length ? `<h3 class="boss-list-heading">Осталось · ${remaining.length}</h3>
-      <ul class="boss-list">${remaining.map(boss => bossRow(game, boss)).join('')}</ul>` :
-      `<p class="boss-list-empty${celebrated ? ' just-cleared' : ''}">${icon('check',18)}
-        ${stats.won === stats.total ? 'Регион зачищен' : 'Все боссы в этой части повержены'}</p>`}
-    ${defeated.length ? `<details class="boss-defeated" ${defeatedOpen ? 'open' : ''}>
-      <summary>${icon('down',17)} Поверженные · ${defeated.length}</summary>
-      <ul class="boss-list">${defeated.map(boss => bossRow(game, boss)).join('')}</ul></details>` : ''}
-  </section>`;
-}
-
-function showBossMap(boss, index = 0) {
-  const place = boss?.maps[index];
-  if (!place) return;
-  const wasOpen = dialog.open;
-  const path = './assets/elden-ring/maps/' + place.file;
-  showDialog(esc(boss.name), 'КАРТА БОССА', `
-    ${boss.maps.length > 1 ? `<div class="boss-area-tabs" role="group" aria-label="Места встречи">${boss.maps.map((item,i) =>
-      `<button type="button" data-action="boss-map-place" data-id="${esc(boss.id)}" data-place="${i}" aria-pressed="${index === i}">${esc(item.label)}</button>`).join('')}</div>` : ''}
-    <a class="boss-map-image" href="${esc(path)}" target="_blank" rel="noopener" aria-label="Открыть карту в полном размере">
-      <img src="${esc(path)}" alt="Метка на карте: ${esc(boss.name)}" decoding="async" width="1280" height="720"></a>
-    <p class="boss-map-error" role="status" hidden>Карта недоступна. Если вы офлайн, откройте её после подключения к сети.</p>
-    <footer><p>${esc(place.location || boss.location)}</p><a href="https://game-checklists.com/elden-ring/all-bosses/#${esc(place.source)}" target="_blank" rel="noopener noreferrer">Game Checklists ${icon('upRight',15)}</a></footer>
-  `, 'boss-map-panel');
-  const image = dialog.querySelector('.boss-map-image img');
-  const unavailable = () => {
-    if (!image.isConnected) return;
-    image.closest('a').hidden = true;
-    dialog.querySelector('.boss-map-error').hidden = false;
-  };
-  image.addEventListener('error', unavailable, { once: true });
-  if (image.complete && !image.naturalWidth) unavailable();
-  if (wasOpen) dialog.querySelector(`[data-place="${index}"]`)?.focus({ preventScroll: true });
-}
-
-function bossRegionButton(region, stats, celebrated) {
-  const cleared = stats.won === stats.total;
-  return `<button type="button" class="boss-region-choice${cleared ? ' is-cleared' : ''}${celebrated ? ' just-cleared' : ''}"
-    data-action="boss-region" data-region="${region.index}" aria-pressed="${bossRegion === region.index}" aria-controls="boss-region-bosses">
-    <span><strong>${esc(region.name)}</strong>${cleared ? '<small>Зачищено</small>' : ''}</span>
-    <span class="boss-region-score">${stats.won}/${stats.total}${cleared ? icon('check',16) : ''}</span>
-  </button>`;
-}
-
-function bossTracker(game, { defeatedOpen = false, clearedIndex = null } = {}) {
-  const stats = bossSummary(game);
-  const regions = bossRegions.map(region => [region, bossSummary(game, region.bosses)]);
-  const [active, activeStats] = regions[bossRegion];
-  const cleared = regions.filter(([,counts]) => counts.won === counts.total).length;
-  const percentLabel = numeric(stats.percent) + '%';
-  return `<div id="boss-tracker">
-    <header class="boss-tracker-heading">
-      <nav aria-label="Путь к трекеру"><a href="#library">${icon('back',17)} Библиотека</a><span aria-hidden="true">/</span><a href="#game/${encodeURIComponent(game.id)}">Elden Ring</a></nav>
-      <div><h1>NG+</h1><span>Охота на боссов</span></div>
-    </header>
-    <div class="boss-workspace">
-      <aside class="boss-sidebar" aria-label="Прогресс и регионы">
-        <section class="boss-run-summary">
-          <h2>Прогресс забега</h2>
-          <div class="boss-ring" style="--boss-percent:${stats.percent}%" role="img" aria-label="${percentLabel}, ${stats.won} из ${stats.total} боссов">
-            <div aria-hidden="true"><strong>${percentLabel}</strong><span>${stats.won} из ${stats.total} боссов</span></div>
-          </div>
-          <dl class="boss-run-metrics">
-            <div><dt>Зачищено регионов</dt><dd>${numeric(cleared)}</dd></div>
-            <div class="boss-death-total"><dt>Смертей на боссах</dt><dd>${numeric(stats.deaths)}</dd></div>
-          </dl>
-        </section>
-        <section class="boss-regions">
-          <h2>Регионы</h2>
-          <div class="boss-region-index">${regions.map(([region,counts]) => bossRegionButton(region, counts, region.index === clearedIndex)).join('')}</div>
-        </section>
-      </aside>
-      ${bossRegionPanel(game, active, activeStats, defeatedOpen, active.index === clearedIndex)}
-    </div>
-  </div>`;
-}
-
-function restoreBossRegionScroll(offset) {
-  const index = app.querySelector('.boss-region-index');
-  if (!index || offset === undefined) return;
-  index.scrollTop = offset;
-}
-
-function refreshBossTracker(control, clearedIndex = null) {
-  const game = findByRoute(games());
-  const current = app.querySelector('#boss-tracker');
-  if (!current || !isEldenRing(game)) return;
-  const offset = current.querySelector('.boss-region-index').scrollTop;
-  const sameList = control.dataset.action !== 'boss-region' && control.dataset.action !== 'boss-area';
-  const defeatedOpen = sameList && current.querySelector('.boss-defeated')?.open;
-  current.outerHTML = bossTracker(game, { defeatedOpen, clearedIndex });
-  const updated = app.querySelector('#boss-tracker');
-  if (!sameList) updated.querySelector('.boss-region').classList.add('region-enter');
-  imageFallbacks(updated);
-  restoreBossRegionScroll(offset);
-  const selector = [...control.attributes].filter(attribute => attribute.name.startsWith('data-'))
-    .map(attribute => `[${attribute.name}="${CSS.escape(attribute.value)}"]`).join('');
-  const target = app.querySelector(`#boss-tracker ${selector}`);
-  const collapsed = target?.closest('.boss-defeated:not([open])');
-  const focus = collapsed ? app.querySelector('.boss-list .boss-win') ?? collapsed.querySelector('summary')
-    : target?.disabled ? target.parentElement.querySelector('button:not(:disabled)') : target;
-  focus?.focus({ preventScroll: true });
-}
-
-function updateBossProgress(control, delta = 0) {
-  const id = control.dataset.id;
-  const game = findByRoute(games());
-  if (!route.ngPlus || !isEldenRing(game) || !bossById.has(id)) return;
-  const saved = game.bossProgress[id] ?? { won: false, deaths: {} };
-  let next = { ...saved, won: !saved.won };
-  if (delta === 1) {
-    const key = STORAGE_KEY + ':boss-device';
-    try {
-      const device = localStorage.getItem(key) || crypto.randomUUID();
-      localStorage.setItem(key, device);
-      next = { ...saved, deaths: { ...saved.deaths, [device]: Math.min(1000000, (saved.deaths[device] ?? 0) + 1) } };
-    } catch {
-      notify('Не удалось сохранить смерть на этом устройстве.', true);
-      return;
-    }
-  } else if (delta === -1) {
-    const deaths = { ...saved.deaths };
-    const localDevice = localStorage.getItem(STORAGE_KEY + ':boss-device');
-    const device = deaths[localDevice] ? localDevice : Object.keys(deaths)[0];
-    if (!device) return;
-    if (--deaths[device] === 0) delete deaths[device];
-    next = { ...saved, deaths };
-  }
-  const region = bossRegions[bossRegion];
-  const cleared = !delta && next.won && bossSummary(game, region.bosses).won === region.bosses.length - 1;
-  if (updateGame(game, { bossProgress: { ...game.bossProgress, [id]: next } }, cleared ? `Регион «${region.name}» зачищен` : '')) {
-    refreshBossTracker(control, cleared ? region.index : null);
-  }
-}
-
 function notesPanel(game) {
   const rows = journalOrder(game.journal);
   const action = button('new-note', 'Новая заметка','plus');
-  const tracker = isEldenRing(game) ? bossNote(game) : '';
   return `<section class="panel dash-panel journal-panel">${panelHeading('edit', 'Заметки', action)}
-    ${tracker}
     ${rows.length ? `<ul class="journal-list">${rows.map(item=>`<li>
       <div><strong>${item.date ? dateLabel(item.date) : 'Без даты'}</strong></div>
       ${item.text ? `<p class="notes">${esc(item.text)}</p>` : ''}
       ${iconButton('edit-note', 'Редактировать заметку','edit', `data-id="${esc(item.id)}"`)}
-    </li>`).join('')}</ul>` : tracker ? '' : '<p class="dash-empty">Заметок пока нет.</p>'}
+    </li>`).join('')}</ul>` : '<p class="dash-empty">Заметок пока нет.</p>'}
   </section>`;
 }
 

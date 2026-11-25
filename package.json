@@ -1,0 +1,8 @@
+{
+  "name": "aftersave",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test"
+  }
+}

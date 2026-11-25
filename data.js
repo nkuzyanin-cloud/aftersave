@@ -11,114 +11,6 @@ export const STATUSES = Object.freeze({
   dropped: 'Дроп'
 });
 
-export const PLATFORMS = Object.freeze([
-  'PC', 'Steam Deck', 'PS5', 'PS4', 'PS3', 'Xbox Series X|S', 'Xbox One',
-  'Xbox 360', 'Switch', 'Switch 2', 'iOS / iPadOS', 'Android', 'Другое'
-]);
-
-function catalogGame(id, title, genre, year, accent, description, aliases = []) {
-  return { id, title, genre, year, platform: 'PC', cover: `./assets/covers/${id}.jpg`, accent, description, aliases };
-}
-
-export const CATALOG = Object.freeze([
-  catalogGame('elden-ring', 'Elden Ring', 'Экшен-RPG', 2022, '#bb945f', 'Путешествие по Междуземью с тайными тропами, древними руинами и опасными противниками.', ['Элден Ринг', 'Эльден Ринг']),
-  catalogGame('days-gone', 'Days Gone', 'Экшен', 2019, '#7a9c82', 'Поездки по заброшенным дорогам Орегона и встречи с ордами заражённых.', ['Жизнь после', 'Дейс Гон']),
-  catalogGame('hollow-knight', 'Hollow Knight', 'Метроидвания', 2017, '#7a9ace', 'Подземное королевство Халлоунест с лабиринтом тоннелей и заброшенными городами.', ['Холлоу Найт', 'Полый рыцарь']),
-  catalogGame('cyberpunk-2077', 'Cyberpunk 2077', 'Экшен-RPG', 2020, '#e9b750', 'Наёмник Ви ищет способ выжить в Найт-Сити, городе корпораций и киберимплантов.', ['Киберпанк 2077', 'Киберпанк']),
-  catalogGame('deadpool', 'Deadpool', 'Экшен', 2013, '#be4257', 'Приключение болтливого наёмника Marvel, который любит нарушать правила своей игры.', ['Дэдпул', 'Дедпул']),
-  catalogGame('ets2', 'Euro Truck Simulator 2', 'Симулятор', 2012, '#e1a86a', 'Грузовые рейсы по Европе, собственная транспортная компания и коллекция тягачей.', ['ETS2', 'ETS 2', 'Евро Трак Симулятор 2']),
-  catalogGame('hades', 'Hades', 'Рогалик', 2020, '#da735d', 'Загрей раз за разом пробивается из подземного царства, пользуясь дарами олимпийцев.', ['Аид', 'Хейдес']),
-  catalogGame('disco-elysium', 'Disco Elysium', 'RPG', 2019, '#b79582', 'Детективное расследование в Ревашоле, где каждый разговор способен изменить ход дела.', ['Диско Элизиум', 'Диско Элизиум Финал Кат']),
-  catalogGame('red-dead-redemption-2', 'Red Dead Redemption 2', 'Экшен', 2018, '#e07961', 'Артур Морган и банда Ван дер Линде пытаются выжить на закате Дикого Запада.', ['RDR2', 'RDR 2', 'РДР 2']),
-  catalogGame('control', 'Control', 'Экшен', 2019, '#b6688e', 'Джесси Фейден исследует Старейший дом, штаб секретного Бюро контроля.', ['Контрол', 'Контроль']),
-  catalogGame('witcher-3', 'The Witcher 3: Wild Hunt', 'Экшен-RPG', 2015, '#8eab8f', 'Геральт ищет Цири среди лесов, городов и островов, по которым проходит Дикая Охота.', ['Ведьмак 3', 'The Witcher 3', 'Дикая Охота']),
-  catalogGame('baldur-gate-3', "Baldur’s Gate 3", 'RPG', 2023, '#ba9571', 'Отряд героев исследует Забытые Королевства и ищет способ избавиться от паразитов.', ["Baldur's Gate 3", 'BG3', 'Балдурс Гейт 3', 'Балдурc Гейт 3'])
-]);
-
-function searchable(value) {
-  return value.normalize('NFKD')
-    .replace(/\p{Mark}/gu, '')
-    .toLowerCase()
-    .replace(/[^\p{Letter}\p{Number}]+/gu, ' ')
-    .trim();
-}
-
-export function searchCatalog(query = '') {
-  const terms = searchable(query).split(' ').filter(Boolean);
-  return CATALOG.filter(game => {
-    const haystack = searchable([game.title, game.genre, game.year, ...game.aliases].join(' '));
-    return terms.every(term => haystack.includes(term));
-  });
-}
-
-const WIKIDATA_API = 'https://www.wikidata.org/w/api.php';
-
-async function wikidata(params, signal) {
-  const query = new URLSearchParams({ ...params, origin: '*', format: 'json', formatversion: '2' });
-  const response = await fetch(`${WIKIDATA_API}?${query}`, {
-    signal, credentials: 'omit', referrerPolicy: 'no-referrer'
-  });
-  if (!response.ok) throw new Error('Не удалось связаться с Wikidata.');
-  const result = await response.json();
-  if (result.error) throw new Error('Wikidata не смогла обработать запрос.');
-  return result;
-}
-
-function getClaims(entity, property) {
-  return (entity.claims?.[property] ?? [])
-    .filter(claim => claim.rank !== 'deprecated')
-    .map(claim => claim.mainsnak?.datavalue?.value)
-    .filter(Boolean);
-}
-
-export async function searchOnlineCatalog(query, { signal } = {}) {
-  const text = query.trim().slice(0, 160);
-  if (text.length < 2) return [];
-
-  const controller = new AbortController();
-  const cancel = () => controller.abort();
-  if (signal?.aborted) cancel();
-  signal?.addEventListener('abort', cancel, { once: true });
-  const timeout = setTimeout(cancel, 8000);
-  try {
-    const language = /\p{Script=Cyrillic}/u.test(text) ? 'ru' : 'en';
-    const { search = [] } = await wikidata({
-      action: 'wbsearchentities', search: text, type: 'item', language, uselang: 'ru', limit: '15'
-    }, controller.signal);
-    const ids = search.map(item => item.id).filter(id => /^Q\d+$/.test(id));
-    if (!ids.length) return [];
-
-    const { entities = {} } = await wikidata({
-      action: 'wbgetentities', ids: ids.join('|'), props: 'claims'
-    }, controller.signal);
-    const localMatches = new Set(searchCatalog(text).map(game => searchable(game.title)));
-    return search.flatMap(item => {
-      const entity = entities[item.id];
-      if (!entity || !getClaims(entity, 'P31').some(value => value.id === 'Q7889')) return [];
-      const title = item.label?.slice(0, 160).trim();
-      if (!title || localMatches.has(searchable(title))) return [];
-      const releaseYears = getClaims(entity, 'P577').map(value => {
-        const match = /^\+(\d{4})-/.exec(value.time ?? '');
-        return match && value.precision >= 9 ? Number(match[1]) : null;
-      }).filter(year => year >= 1900 && year <= 2100);
-      return [{
-        id: `wikidata-${item.id}`,
-        title,
-        description: (item.description ?? '').slice(0, 1000),
-        year: releaseYears.length ? Math.min(...releaseYears) : null,
-        genre: '', platform: 'PC', cover: '', accent: '#62cfff'
-      }];
-    });
-  } catch (error) {
-    if (signal?.aborted) throw error;
-    if (controller.signal.aborted) throw new Error('Wikidata не ответила вовремя.');
-    throw error;
-  } finally {
-    clearTimeout(timeout);
-    signal?.removeEventListener('abort', cancel);
-  }
-}
-
 function object(value, label) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error(`${label} имеет неверный формат.`);
@@ -212,8 +104,8 @@ function coverPath(value) {
 }
 
 function accentColor(value) {
-  const color = text(value, 'Цвет', 7, '#62cfff');
-  if (!color) return '#62cfff';
+  const color = text(value, 'Цвет', 7, '#8ebbd5');
+  if (!color) return '#8ebbd5';
   if (!/^#[0-9a-f]{6}$/i.test(color)) throw new Error('Цвет обложки имеет неверный формат.');
   return color;
 }
@@ -221,17 +113,6 @@ function accentColor(value) {
 export function isEldenRing(game) {
   return game?.steam ? Number(game.steam.appid) === 1245620 :
     game?.catalogId === 'elden-ring' || /^\s*(elden ring|эл[ь]?ден ринг)\s*$/i.test(game?.title ?? '');
-}
-
-function normalizeBossProgress(value) {
-  const entries = Object.entries(value ?? {}).slice(0, 300);
-  return Object.fromEntries(entries.flatMap(([id, item]) => {
-    if (!/^[a-z0-9][a-z0-9-]{1,94}$/.test(id) || !item) return [];
-    const deaths = Object.fromEntries(Object.entries(item.deaths ?? {}).slice(0, 100).filter(([device, count]) =>
-      /^[a-f0-9-]{36}$/.test(device) && Number.isSafeInteger(count) && count > 0 && count <= 1000000
-    ));
-    return typeof item.won === 'boolean' || Object.keys(deaths).length ? [[id, { won: item.won === true, deaths }]] : [];
-  }));
 }
 
 function normalizeGame(value, fallbackId, fallbackTimestamp) {
@@ -281,8 +162,7 @@ function normalizeGame(value, fallbackId, fallbackTimestamp) {
     shelf: bool(game.shelf, 'Моя полка', !game.steam),
     hidden: bool(game.hidden, 'Скрытая игра'),
     sessions: normalizeJournal(game.sessions ?? [], true),
-    journal: normalizeJournal(game.journal ?? [], false),
-    bossProgress: isEldenRing(game) ? normalizeBossProgress(game.bossProgress) : {}
+    journal: normalizeJournal(game.journal ?? [], false)
   };
 }
 
@@ -414,7 +294,7 @@ export function createGame(partial = {}) {
 export function emptyState() {
   return {
     format: FORMAT, version: VERSION, revision: 0, games: [], collections: [],
-    profile: { name: 'Игрок', bio: '' }, showDemo: true, steam: null
+    profile: { name: 'Игрок', bio: '' }, steam: null
   };
 }
 
@@ -498,7 +378,6 @@ function normalizeState(value) {
       name: text(profile.name, 'Имя профиля', 64) || 'Игрок',
       bio: text(profile.bio, 'Описание профиля', 500)
     },
-    showDemo: bool(state.showDemo, 'Показ демо', true),
     steam
   };
 }
@@ -592,59 +471,3 @@ export function exportCSV(state) {
   ]);
   return '\uFEFF' + [header, ...rows].map(row => row.map(csvCell).join(';')).join('\r\n') + '\r\n';
 }
-
-export const DEMO_PROFILE = Object.freeze({ name: 'Странник', bio: 'Собираю игровые миры и истории, к которым хочется вернуться.' });
-
-export const DEMO_COLLECTIONS = Object.freeze([
-  { id: 'demo-worlds', name: 'Большие миры' },
-  { id: 'demo-indie', name: 'Инди-находки' },
-  { id: 'demo-evening', name: 'На вечер' }
-]);
-
-function daysAgo(days) {
-  const today = new Date();
-  today.setUTCDate(today.getUTCDate() - days);
-  return today.toISOString().slice(0, 10);
-}
-
-function demoGame(id, daysSinceAdded, details) {
-  const entry = CATALOG.find(game => game.id === id);
-  const dateAdded = `${daysAgo(daysSinceAdded)}T12:00:00.000Z`;
-  return createGame({
-    ...entry, ...details, id: `demo-${id}`, catalogId: id, demo: true,
-    createdAt: dateAdded, updatedAt: dateAdded
-  });
-}
-
-export const DEMO = Object.freeze([
-  demoGame('elden-ring', 2, {
-    status: 'playing', platform: 'PS5', progress: 64, hours: 48.5, rating: 9.5,
-    startedAt: daysAgo(42), tags: ['Открытый мир', 'Soulslike'], collectionIds: ['demo-worlds'],
-    notes: 'Вернуться в Лиурнию и посмотреть, куда ведёт тропа у озера.'
-  }),
-  demoGame('days-gone', 4, {
-    status: 'planned', wishlist: true, tags: ['Открытый мир', 'Выживание'], collectionIds: ['demo-worlds'],
-    notes: 'Оставить на длинные выходные.'
-  }),
-  demoGame('hollow-knight', 12, {
-    status: 'perfect', platform: 'Switch', progress: 100, hours: 36, rating: 9,
-    startedAt: daysAgo(68), finishedAt: daysAgo(12), tags: ['Инди', 'Исследование'], collectionIds: ['demo-indie']
-  }),
-  demoGame('cyberpunk-2077', 16, {
-    status: 'playing', progress: 35, hours: 24, rating: 8.5, startedAt: daysAgo(15),
-    tags: ['Открытый мир', 'Киберпанк'], collectionIds: ['demo-worlds'],
-    notes: 'Продолжить задания Панам и заглянуть в Пёсий город.'
-  }),
-  demoGame('hades', 19, {
-    status: 'completed', platform: 'Steam Deck', progress: 88, hours: 29, rating: 9,
-    startedAt: daysAgo(75), finishedAt: daysAgo(19), tags: ['Инди', 'Рогалик'],
-    collectionIds: ['demo-indie', 'demo-evening']
-  }),
-  demoGame('disco-elysium', 23, {
-    status: 'dropped', progress: 12, hours: 4, startedAt: daysAgo(54),
-    tags: ['Инди', 'Детектив'], collectionIds: ['demo-indie']
-  }),
-  demoGame('control', 28, {
-    status: 'planned', platform: 'PS5', wishlist: true, tags: ['Мистика'], collectionIds: ['demo-evening']
-  })
-]);
