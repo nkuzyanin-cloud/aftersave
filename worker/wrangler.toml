@@ -13,3 +13,6 @@ simple = { limit = 5, period = 60 }
 name = "API_LIMIT"
 namespace_id = "93032"
 simple = { limit = 90, period = 60 }
+
+# The production D1 binding and Cron Trigger are currently configured in the
+# Cloudflare dashboard. See DEPLOYMENT.md before changing deployment settings.

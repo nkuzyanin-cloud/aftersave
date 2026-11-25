@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { sessionsWithLocalHistory } from '../activity-view.js';
 import { countGameStatuses, gameProgressState } from '../game-model.js';
+import { collectionEntries } from '../collection-model.js';
+import { sessionDashboardData, sessionChartPoints } from '../session-model.js';
 import { createGame, emptyState, importJSON, exportJSON } from '../data.js';
 
 const base = Date.UTC(2020,0,1,12), at = n => base+n*60000;
@@ -26,4 +28,17 @@ test('legacy boss progress is ignored while personal records survive',()=>{
   assert.equal(imported.games[0].status,'completed');
   assert.equal('bossProgress' in imported.games[0],false);
   assert.equal(JSON.parse(exportJSON(imported)).games.length,1);
+});
+
+test('a game in two collections contributes once to each collection',()=>{
+  const entry = {...game, collectionIds:['one','two'], steam:{appid:1,minutes:60}};
+  const collections = [{id:'one',name:'A'},{id:'two',name:'B'}];
+  const result = collectionEntries([entry],collections,'games',()=>({total:4,unlocked:2}));
+  assert.deepEqual(result.map(row=>[row.games,row.minutes,row.unlocked]),[[1,60,2],[1,60,2]]);
+});
+test('session periods and chart grouping agree on minutes',()=>{
+  const context={events:[{game,minutes:20,day:10},{game,minutes:30,day:11}],unlocks:new Map()};
+  const data=sessionDashboardData(context,'7',11);
+  assert.equal(data.metrics.minutes,50);
+  assert.equal(sessionChartPoints(data,'days').reduce((n,p)=>n+p.minutes,0),50);
 });
