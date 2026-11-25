@@ -3169,7 +3169,7 @@ function imageFallbacks(root) {
         image.removeEventListener('error', fail);
       }
     };
-    image.addEventListener('load', () => {
+    const onArtworkLoaded = () => {
       image.hidden = false;
       // Store headers are ~460:215; unknown assets may be portrait or panoramic.
       // Preserve the whole nonstandard picture, with artwork in the background rather than black bars.
@@ -3182,9 +3182,14 @@ function imageFallbacks(root) {
           'url(' + JSON.stringify(image.currentSrc || image.src) + ')');
         else frame.style.removeProperty('--wide-cover-backdrop');
       }
-    });
+    };
+    image.addEventListener('load', onArtworkLoaded);
     image.addEventListener('error', fail);
-    if (image.complete && !image.naturalWidth) fail();
+    // Cached images can be complete before these listeners are attached.
+    if (image.complete) {
+      if (image.naturalWidth) onArtworkLoaded();
+      else fail();
+    }
   });
 }
 
