@@ -1628,7 +1628,7 @@ function analyticsLibrary(library) {
   const rate = value => total ? value/total*100 : 0;
   const complete = counts.perfect+counts.beaten;
   const colors = ['#b5e3f3','#8ebbd5','#6896b3','#405063'];
-  const labels = [['perfect','Идеально'],['beaten','Пройдено'],['active','Начато'],['unstarted','Не начато']];
+  const labels = [['perfect','Идеально','Все достижения получены'],['beaten','Пройдено','Отмечено прохождение'],['active','Начато','Есть игровой прогресс'],['unstarted','Не начато','Нет игрового прогресса']];
   let end=0;
   const stops=labels.map(([key],i)=>{
     const start=end;end+=rate(counts[key]);
@@ -1638,25 +1638,26 @@ function analyticsLibrary(library) {
   return analyticsPanel('Прогресс библиотеки','layers',
     '<div class="analytics-library-body"><div class="analytics-library-ring" style="background:'+ring+'" role="img" aria-label="Пройдено '+numeric(Math.round(rate(complete)*10)/10)+'% игр">'+
       '<div><strong>'+numeric(Math.round(rate(complete)*10)/10)+'%</strong><small>пройдено</small><small>'+numeric(complete)+' из '+numeric(total)+' игр</small></div></div>'+
-    '<div class="analytics-status-list">'+labels.map(([key,label],i)=>
-      '<div><i style="background:'+colors[i]+'"></i><span>'+label+'</span><b>'+numeric(counts[key])+'</b><small>'+numeric(Math.round(rate(counts[key])*10)/10)+'%</small></div>').join('')+
+    '<div class="analytics-status-list">'+labels.map(([key,label,description],i)=>
+      '<div><i style="background:'+colors[i]+'"></i><span><strong>'+label+'</strong><small>'+description+'</small></span><b>'+numeric(counts[key])+'</b><small>'+numeric(Math.round(rate(counts[key])*10)/10)+'%</small></div>').join('')+
     '</div></div>', 'analytics-library');
 }
 
 function analyticsAchievements(totals, dated) {
   const known=dated.filter(({item})=>Number.isFinite(item.percent));
   const rare=known.filter(({item})=>item.percent<10).length;
-  const ultra=known.filter(({item})=>item.percent<1).length;
+  const ultra=known.filter(({item})=>item.percent<3).length;
   const groups=new Map();
   for (const {game} of dated) {
     const entry=groups.get(game.id)??{game,count:0};entry.count++;groups.set(game.id,entry);
   }
   const ranked=[...groups.values()].sort((a,b)=>b.count-a.count || displayName(a.game).localeCompare(displayName(b.game),'ru'));
   const value=totals.total?numeric(Math.round(totals.unlocked/totals.total*1000)/10)+'%':'—';
-  const metric=(label,value,tip='')=>'<div'+(tip?' title="'+esc(tip)+'"':'')+'><small>'+label+'</small><strong>'+value+'</strong></div>';
+  const metric=(glyph,label,value,tip='')=>'<div'+(tip?' title="'+esc(tip)+'"':'')+'>'+icon(glyph,24)+'<span><small>'+label+'</small><strong>'+value+'</strong></span></div>';
   return analyticsPanel('Достижения за период','trophy',
-    '<div class="analytics-ach-metrics">'+metric('Редкие',known.length?numeric(rare):'—','Менее 10% игроков Steam')+
-    metric('Очень редкие',known.length?numeric(ultra):'—','Менее 1% игроков Steam; входят в число редких')+'</div>'+
+    '<div class="analytics-ach-metrics">'+metric('game','Игр с достижениями',numeric(ranked.length))+
+    metric('trophy','Редкие',known.length?numeric(rare):'—','Менее 10% игроков Steam')+
+    metric('gem','Очень редкие',known.length?numeric(ultra):'—','Менее 3% игроков Steam; входят в число редких')+'</div>'+
     '<div class="analytics-subheading">Больше всего достижений</div>'+
     (ranked.length?'<div class="analytics-ach-ranking">'+ranked.slice(0,3).map(({game,count})=>
       '<a href="'+gameHref(game,'achievements')+'">'+cover(game,'',{detailed:true})+'<strong>'+esc(displayName(game))+'</strong><b>+'+numeric(count)+'</b></a>').join('')+'</div>':
@@ -1670,14 +1671,14 @@ function analyticsSessionSummary(data, totals) {
   const count=data.events.length, days=new Set(data.events.map(event=>event.day)).size;
   const longest=data.events.reduce((max,event)=>Math.max(max,event.minutes),0);
   const metrics=[
-    ['Игровых записей',numeric(count)],
-    ['В среднем на запись',count?sessionDuration(data.metrics.minutes/count):'—'],
-    ['Самая длинная запись',count?sessionDuration(longest):'—'],
-    ['Записей в игровой день',days?numeric(Math.round(count/days*10)/10):'—']
+    ['game','Игровых записей',numeric(count)],
+    ['chart','В среднем на запись',count?sessionDuration(data.metrics.minutes/count):'—'],
+    ['trophy','Самая длинная запись',count?sessionDuration(longest):'—'],
+    ['calendar','Записей в игровой день',days?numeric(Math.round(count/days*10)/10):'—']
   ];
-  return analyticsPanel('Сводка по сессиям','clock','<div class="analytics-session-metrics">'+metrics.map(([label,value])=>
-    '<div><small>'+label+'</small><strong>'+value+'</strong></div>').join('')+
-    '</div><p class="analytics-note">Одна запись — игровое время одной игры за календарный день.</p>'+
+  return analyticsPanel('Сводка по сессиям','clock','<div class="analytics-session-metrics">'+metrics.map(([glyph,label,value])=>
+    '<div>'+icon(glyph,24)+'<span><small>'+label+'</small><strong>'+value+'</strong></span></div>').join('')+
+    '</div>'+
     '<div class="analytics-ach-total"><span>Общее время Steam</span><strong>'+sessionDuration(totals.minutes)+'</strong></div>','analytics-summary');
 }
 
