@@ -2028,11 +2028,6 @@ function collectionStatusCounts(grouped) {
   }, {perfect:0,beaten:0,active:0,unstarted:0});
 }
 
-function collectionLeader(grouped) {
-  const game = collectionShowcaseGames(grouped,1)[0];
-  return game && gameHours(game) > 0 ? displayName(game) : '';
-}
-
 function collectionArt(entry) {
   const {item,grouped} = entry;
   const leading = grouped.find(game => game.id === item.artGameId) || collectionShowcaseGames(grouped,1)[0];
@@ -2060,11 +2055,12 @@ function collectionFacts(entry) {
 
 function collectionBreakdown(grouped) {
   const status = collectionStatusCounts(grouped);
-  return '<div class="cv3-breakdown">' +
-    '<span>' + icon('perfect',15) + '<b>' + numeric(status.perfect) + '</b> идеально</span>' +
-    '<span>' + icon('check',15) + '<b>' + numeric(status.beaten) + '</b> пройдено</span>' +
-    '<span>' + icon('clock',15) + '<b>' + numeric(status.active) + '</b> в процессе</span>' +
-    (status.unstarted ? '<span><b>' + numeric(status.unstarted) + '</b> не начато</span>' : '') +
+  // Three rows in every collection card. The full status breakdown remains
+  // available inside collection analytics, including games not started.
+  return '<div class="cv3-breakdown" aria-label="Статусы игр">' +
+    '<span>' + icon('perfect',15) + '<span>Идеально</span><b>' + numeric(status.perfect) + '</b></span>' +
+    '<span>' + icon('check',15) + '<span>Пройдено</span><b>' + numeric(status.beaten) + '</b></span>' +
+    '<span>' + icon('clock',15) + '<span>В процессе</span><b>' + numeric(status.active) + '</b></span>' +
     '</div>';
 }
 
@@ -2080,31 +2076,22 @@ function collectionProgress(entry, featured = false) {
 
 function collectionHero(entry) {
   const {item,grouped} = entry;
-  const leader = collectionLeader(grouped);
-  const kind = {games:'играм',time:'времени',achievements:'достижениям'}[collectionSort];
   return '<a href="#collections/' + encodeURIComponent(item.id) + '" class="cv3-feature">' +
     '<div class="cv3-feature-image" aria-hidden="true">' + collectionArt(entry) + '</div>' +
-    '<div class="cv3-feature-main"><div class="cv3-feature-label">' +
-      icon('perfect',16) + ' Первая по ' + kind + '</div>' +
-    '<h2>' + esc(item.name) + '</h2>' +
-    collectionProgress(entry,true) + collectionFacts(entry) +
-    '<div class="cv3-feature-bottom">' + collectionBreakdown(grouped) +
-      (leader ? '<p>' + icon('trophy',15) + '<span>Лидер по времени: <strong>' + esc(leader) + '</strong></span></p>' : '') +
-    '</div></div><div class="cv3-feature-showcase">' + collectionPosters(grouped,4) + '</div></a>';
+    '<div class="cv3-feature-main">' + collectionFacts(entry) +
+      '<div class="cv3-feature-content"><div class="cv3-feature-heading"><h2>' + esc(item.name) + '</h2>' +
+        collectionProgress(entry,true) + '</div>' + collectionBreakdown(grouped) + '</div>' +
+    '</div><div class="cv3-feature-showcase">' + collectionPosters(grouped,4) + '</div></a>';
 }
 
 function collectionRow(entry) {
   const {item,grouped} = entry;
-  const leader = collectionLeader(grouped);
   return '<a href="#collections/' + encodeURIComponent(item.id) + '" class="cv3-card">' +
     '<div class="cv3-card-image" aria-hidden="true">' + collectionArt(entry) + '</div>' +
-    '<div class="cv3-card-top"><div class="cv3-card-heading"><h2>' + esc(item.name) + '</h2>' +
-      collectionProgress(entry) + '</div>' + collectionPosters(grouped,4) + '</div>' +
     collectionFacts(entry) +
-    '<div class="cv3-card-bottom">' + collectionBreakdown(grouped) +
-      (leader ? '<p title="' + esc(leader) + '">' + icon('trophy',14) +
-        '<span>Лидер: <strong>' + esc(leader) + '</strong></span></p>' : '') +
-    '</div></a>';
+    '<div class="cv3-card-main"><div class="cv3-card-heading"><h2>' + esc(item.name) + '</h2>' +
+      collectionProgress(entry) + '</div>' +
+      collectionBreakdown(grouped) + collectionPosters(grouped,4) + '</div></a>';
 }
 
 function collectionEntries() {
